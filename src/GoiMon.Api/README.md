@@ -67,6 +67,19 @@ query {
 }
 ```
 
+- Products by enum category (demonstrates enum argument):
+
+```graphql
+query {
+  productsByCategoryEnum(category: Noodles) {
+    id
+    name
+    priceCents
+    category
+  }
+}
+```
+
 - Single product by id:
 
 ```graphql
@@ -93,6 +106,29 @@ mutation {
   }
 }
 ```
+
+- Add multiple products (demonstrates list input):
+
+```graphql
+mutation {
+  addProducts(inputs: [
+    { name: "Noodle A", priceCents: 12000, category: "Noodles" },
+    { name: "Drink B", priceCents: 5000, category: "Drinks" }
+  ]) {
+    id
+    name
+    category
+  }
+}
+```
+
+GraphQL type notes (concepts demonstrated):
+
+- Arguments: resolver method parameters (e.g., `productsByCategory(category: "Noodles")`).
+- Input object types: objects passed as arguments (e.g., `input: { name: "X", priceCents: 1000, category: "Y" }`).
+- Lists: pass arrays of input objects (e.g., `addProducts(inputs: [...])`).
+- Non-null: mark fields/args as required in queries by omitting `null`; HotChocolate infers nullability from CLR types. For explicit non-null wrappers use schema types.
+- Enums: server CLR enums (e.g., `ProductCategory`) are exposed as GraphQL enums and can be used as arguments (see `productsByCategoryEnum`).
 
 - Create order:
 

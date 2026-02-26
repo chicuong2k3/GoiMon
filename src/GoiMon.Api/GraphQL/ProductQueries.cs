@@ -1,6 +1,7 @@
 using GoiMon.Api.Data;
 using GoiMon.Api.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using GoiMon.Api.GraphQL.Types;
 
 namespace GoiMon.Api.GraphQL;
 
@@ -20,6 +21,13 @@ public class ProductQueries
     [UseSorting]
     public IQueryable<Product> ProductsByCategory(string category, [Service(ServiceKind.Pooled)] AppDbContext db)
         => db.Products.Where(p => p.Category == category).AsQueryable();
+
+    [UseDbContext(typeof(AppDbContext))]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting]
+    public IQueryable<Product> ProductsByCategoryEnum(ProductCategory category, [Service(ServiceKind.Pooled)] AppDbContext db)
+        => db.Products.Where(p => p.Category == category.ToString()).AsQueryable();
 
     [UseDbContext(typeof(AppDbContext))]
     public async Task<Product?> ProductById(Guid id, [Service(ServiceKind.Pooled)] AppDbContext db)

@@ -23,6 +23,8 @@ builder.Services
     .AddTypeExtension<GoiMon.Api.GraphQL.OrderQueries>()
     .AddTypeExtension<GoiMon.Api.GraphQL.ProductMutations>()
     .AddTypeExtension<GoiMon.Api.GraphQL.OrderMutations>();
+// Register enum types explicitly (optional - HotChocolate will infer enums automatically)
+builder.Services.AddGraphQLServer().AddType<GoiMon.Api.GraphQL.Types.ProductCategory>();
 
 // Repositories currently unused by GraphQL resolvers (using DB-backed resolvers instead).
 // If you later want to reintroduce repository abstractions, register them here.
