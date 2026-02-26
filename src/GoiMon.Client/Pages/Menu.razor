@@ -1,0 +1,28 @@
+@page "/menu"
+@using GoiMon.Shared.Models
+@inject HttpClient Http
+
+<h2>Menu</h2>
+
+@if (items is null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <ul>
+        @foreach (var it in items)
+        {
+            <li>@it.Name - @((it.PriceCents / 100.0).ToString("C"))</li>
+        }
+    </ul>
+}
+
+@code {
+    private List<Product>? items;
+
+    protected override async Task OnInitializedAsync()
+    {
+        items = await Http.GetFromJsonAsync<List<Product>>("/api/products");
+    }
+}

@@ -1,0 +1,57 @@
+## Build directories
+bin/
+obj/
+
+## Package directories
+/packages/
+
+## Visual Studio / Rider
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+riderModule.iml
+/.idea/
+/_ReSharper.Caches/
+
+## Dotnet tools and artifacts
+.dotnet/
+.dotnet_tools/
+
+## EF Migrations / database
+*.db
+*.db-journal
+
+## Logs
+*.log
+
+## Publish
+publish/
+out/
+
+## npm, yarn
+node_modules/
+
+## Test results
+TestResults/
+*.trx
+
+## Temporary
+.DS_Store
+Thumbs.db
+.cache
+
+## Coverage
+coverage/
+
+## Editor/IDE temporary files
+*~
+*.swp
+
+## Rider and JetBrains
+*.idea/
+
+## Binaries from builds in repo
+**/bin/
+**/obj/
