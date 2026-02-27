@@ -18,13 +18,20 @@ builder.Services
     .AddProjections()
     .AddFiltering()
     .AddSorting()
+    // Enable Relay-style global object identification (Node interface, global IDs)
+    .AddGlobalObjectIdentification()
     // Register aggregate-specific extensions
     .AddTypeExtension<GoiMon.Api.GraphQL.ProductQueries>()
     .AddTypeExtension<GoiMon.Api.GraphQL.OrderQueries>()
     .AddTypeExtension<GoiMon.Api.GraphQL.ProductMutations>()
-    .AddTypeExtension<GoiMon.Api.GraphQL.OrderMutations>();
-// Register enum types explicitly (optional - HotChocolate will infer enums automatically)
-builder.Services.AddGraphQLServer().AddType<GoiMon.Api.GraphQL.Types.ProductCategory>();
+    .AddTypeExtension<GoiMon.Api.GraphQL.OrderMutations>()
+    .AddTypeExtension<GoiMon.Api.GraphQL.ProductResolvers>()
+    .AddTypeExtension<GoiMon.Api.GraphQL.ComboQueries>()
+    .AddTypeExtension<GoiMon.Api.GraphQL.ComboMutations>()
+    .AddTypeExtension<GoiMon.Api.GraphQL.ProductComboItemResolvers>()
+        .AddTypeExtension<GoiMon.Api.GraphQL.CategoryQueries>()
+        .AddTypeExtension<GoiMon.Api.GraphQL.CategoryMutations>()
+    .AddType<GoiMon.Api.GraphQL.Types.ProductCategory>();
 
 // Repositories currently unused by GraphQL resolvers (using DB-backed resolvers instead).
 // If you later want to reintroduce repository abstractions, register them here.

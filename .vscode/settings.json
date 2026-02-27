@@ -1,0 +1,12 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^git status --porcelain && git add _bmad-output/implementation-artifacts/hotchocolate-filtering-sorting-projection\\.md && git commit -m \"docs: add HotChocolate filtering/sorting/projection guide to bmad output\" \\|\\| true$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^dotnet ef migrations add AddCategory --project /home/chicuong/Desktop/code/GoiMon/src/GoiMon\\.Api/GoiMon\\.Api\\.csproj --startup-project /home/chicuong/Desktop/code/GoiMon/src/GoiMon\\.Api/GoiMon\\.Api\\.csproj$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

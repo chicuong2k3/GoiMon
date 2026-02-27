@@ -7,17 +7,17 @@ public class Product : AggregateRoot
     // EF Core requires a parameterless constructor; keep it private for DDD control
     private Product() { }
 
-    public Product(Guid id, string name, int priceCents, string category)
+    public Product(Guid id, string name, int priceCents, Guid categoryId)
     {
         Id = id;
-        Name = name ?? throw new ArgumentNullException(nameof(name));
+        Name = name?.Trim() ?? throw new ArgumentNullException(nameof(name));
         PriceCents = priceCents;
-        Category = category ?? string.Empty;
+        CategoryId = categoryId;
     }
 
     public string Name { get; private set; } = string.Empty;
     public int PriceCents { get; private set; }
-    public string Category { get; private set; } = string.Empty;
+    public Guid CategoryId { get; private set; }
 
     // Domain behaviors
     public void Rename(string newName)
@@ -32,8 +32,8 @@ public class Product : AggregateRoot
         PriceCents = newPriceCents;
     }
 
-    public void ChangeCategory(string newCategory)
+    public void ChangeCategory(Guid newCategoryId)
     {
-        Category = newCategory ?? string.Empty;
+        CategoryId = newCategoryId;
     }
 }

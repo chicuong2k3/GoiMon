@@ -11,7 +11,7 @@ public class ProductMutations
     [UseDbContext(typeof(AppDbContext))]
     public async Task<Product> AddProduct(ProductInput input, [Service(ServiceKind.Pooled)] AppDbContext db)
     {
-        var p = new Product(Guid.NewGuid(), input.Name, input.PriceCents, input.Category);
+        var p = new Product(Guid.NewGuid(), input.Name, input.PriceCents, input.CategoryId);
         db.Products.Add(p);
         await db.SaveChangesAsync();
         return p;
@@ -23,7 +23,7 @@ public class ProductMutations
         var created = new List<Product>();
         foreach (var i in inputs)
         {
-            var p = new Product(Guid.NewGuid(), i.Name, i.PriceCents, i.Category);
+            var p = new Product(Guid.NewGuid(), i.Name, i.PriceCents, i.CategoryId);
             db.Products.Add(p);
             created.Add(p);
         }
@@ -32,4 +32,4 @@ public class ProductMutations
     }
 }
 
-public record ProductInput(string Name, int PriceCents, string Category);
+public record ProductInput(string Name, int PriceCents, Guid CategoryId);

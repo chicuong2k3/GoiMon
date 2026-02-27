@@ -18,8 +18,8 @@ public class Query
     [UseProjection]
     [UseFiltering]
     [UseSorting]
-    public IQueryable<Product> ProductsByCategory(string category, [Service(ServiceKind.Pooled)] AppDbContext db)
-        => db.Products.Where(p => p.Category == category).AsQueryable();
+    public IQueryable<Product> ProductsByCategory(Guid categoryId, [Service(ServiceKind.Pooled)] AppDbContext db)
+        => db.Products.Where(p => p.CategoryId == categoryId).AsQueryable();
 
     [UseDbContext(typeof(AppDbContext))]
     public async Task<Product?> ProductById(Guid id, [Service(ServiceKind.Pooled)] AppDbContext db)

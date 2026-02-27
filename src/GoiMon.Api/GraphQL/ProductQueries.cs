@@ -19,15 +19,19 @@ public class ProductQueries
     [UseProjection]
     [UseFiltering]
     [UseSorting]
-    public IQueryable<Product> ProductsByCategory(string category, [Service(ServiceKind.Pooled)] AppDbContext db)
-        => db.Products.Where(p => p.Category == category).AsQueryable();
+    public IQueryable<Product> ProductsByCategory(Guid categoryId, [Service(ServiceKind.Pooled)] AppDbContext db)
+        => db.Products.Where(p => p.CategoryId == categoryId).AsQueryable();
 
     [UseDbContext(typeof(AppDbContext))]
     [UseProjection]
     [UseFiltering]
     [UseSorting]
     public IQueryable<Product> ProductsByCategoryEnum(ProductCategory category, [Service(ServiceKind.Pooled)] AppDbContext db)
-        => db.Products.Where(p => p.Category == category.ToString()).AsQueryable();
+    {
+        var cat = db.Categories.FirstOrDefault(c => c.Name == category.ToString());
+        if (cat is null) return Enumerable.Empty<Product>().AsQueryable();
+        return db.Products.Where(p => p.CategoryId == cat.Id).AsQueryable();
+    }
 
     [UseDbContext(typeof(AppDbContext))]
     public async Task<Product?> ProductById(Guid id, [Service(ServiceKind.Pooled)] AppDbContext db)
