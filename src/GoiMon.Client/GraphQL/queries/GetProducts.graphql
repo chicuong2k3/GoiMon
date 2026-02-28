@@ -1,0 +1,20 @@
+query GetProducts($skip: Int, $take: Int, $where: ProductFilterInput) {
+  products(skip: $skip, take: $take, where: $where) {
+    items {
+      id
+      name
+      price
+      description
+      categoryId
+      category {
+        id
+        name
+      }
+    }
+    totalCount
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+    }
+  }
+}

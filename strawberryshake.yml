@@ -1,0 +1,13 @@
+# Strawberry Shake configuration for GoiMon
+# See: https://chillicream.com/docs/strawberryshake/v15/get-started
+
+schema:
+  - http://localhost:5000/graphql
+
+documents:
+  - src/GoiMon.Client/GraphQL/**/*.graphql
+
+# Generated client settings
+name: GoiMonClient
+namespace: GoiMon.Client.GraphQL
+output: src/GoiMon.Client/Generated

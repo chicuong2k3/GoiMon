@@ -1,6 +1,3 @@
-using GoiMon.Api.Infrastructure.Data;
-using GoiMon.Api.Domain.Entities;
-
 namespace GoiMon.Api.Features.Categories;
 
 [ExtendObjectType("Mutation")]

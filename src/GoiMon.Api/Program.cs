@@ -1,4 +1,4 @@
-using GoiMon.Api.Infrastructure.Data;
+
 using Hangfire;
 using Hangfire.PostgreSql;
 using GoiMon.Api.Infrastructure.Outbox;
@@ -31,17 +31,19 @@ var conn = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddPooledDbContextFactory<AppDbContext>(options =>
     options.UseNpgsql(conn));
 
-// CORS: allow requests from Nitro app
+// CORS: allow requests from Nitro app and local dev origins
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowNitro", policy =>
     {
         policy
-            .WithOrigins("https://nitro.chillicream.com")
+            .WithOrigins("https://nitro.chillicream.com", "http://localhost:5002", "http://localhost:5003", "http://localhost:5000")
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
     });
+    // Development helper: a permissive policy for local development (use with caution)
+    options.AddPolicy("AllowLocalDev", p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
 });
 
 // FluentValidation: register validators from this assembly
@@ -80,7 +82,6 @@ builder.Services
     .ModifyRequestOptions(o => o.IncludeExceptionDetails = true)
     // Register aggregate-specific extensions
     .AddTypeExtension<ProductQueries>()
-    .AddTypeExtension<OrderQueries>()
     .AddTypeExtension<ProductMutations>()
     .AddTypeExtension<OrderMutations>()
     .AddTypeExtension<ProductResolvers>()

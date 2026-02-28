@@ -8,8 +8,8 @@ public class BasicTests
     [Fact]
     public void Product_Model_Defaults()
     {
-        var p = new Product { Name = "Test", PriceCents = 100 };
+        var p = new Product { Name = "Test", Price = 1.00m };
         Assert.Equal("Test", p.Name);
-        Assert.Equal(100, p.PriceCents);
+        Assert.Equal(1.00m, p.Price);
     }
 }

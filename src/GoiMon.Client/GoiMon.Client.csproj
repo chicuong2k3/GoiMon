@@ -1,13 +1,23 @@
 <Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <!-- GoiMon.Shared removed -->
   <ItemGroup>
-    <ProjectReference Include="..\GoiMon.Shared\GoiMon.Shared.csproj" />
+    <PackageReference Include="EasyAppDev.Blazor.Store" Version="2.0.11" />
+    <PackageReference Include="StrawberryShake.Blazor" Version="15.*" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.*" />
+    <PackageReference Include="BlazorBlueprint.Components" Version="*" />
+    <PackageReference Include="BlazorBlueprint.Icons.Lucide" Version="*" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Generated\**\*.cs" />
   </ItemGroup>
 
 </Project>

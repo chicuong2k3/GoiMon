@@ -1,0 +1,244 @@
+@page "/categories"
+@inject IGoiMonClient Client
+@inject ToastService ToastService
+@inject DialogService DialogService
+
+<header class="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+    <BbSidebarTrigger />
+    <BbSeparator Orientation="SeparatorOrientation.Vertical" Class="h-4" />
+    <h1 class="text-sm font-semibold">Danh mục</h1>
+    <div class="ml-auto">
+        <BbButton OnClick="OpenCreate" Size="ButtonSize.Small">
+            <LucideIcon Name="plus" Class="h-4 w-4 mr-1" />
+            Thêm danh mục
+        </BbButton>
+    </div>
+</header>
+
+<div class="p-6 space-y-4">
+    <div class="flex items-center gap-3">
+        <div class="w-72">
+            <BbInput Value="@_search"
+                     ValueChanged="@(async v => { _search = v; _skip = 0; await LoadAsync(); })"
+                     UpdateTiming="UpdateTiming.Debounced"
+                     DebounceInterval="400"
+                     Placeholder="Tìm kiếm danh mục..." />
+        </div>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="space-y-2">
+            @for (int i = 0; i < 5; i++)
+            {
+                <BbSkeleton Height="48px" Class="w-full" />
+            }
+        </div>
+    }
+    else if (_error is not null)
+    {
+        <div class="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            @_error
+        </div>
+    }
+    else
+    {
+        <div class="rounded-md border">
+            <table class="w-full text-sm">
+                <thead class="border-b bg-muted/50">
+                    <tr>
+                        <th class="h-10 px-4 text-left font-medium text-muted-foreground">Tên danh mục</th>
+                        <th class="h-10 px-4 text-right font-medium text-muted-foreground w-32">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (_items.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="2" class="p-8 text-center text-muted-foreground">
+                                Không tìm thấy danh mục nào.
+                            </td>
+                        </tr>
+                    }
+                    @foreach (var item in _items)
+                    {
+                        <tr class="border-b last:border-0 hover:bg-muted/50 transition-colors">
+                            <td class="px-4 py-3 font-medium">@item.Name</td>
+                            <td class="px-4 py-3 text-right">
+                                <div class="flex justify-end gap-1">
+                                    <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall"
+                                              AriaLabel="Sửa" OnClick="() => OpenEdit(item)">
+                                        <LucideIcon Name="pencil" Class="h-4 w-4" />
+                                    </BbButton>
+                                    <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall"
+                                              AriaLabel="Xóa" Class="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                              OnClick="() => HandleDelete(item.Id)">
+                                        <LucideIcon Name="trash-2" Class="h-4 w-4" />
+                                    </BbButton>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="flex items-center justify-between text-sm text-muted-foreground">
+            <span>Hiển thị @(_items.Count) / @_total danh mục</span>
+            <div class="flex gap-2">
+                <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small"
+                          Disabled="@(_skip == 0)" OnClick="PrevPage">Trước</BbButton>
+                <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small"
+                          Disabled="@(_skip + _take >= _total)" OnClick="NextPage">Sau</BbButton>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Create Dialog -->
+<BbDialog @bind-Open="_showCreate">
+    <BbDialogContent>
+        <BbDialogHeader>
+            <BbDialogTitle>Thêm danh mục</BbDialogTitle>
+            <BbDialogDescription>Nhập tên danh mục mới.</BbDialogDescription>
+        </BbDialogHeader>
+        <div class="py-4">
+            <BbInput @bind-Value="_formName" Placeholder="Tên danh mục" />
+        </div>
+        <BbDialogFooter>
+            <BbDialogClose>
+                <BbButton Variant="ButtonVariant.Outline">Hủy</BbButton>
+            </BbDialogClose>
+            <BbButton OnClick="HandleCreate"
+                      Loading="@_saving" LoadingText="Đang lưu..."
+                      Disabled="@(string.IsNullOrWhiteSpace(_formName))">
+                Lưu
+            </BbButton>
+        </BbDialogFooter>
+    </BbDialogContent>
+</BbDialog>
+
+<!-- Edit Dialog -->
+<BbDialog @bind-Open="_showEdit">
+    <BbDialogContent>
+        <BbDialogHeader>
+            <BbDialogTitle>Sửa danh mục</BbDialogTitle>
+            <BbDialogDescription>Cập nhật tên danh mục.</BbDialogDescription>
+        </BbDialogHeader>
+        <div class="py-4">
+            <BbInput @bind-Value="_formName" Placeholder="Tên danh mục" />
+        </div>
+        <BbDialogFooter>
+            <BbDialogClose>
+                <BbButton Variant="ButtonVariant.Outline">Hủy</BbButton>
+            </BbDialogClose>
+            <BbButton OnClick="HandleEdit"
+                      Loading="@_saving" LoadingText="Đang lưu..."
+                      Disabled="@(string.IsNullOrWhiteSpace(_formName))">
+                Cập nhật
+            </BbButton>
+        </BbDialogFooter>
+    </BbDialogContent>
+</BbDialog>
+
+@code {
+    private List<CategoryDto> _items = [];
+    private bool _loading, _saving;
+    private int _skip, _take = 10, _total;
+    private string _search = "";
+    private string? _error;
+
+    private bool _showCreate, _showEdit;
+    private Guid? _editId;
+    private string _formName = "";
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        StateHasChanged();
+        try
+        {
+            CategoryFilterInput? where = string.IsNullOrWhiteSpace(_search) ? null
+                : new CategoryFilterInput { Name = new StringOperationFilterInput { Contains = _search } };
+            var result = await Client.GetCategories.ExecuteAsync(_skip, _take, where);
+            if (result.Data?.CategoriesOffset is { } data)
+            {
+                _items = data.Items?.Select(i => new CategoryDto(i.Id, i.Name)).ToList() ?? [];
+                _total = data.TotalCount;
+            }
+            else if (result.Errors.Count > 0)
+                _error = result.Errors[0].Message;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        _loading = false;
+    }
+
+    private async Task PrevPage() { _skip = Math.Max(0, _skip - _take); await LoadAsync(); }
+    private async Task NextPage() { _skip += _take; await LoadAsync(); }
+
+    private void OpenCreate() { _formName = ""; _showCreate = true; }
+    private void OpenEdit(CategoryDto item) { _editId = item.Id; _formName = item.Name; _showEdit = true; }
+
+    private async Task HandleCreate()
+    {
+        _saving = true;
+        var result = await Client.CreateCategory.ExecuteAsync(_formName);
+        _saving = false;
+        if (result.Data?.CreateCategory is not null)
+        {
+            _showCreate = false;
+            ToastService.Success("Đã thêm danh mục.");
+            await LoadAsync();
+        }
+        else
+        {
+            ToastService.Error(result.Errors.FirstOrDefault()?.Message ?? "Có lỗi xảy ra.");
+        }
+    }
+
+    private async Task HandleEdit()
+    {
+        _saving = true;
+        var result = await Client.UpdateCategory.ExecuteAsync(_editId!.Value, _formName);
+        _saving = false;
+        if (result.Data?.UpdateCategory is not null)
+        {
+            _showEdit = false;
+            ToastService.Success("Đã cập nhật danh mục.");
+            await LoadAsync();
+        }
+        else
+        {
+            ToastService.Error(result.Errors.FirstOrDefault()?.Message ?? "Có lỗi xảy ra.");
+        }
+    }
+
+    private async Task HandleDelete(Guid id)
+    {
+        var confirmed = await DialogService.Confirm(
+            "Xóa danh mục?",
+            "Hành động này không thể hoàn tác.",
+            new ConfirmDialogOptions { Destructive = true, ConfirmText = "Xóa" });
+        if (!confirmed) return;
+
+        var result = await Client.DeleteCategory.ExecuteAsync(id);
+        if (result.Data?.DeleteCategory == true)
+        {
+            ToastService.Success("Đã xóa danh mục.");
+            if (_items.Count == 1 && _skip > 0) _skip -= _take;
+            await LoadAsync();
+        }
+        else
+        {
+            ToastService.Error(result.Errors.FirstOrDefault()?.Message ?? "Có lỗi xảy ra.");
+        }
+    }
+
+    private record CategoryDto(Guid Id, string Name);
+}

@@ -1,0 +1,8 @@
+query GetAllCategories {
+  categoriesOffset(take: 500) {
+    items {
+      id
+      name
+    }
+  }
+}

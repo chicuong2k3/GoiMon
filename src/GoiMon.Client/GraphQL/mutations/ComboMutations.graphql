@@ -1,0 +1,44 @@
+mutation CreateCombo($name: String!, $price: Decimal!) {
+  createCombo(input: { name: $name, price: $price }) {
+    id
+    name
+    price
+  }
+}
+
+mutation UpdateCombo($id: UUID!, $name: String, $price: Decimal) {
+  updateCombo(input: { id: $id, name: $name, price: $price }) {
+    id
+    name
+    price
+  }
+}
+
+mutation DeleteCombo($id: UUID!) {
+  deleteCombo(id: $id)
+}
+
+mutation AddComboItem($comboId: UUID!, $productId: UUID!, $qty: Int!) {
+  addComboItem(input: { comboId: $comboId, productId: $productId, qty: $qty }) {
+    id
+    items {
+      id
+      qty
+      productId
+      product {
+        id
+        name
+        price
+      }
+    }
+  }
+}
+
+mutation RemoveComboItem($comboId: UUID!, $itemId: UUID!) {
+  removeComboItem(input: { comboId: $comboId, itemId: $itemId }) {
+    id
+    items {
+      id
+    }
+  }
+}

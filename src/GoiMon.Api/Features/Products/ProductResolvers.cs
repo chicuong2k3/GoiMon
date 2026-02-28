@@ -1,5 +1,4 @@
 using GoiMon.Api.Features.Categories;
-using GoiMon.Api.Domain.Entities;
 
 namespace GoiMon.Api.Features.Products;
 

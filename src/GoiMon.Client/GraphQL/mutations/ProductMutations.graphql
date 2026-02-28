@@ -1,0 +1,23 @@
+mutation CreateProduct($name: String!, $price: Decimal!, $categoryId: UUID, $description: String) {
+  createProduct(input: { name: $name, price: $price, categoryId: $categoryId, description: $description }) {
+    id
+    name
+    price
+    description
+    categoryId
+  }
+}
+
+mutation UpdateProduct($id: UUID!, $name: String!, $price: Decimal!, $categoryId: UUID, $description: String) {
+  updateProduct(input: { id: $id, name: $name, price: $price, categoryId: $categoryId, description: $description }) {
+    id
+    name
+    price
+    description
+    categoryId
+  }
+}
+
+mutation DeleteProduct($id: UUID!) {
+  deleteProduct(id: $id)
+}

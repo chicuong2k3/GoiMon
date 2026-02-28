@@ -1,6 +1,4 @@
 using FluentValidation;
-using GoiMon.Api.Features.Combos;
-using GoiMon.Api.Infrastructure.Data;
 
 namespace GoiMon.Api.Features.Combos.Validators;
 

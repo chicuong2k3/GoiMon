@@ -6,9 +6,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\GoiMon.Shared\GoiMon.Shared.csproj" />
-  </ItemGroup>
+  <!-- GoiMon.Shared removed -->
 
   <ItemGroup>
     <PackageReference Include="Hangfire" Version="1.8.23" />

@@ -1,0 +1,429 @@
+schema {
+  query: Query
+  mutation: Mutation
+}
+
+type Query {
+  products(skip: Int take: Int where: ProductFilterInput order: [ProductSortInput!]): ProductsCollectionSegment
+  productsByCategoryName(skip: Int take: Int categoryName: String! where: ProductFilterInput order: [ProductSortInput!]): ProductsByCategoryNameCollectionSegment
+  productById(id: UUID!): Product
+  orders("Returns the first _n_ elements from the list." first: Int "Returns the elements in the list that come after the specified cursor." after: String "Returns the last _n_ elements from the list." last: Int "Returns the elements in the list that come before the specified cursor." before: String where: OrderFilterInput order: [OrderSortInput!]): OrdersConnection
+  items: [OrderItemDto!]!
+  orderById(id: UUID!): Order
+  itemsWithProduct: [OrderItemDto!]!
+  categories("Returns the first _n_ elements from the list." first: Int "Returns the elements in the list that come after the specified cursor." after: String "Returns the last _n_ elements from the list." last: Int "Returns the elements in the list that come before the specified cursor." before: String where: CategoryFilterInput order: [CategorySortInput!]): CategoriesConnection
+  categoriesOffset(skip: Int take: Int where: CategoryFilterInput order: [CategorySortInput!]): CategoriesOffsetCollectionSegment
+  categoryById(id: UUID!): Category
+  combos(skip: Int take: Int where: ProductComboFilterInput order: [ProductComboSortInput!]): CombosCollectionSegment
+  comboById(id: UUID!): ProductCombo
+}
+
+type Mutation {
+  createProduct(input: ProductInput!): Product!
+  createProducts(inputs: [ProductInput!]!): [Product!]!
+  updateProduct(input: UpdateProductInput!): Product
+  deleteProduct(id: UUID!): Boolean!
+  createOrder(input: OrderInput!): Order!
+  createCategory(input: CreateCategoryInput!): Category!
+  updateCategory(input: UpdateCategoryInput!): Category
+  deleteCategory(id: UUID!): Boolean!
+  createCombo(input: CreateComboInput!): ProductCombo!
+  updateCombo(input: UpdateComboInput!): ProductCombo
+  deleteCombo(id: UUID!): Boolean!
+  addComboItem(input: AddComboItemInput!): ProductCombo
+  updateComboItem(input: UpdateComboItemInput!): ProductCombo
+  removeComboItem(input: RemoveComboItemInput!): ProductCombo
+}
+
+input ProductFilterInput {
+  and: [ProductFilterInput!]
+  or: [ProductFilterInput!]
+  name: StringOperationFilterInput
+  price: DecimalOperationFilterInput
+  categoryId: UuidOperationFilterInput
+  description: StringOperationFilterInput
+  id: UuidOperationFilterInput
+}
+
+input ProductSortInput {
+  name: SortEnumType
+  price: SortEnumType
+  categoryId: SortEnumType
+  description: SortEnumType
+  id: SortEnumType
+}
+
+"A segment of a collection."
+type ProductsCollectionSegment {
+  "Information to aid in pagination."
+  pageInfo: CollectionSegmentInfo!
+  "A flattened list of the items."
+  items: [Product!]
+  totalCount: Int!
+}
+
+"A segment of a collection."
+type ProductsByCategoryNameCollectionSegment {
+  "Information to aid in pagination."
+  pageInfo: CollectionSegmentInfo!
+  "A flattened list of the items."
+  items: [Product!]
+  totalCount: Int!
+}
+
+input OrderFilterInput {
+  and: [OrderFilterInput!]
+  or: [OrderFilterInput!]
+  status: OrderStatusOperationFilterInput
+  total: DecimalOperationFilterInput
+  items: ListFilterInputTypeOfOrderItemFilterInput
+  id: UuidOperationFilterInput
+}
+
+input OrderSortInput {
+  status: SortEnumType
+  total: SortEnumType
+  id: SortEnumType
+}
+
+"A connection to a list of items."
+type OrdersConnection {
+  "Information to aid in pagination."
+  pageInfo: PageInfo!
+  "A list of edges."
+  edges: [OrdersEdge!]
+  "A flattened list of the nodes."
+  nodes: [Order!]
+  "Identifies the total count of items in the connection."
+  totalCount: Int!
+}
+
+input CategoryFilterInput {
+  and: [CategoryFilterInput!]
+  or: [CategoryFilterInput!]
+  name: StringOperationFilterInput
+  id: UuidOperationFilterInput
+}
+
+input CategorySortInput {
+  name: SortEnumType
+  id: SortEnumType
+}
+
+"A connection to a list of items."
+type CategoriesConnection {
+  "Information to aid in pagination."
+  pageInfo: PageInfo!
+  "A list of edges."
+  edges: [CategoriesEdge!]
+  "A flattened list of the nodes."
+  nodes: [Category!]
+  "Identifies the total count of items in the connection."
+  totalCount: Int!
+}
+
+"A segment of a collection."
+type CategoriesOffsetCollectionSegment {
+  "Information to aid in pagination."
+  pageInfo: CollectionSegmentInfo!
+  "A flattened list of the items."
+  items: [Category!]
+  totalCount: Int!
+}
+
+input ProductComboFilterInput {
+  and: [ProductComboFilterInput!]
+  or: [ProductComboFilterInput!]
+  name: StringOperationFilterInput
+  price: DecimalOperationFilterInput
+  items: ListFilterInputTypeOfProductComboItemFilterInput
+  id: UuidOperationFilterInput
+}
+
+input ProductComboSortInput {
+  name: SortEnumType
+  price: SortEnumType
+  id: SortEnumType
+}
+
+"A segment of a collection."
+type CombosCollectionSegment {
+  "Information to aid in pagination."
+  pageInfo: CollectionSegmentInfo!
+  "A flattened list of the items."
+  items: [ProductCombo!]
+  totalCount: Int!
+}
+
+input StringOperationFilterInput {
+  and: [StringOperationFilterInput!]
+  or: [StringOperationFilterInput!]
+  eq: String
+  neq: String
+  contains: String
+  ncontains: String
+  in: [String]
+  nin: [String]
+  startsWith: String
+  nstartsWith: String
+  endsWith: String
+  nendsWith: String
+}
+
+input DecimalOperationFilterInput {
+  eq: Decimal
+  neq: Decimal
+  in: [Decimal]
+  nin: [Decimal]
+  gt: Decimal
+  ngt: Decimal
+  gte: Decimal
+  ngte: Decimal
+  lt: Decimal
+  nlt: Decimal
+  lte: Decimal
+  nlte: Decimal
+}
+
+input UuidOperationFilterInput {
+  eq: UUID
+  neq: UUID
+  in: [UUID]
+  nin: [UUID]
+  gt: UUID
+  ngt: UUID
+  gte: UUID
+  ngte: UUID
+  lt: UUID
+  nlt: UUID
+  lte: UUID
+  nlte: UUID
+}
+
+enum SortEnumType {
+  ASC
+  DESC
+}
+
+"Information about the offset pagination."
+type CollectionSegmentInfo {
+  "Indicates whether more items exist following the set defined by the clients arguments."
+  hasNextPage: Boolean!
+  "Indicates whether more items exist prior the set defined by the clients arguments."
+  hasPreviousPage: Boolean!
+}
+
+type Product {
+  name: String!
+  price: Decimal!
+  categoryId: UUID
+  description: String
+  id: UUID!
+  category: Category
+}
+
+input OrderStatusOperationFilterInput {
+  eq: OrderStatus
+  neq: OrderStatus
+  in: [OrderStatus!]
+  nin: [OrderStatus!]
+}
+
+input ListFilterInputTypeOfOrderItemFilterInput {
+  all: OrderItemFilterInput
+  none: OrderItemFilterInput
+  some: OrderItemFilterInput
+  any: Boolean
+}
+
+"Information about pagination in a connection."
+type PageInfo {
+  "Indicates whether more edges exist following the set defined by the clients arguments."
+  hasNextPage: Boolean!
+  "Indicates whether more edges exist prior the set defined by the clients arguments."
+  hasPreviousPage: Boolean!
+  "When paginating backwards, the cursor to continue."
+  startCursor: String
+  "When paginating forwards, the cursor to continue."
+  endCursor: String
+}
+
+type Order {
+  status: OrderStatus!
+  total: Decimal!
+  items: [OrderItem!]!
+  id: UUID!
+}
+
+"An edge in a connection."
+type OrdersEdge {
+  "A cursor for use in pagination."
+  cursor: String!
+  "The item at the end of the edge."
+  node: Order!
+}
+
+type Category {
+  name: String!
+  id: UUID!
+}
+
+"An edge in a connection."
+type CategoriesEdge {
+  "A cursor for use in pagination."
+  cursor: String!
+  "The item at the end of the edge."
+  node: Category!
+}
+
+input ListFilterInputTypeOfProductComboItemFilterInput {
+  all: ProductComboItemFilterInput
+  none: ProductComboItemFilterInput
+  some: ProductComboItemFilterInput
+  any: Boolean
+}
+
+type ProductCombo {
+  name: String
+  price: Decimal!
+  items: [ProductComboItem!]!
+  id: UUID!
+}
+
+"The built-in `Decimal` scalar type."
+scalar Decimal
+
+scalar UUID
+
+input OrderItemFilterInput {
+  and: [OrderItemFilterInput!]
+  or: [OrderItemFilterInput!]
+  id: UuidOperationFilterInput
+  orderId: UuidOperationFilterInput
+  productId: UuidOperationFilterInput
+  qty: IntOperationFilterInput
+  unitPrice: DecimalOperationFilterInput
+}
+
+input ProductComboItemFilterInput {
+  and: [ProductComboItemFilterInput!]
+  or: [ProductComboItemFilterInput!]
+  id: UuidOperationFilterInput
+  comboId: UuidOperationFilterInput
+  productId: UuidOperationFilterInput
+  qty: IntOperationFilterInput
+}
+
+input IntOperationFilterInput {
+  eq: Int
+  neq: Int
+  in: [Int]
+  nin: [Int]
+  gt: Int
+  ngt: Int
+  gte: Int
+  ngte: Int
+  lt: Int
+  nlt: Int
+  lte: Int
+  nlte: Int
+}
+
+input UpdateCategoryInput {
+  id: UUID!
+  name: String
+}
+
+input CreateCategoryInput {
+  name: String!
+}
+
+enum OrderStatus {
+  OPEN
+  COMPLETED
+  PAID
+  CANCELLED
+}
+
+input OrderInput {
+  items: [OrderItemInput!]!
+}
+
+input UpdateProductInput {
+  id: UUID!
+  name: String!
+  price: Decimal!
+  categoryId: UUID
+  description: String
+}
+
+input ProductInput {
+  name: String!
+  price: Decimal!
+  categoryId: UUID
+  description: String
+}
+
+type OrderItem {
+  id: UUID!
+  orderId: UUID!
+  productId: UUID!
+  qty: Int!
+  unitPrice: Decimal!
+}
+
+type OrderItemDto {
+  id: UUID!
+  productId: UUID!
+  productName: String
+  qty: Int!
+  unitPrice: Decimal!
+}
+
+type ProductComboItem {
+  id: UUID!
+  comboId: UUID!
+  productId: UUID!
+  qty: Int!
+  product: Product
+}
+
+input CreateComboInput {
+  name: String!
+  price: Decimal!
+  items: [ComboItemInput!]
+}
+
+input UpdateComboInput {
+  id: UUID!
+  name: String
+  price: Decimal
+}
+
+input AddComboItemInput {
+  comboId: UUID!
+  productId: UUID!
+  qty: Int!
+}
+
+input UpdateComboItemInput {
+  comboId: UUID!
+  itemId: UUID!
+  qty: Int!
+}
+
+input RemoveComboItemInput {
+  comboId: UUID!
+  itemId: UUID!
+}
+
+input ComboItemInput {
+  productId: UUID!
+  qty: Int!
+}
+
+input OrderItemInput {
+  productId: UUID!
+  qty: Int!
+  unitPrice: Decimal!
+}

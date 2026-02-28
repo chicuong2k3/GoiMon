@@ -1,9 +1,25 @@
 @page "/"
 
-<h2>Welcome to GoiMon</h2>
+<header class="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+    <BbSidebarTrigger />
+    <BbSeparator Orientation="SeparatorOrientation.Vertical" Class="h-4" />
+    <h1 class="text-sm font-semibold">Trang chủ</h1>
+</header>
 
-<p>Quick links:</p>
-<ul>
-    <li><a href="/menu">Open Menu</a></li>
-    <li><a href="/orders">View Orders</a></li>
-</ul>
+<div class="p-6 space-y-4">
+    <p class="text-muted-foreground">Chào mừng đến GoiMon. Chọn mục quản lý từ thanh bên.</p>
+    <div class="flex gap-3 flex-wrap">
+        <BbButton Href="/categories" Variant="ButtonVariant.Outline">
+            <LucideIcon Name="tag" Class="h-4 w-4 mr-2" />
+            Danh mục
+        </BbButton>
+        <BbButton Href="/products" Variant="ButtonVariant.Outline">
+            <LucideIcon Name="package" Class="h-4 w-4 mr-2" />
+            Sản phẩm
+        </BbButton>
+        <BbButton Href="/combos" Variant="ButtonVariant.Outline">
+            <LucideIcon Name="layers" Class="h-4 w-4 mr-2" />
+            Combo
+        </BbButton>
+    </div>
+</div>

@@ -1,5 +1,4 @@
 using FluentValidation;
-using GoiMon.Api.Features.Products;
 
 namespace GoiMon.Api.Features.Products.Validators;
 

@@ -1,7 +1,4 @@
 using FluentValidation;
-using GoiMon.Api.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
-using GoiMon.Api.Features.Categories;
 
 namespace GoiMon.Api.Features.Categories.Validators;
 

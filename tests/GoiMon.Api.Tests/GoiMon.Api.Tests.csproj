@@ -11,8 +11,6 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="2.4.5" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\GoiMon.Shared\GoiMon.Shared.csproj" />
-  </ItemGroup>
+  <!-- GoiMon.Shared removed -->
 
 </Project>

@@ -1,0 +1,382 @@
+@page "/products"
+@inject IGoiMonClient Client
+@inject ToastService ToastService
+@inject DialogService DialogService
+
+<header class="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+    <BbSidebarTrigger />
+    <BbSeparator Orientation="SeparatorOrientation.Vertical" Class="h-4" />
+    <h1 class="text-sm font-semibold">Sản phẩm</h1>
+    <div class="ml-auto">
+        <BbButton OnClick="OpenCreate" Size="ButtonSize.Small">
+            <LucideIcon Name="plus" Class="h-4 w-4 mr-1" />
+            Thêm sản phẩm
+        </BbButton>
+    </div>
+</header>
+
+<div class="p-6 space-y-4">
+    <div class="flex flex-wrap items-center gap-3">
+        <div class="w-72">
+            <BbInput Value="@_search"
+                     ValueChanged="@(async v => { _search = v; _skip = 0; await LoadAsync(); })"
+                     UpdateTiming="UpdateTiming.Debounced"
+                     DebounceInterval="400"
+                     Placeholder="Tìm kiếm sản phẩm..." />
+        </div>
+        <div class="w-52">
+            <BbSelect TValue="Guid?"
+                      Value="@_filterCategoryId"
+                      ValueChanged="@(async v => { _filterCategoryId = v; _skip = 0; await LoadAsync(); })">
+                <BbSelectTrigger>
+                    <BbSelectValue Placeholder="Tất cả danh mục" />
+                </BbSelectTrigger>
+                <BbSelectContent>
+                    <BbSelectItem Value="@((Guid?)null)">Tất cả danh mục</BbSelectItem>
+                    @foreach (var c in _allCategories)
+                    {
+                        <BbSelectItem Value="@((Guid?)c.Id)">@c.Name</BbSelectItem>
+                    }
+                </BbSelectContent>
+            </BbSelect>
+        </div>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="space-y-2">
+            @for (int i = 0; i < 6; i++)
+            {
+                <BbSkeleton Height="52px" Class="w-full" />
+            }
+        </div>
+    }
+    else if (_error is not null)
+    {
+        <div class="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            @_error
+        </div>
+    }
+    else
+    {
+        <div class="rounded-md border">
+            <table class="w-full text-sm">
+                <thead class="border-b bg-muted/50">
+                    <tr>
+                        <th class="h-10 px-4 text-left font-medium text-muted-foreground">Tên sản phẩm</th>
+                        <th class="h-10 px-4 text-left font-medium text-muted-foreground">Danh mục</th>
+                        <th class="h-10 px-4 text-right font-medium text-muted-foreground">Giá</th>
+                        <th class="h-10 px-4 text-left font-medium text-muted-foreground hidden md:table-cell">Mô tả</th>
+                        <th class="h-10 px-4 text-right font-medium text-muted-foreground w-28">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (_items.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="5" class="p-8 text-center text-muted-foreground">
+                                Không tìm thấy sản phẩm nào.
+                            </td>
+                        </tr>
+                    }
+                    @foreach (var item in _items)
+                    {
+                        <tr class="border-b last:border-0 hover:bg-muted/50 transition-colors">
+                            <td class="px-4 py-3 font-medium">@item.Name</td>
+                            <td class="px-4 py-3">
+                                @if (item.CategoryName is not null)
+                                {
+                                    <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium">
+                                        @item.CategoryName
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted-foreground text-xs">—</span>
+                                }
+                            </td>
+                            <td class="px-4 py-3 text-right font-medium tabular-nums">
+                                @item.Price.ToString("#,##0") đ
+                            </td>
+                            <td class="px-4 py-3 text-muted-foreground hidden md:table-cell max-w-[200px] truncate">
+                                @(item.Description ?? "—")
+                            </td>
+                            <td class="px-4 py-3 text-right">
+                                <div class="flex justify-end gap-1">
+                                    <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall"
+                                              AriaLabel="Sửa" OnClick="() => OpenEdit(item)">
+                                        <LucideIcon Name="pencil" Class="h-4 w-4" />
+                                    </BbButton>
+                                    <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall"
+                                              AriaLabel="Xóa" Class="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                              OnClick="() => HandleDelete(item.Id)">
+                                        <LucideIcon Name="trash-2" Class="h-4 w-4" />
+                                    </BbButton>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="flex items-center justify-between text-sm text-muted-foreground">
+            <span>Hiển thị @(_items.Count) / @_total sản phẩm</span>
+            <div class="flex gap-2">
+                <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small"
+                          Disabled="@(_skip == 0)" OnClick="PrevPage">Trước</BbButton>
+                <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small"
+                          Disabled="@(_skip + _take >= _total)" OnClick="NextPage">Sau</BbButton>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Create Dialog -->
+<BbDialog @bind-Open="_showCreate">
+    <BbDialogContent Class="max-w-md">
+        <BbDialogHeader>
+            <BbDialogTitle>Thêm sản phẩm</BbDialogTitle>
+            <BbDialogDescription>Nhập thông tin sản phẩm mới.</BbDialogDescription>
+        </BbDialogHeader>
+        <div class="space-y-3 py-4">
+            <div class="space-y-1">
+                <label class="text-sm font-medium">Tên sản phẩm <span class="text-destructive">*</span></label>
+                <BbInput @bind-Value="_formName" Placeholder="Tên sản phẩm" />
+            </div>
+            <div class="space-y-1">
+                <label class="text-sm font-medium">Giá (đ) <span class="text-destructive">*</span></label>
+                <BbInput @bind-Value="_formPriceStr" Type="InputType.Number" Placeholder="0" />
+            </div>
+            <div class="space-y-1">
+                <label class="text-sm font-medium">Danh mục</label>
+                <BbSelect TValue="Guid?" @bind-Value="_formCategoryId">
+                    <BbSelectTrigger>
+                        <BbSelectValue Placeholder="Chọn danh mục..." />
+                    </BbSelectTrigger>
+                    <BbSelectContent>
+                        <BbSelectItem Value="@((Guid?)null)">Không có</BbSelectItem>
+                        @foreach (var c in _allCategories)
+                        {
+                            <BbSelectItem Value="@((Guid?)c.Id)">@c.Name</BbSelectItem>
+                        }
+                    </BbSelectContent>
+                </BbSelect>
+            </div>
+            <div class="space-y-1">
+                <label class="text-sm font-medium">Mô tả</label>
+                <BbInput @bind-Value="_formDescription" Placeholder="Mô tả sản phẩm" />
+            </div>
+        </div>
+        <BbDialogFooter>
+            <BbDialogClose>
+                <BbButton Variant="ButtonVariant.Outline">Hủy</BbButton>
+            </BbDialogClose>
+            <BbButton OnClick="HandleCreate"
+                      Loading="@_saving" LoadingText="Đang lưu..."
+                      Disabled="@(string.IsNullOrWhiteSpace(_formName) || !decimal.TryParse(_formPriceStr, out _))">
+                Lưu
+            </BbButton>
+        </BbDialogFooter>
+    </BbDialogContent>
+</BbDialog>
+
+<!-- Edit Dialog -->
+<BbDialog @bind-Open="_showEdit">
+    <BbDialogContent Class="max-w-md">
+        <BbDialogHeader>
+            <BbDialogTitle>Sửa sản phẩm</BbDialogTitle>
+            <BbDialogDescription>Cập nhật thông tin sản phẩm.</BbDialogDescription>
+        </BbDialogHeader>
+        <div class="space-y-3 py-4">
+            <div class="space-y-1">
+                <label class="text-sm font-medium">Tên sản phẩm <span class="text-destructive">*</span></label>
+                <BbInput @bind-Value="_formName" Placeholder="Tên sản phẩm" />
+            </div>
+            <div class="space-y-1">
+                <label class="text-sm font-medium">Giá (đ) <span class="text-destructive">*</span></label>
+                <BbInput @bind-Value="_formPriceStr" Type="InputType.Number" Placeholder="0" />
+            </div>
+            <div class="space-y-1">
+                <label class="text-sm font-medium">Danh mục</label>
+                <BbSelect TValue="Guid?" @bind-Value="_formCategoryId">
+                    <BbSelectTrigger>
+                        <BbSelectValue Placeholder="Chọn danh mục..." />
+                    </BbSelectTrigger>
+                    <BbSelectContent>
+                        <BbSelectItem Value="@((Guid?)null)">Không có</BbSelectItem>
+                        @foreach (var c in _allCategories)
+                        {
+                            <BbSelectItem Value="@((Guid?)c.Id)">@c.Name</BbSelectItem>
+                        }
+                    </BbSelectContent>
+                </BbSelect>
+            </div>
+            <div class="space-y-1">
+                <label class="text-sm font-medium">Mô tả</label>
+                <BbInput @bind-Value="_formDescription" Placeholder="Mô tả sản phẩm" />
+            </div>
+        </div>
+        <BbDialogFooter>
+            <BbDialogClose>
+                <BbButton Variant="ButtonVariant.Outline">Hủy</BbButton>
+            </BbDialogClose>
+            <BbButton OnClick="HandleEdit"
+                      Loading="@_saving" LoadingText="Đang lưu..."
+                      Disabled="@(string.IsNullOrWhiteSpace(_formName) || !decimal.TryParse(_formPriceStr, out _))">
+                Cập nhật
+            </BbButton>
+        </BbDialogFooter>
+    </BbDialogContent>
+</BbDialog>
+
+@code {
+    private List<ProductDto> _items = [];
+    private List<CategoryItem> _allCategories = [];
+    private bool _loading, _saving;
+    private int _skip, _take = 10, _total;
+    private string _search = "";
+    private Guid? _filterCategoryId;
+    private string? _error;
+
+    private bool _showCreate, _showEdit;
+    private Guid? _editId;
+    private string _formName = "";
+    private string _formPriceStr = "";
+    private Guid? _formCategoryId;
+    private string _formDescription = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.WhenAll(LoadCategoriesAsync(), LoadAsync());
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
+        var result = await Client.GetAllCategories.ExecuteAsync();
+        if (result.Data?.CategoriesOffset?.Items is { } cats)
+            _allCategories = cats.Select(c => new CategoryItem(c.Id, c.Name)).ToList();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        StateHasChanged();
+        try
+        {
+            var result = await Client.GetProducts.ExecuteAsync(_skip, _take, BuildFilter());
+            if (result.Data?.Products is { } data)
+            {
+                _items = data.Items?.Select(i => new ProductDto(
+                    i.Id, i.Name, i.Price, i.Description, i.CategoryId, i.Category?.Name
+                )).ToList() ?? [];
+                _total = data.TotalCount;
+            }
+            else if (result.Errors.Count > 0)
+                _error = result.Errors[0].Message;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        _loading = false;
+    }
+
+    private ProductFilterInput? BuildFilter()
+    {
+        var hasSearch = !string.IsNullOrWhiteSpace(_search);
+        var hasCat = _filterCategoryId.HasValue;
+        if (!hasSearch && !hasCat) return null;
+        return new ProductFilterInput
+        {
+            Name = hasSearch ? new StringOperationFilterInput { Contains = _search } : null,
+            CategoryId = hasCat ? new UuidOperationFilterInput { Eq = _filterCategoryId } : null
+        };
+    }
+
+    private async Task PrevPage() { _skip = Math.Max(0, _skip - _take); await LoadAsync(); }
+    private async Task NextPage() { _skip += _take; await LoadAsync(); }
+
+    private void OpenCreate()
+    {
+        _editId = null;
+        _formName = "";
+        _formPriceStr = "";
+        _formCategoryId = null;
+        _formDescription = "";
+        _showCreate = true;
+    }
+
+    private void OpenEdit(ProductDto item)
+    {
+        _editId = item.Id;
+        _formName = item.Name;
+        _formPriceStr = item.Price.ToString();
+        _formCategoryId = item.CategoryId;
+        _formDescription = item.Description ?? "";
+        _showEdit = true;
+    }
+
+    private async Task HandleCreate()
+    {
+        if (!decimal.TryParse(_formPriceStr, out var price)) return;
+        _saving = true;
+        var desc = string.IsNullOrWhiteSpace(_formDescription) ? null : _formDescription;
+        var result = await Client.CreateProduct.ExecuteAsync(_formName, price, _formCategoryId, desc);
+        _saving = false;
+        if (result.Data?.CreateProduct is not null)
+        {
+            _showCreate = false;
+            ToastService.Success("Đã thêm sản phẩm.");
+            await LoadAsync();
+        }
+        else
+        {
+            ToastService.Error(result.Errors.FirstOrDefault()?.Message ?? "Có lỗi xảy ra.");
+        }
+    }
+
+    private async Task HandleEdit()
+    {
+        if (!decimal.TryParse(_formPriceStr, out var price)) return;
+        _saving = true;
+        var desc = string.IsNullOrWhiteSpace(_formDescription) ? null : _formDescription;
+        var result = await Client.UpdateProduct.ExecuteAsync(_editId!.Value, _formName, price, _formCategoryId, desc);
+        _saving = false;
+        if (result.Data?.UpdateProduct is not null)
+        {
+            _showEdit = false;
+            ToastService.Success("Đã cập nhật sản phẩm.");
+            await LoadAsync();
+        }
+        else
+        {
+            ToastService.Error(result.Errors.FirstOrDefault()?.Message ?? "Có lỗi xảy ra.");
+        }
+    }
+
+    private async Task HandleDelete(Guid id)
+    {
+        var confirmed = await DialogService.Confirm(
+            "Xóa sản phẩm?",
+            "Hành động này không thể hoàn tác.",
+            new ConfirmDialogOptions { Destructive = true, ConfirmText = "Xóa" });
+        if (!confirmed) return;
+
+        var result = await Client.DeleteProduct.ExecuteAsync(id);
+        if (result.Data?.DeleteProduct == true)
+        {
+            ToastService.Success("Đã xóa sản phẩm.");
+            if (_items.Count == 1 && _skip > 0) _skip -= _take;
+            await LoadAsync();
+        }
+        else
+        {
+            ToastService.Error(result.Errors.FirstOrDefault()?.Message ?? "Có lỗi xảy ra.");
+        }
+    }
+
+    private record CategoryItem(Guid Id, string Name);
+    private record ProductDto(Guid Id, string Name, decimal Price, string? Description, Guid? CategoryId, string? CategoryName);
+}

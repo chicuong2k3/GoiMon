@@ -1,0 +1,13 @@
+query GetCategories($skip: Int, $take: Int, $where: CategoryFilterInput) {
+  categoriesOffset(skip: $skip, take: $take, where: $where) {
+    items {
+      id
+      name
+    }
+    totalCount
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+    }
+  }
+}

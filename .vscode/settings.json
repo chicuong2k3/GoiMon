@@ -11,10 +11,24 @@
         "/^dotnet ef migrations add AddConfigurations --project /home/chicuong/Desktop/code/GoiMon/src/GoiMon\\.Api/GoiMon\\.Api\\.csproj --startup-project /home/chicuong/Desktop/code/GoiMon/src/GoiMon\\.Api/GoiMon\\.Api\\.csproj && dotnet ef database update --project /home/chicuong/Desktop/code/GoiMon/src/GoiMon\\.Api/GoiMon\\.Api\\.csproj --startup-project /home/chicuong/Desktop/code/GoiMon/src/GoiMon\\.Api/GoiMon\\.Api\\.csproj$/": {
             "approve": true,
             "matchCommandLine": true
+        },
+        "/^dotnet new tool-manifest --force && dotnet tool install StrawberryShake\\.Tools --version 15\\.\\* && dotnet tool restore && dotnet graphql init http://localhost:5000/graphql -n GoiMonClient -p \\./src/GoiMon\\.Client$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^dotnet tool run strawberryshake generate --config strawberryshake\\.yml$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^dotnet graphql generate --config strawberryshake\\.yml$/": {
+            "approve": true,
+            "matchCommandLine": true
         }
     },
     "cSpell.words": [
         "appsettings",
+        "Blazor",
+        "Lucide",
         "Mediat",
         "Npgsql",
         "Serilog"

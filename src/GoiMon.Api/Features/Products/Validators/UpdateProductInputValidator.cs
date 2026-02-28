@@ -1,6 +1,4 @@
 using FluentValidation;
-using GoiMon.Api.Features.Products;
-using GoiMon.Api.Infrastructure.Data;
 
 namespace GoiMon.Api.Features.Products.Validators;
 

@@ -1,0 +1,17 @@
+mutation CreateCategory($name: String!) {
+  createCategory(input: { name: $name }) {
+    id
+    name
+  }
+}
+
+mutation UpdateCategory($id: UUID!, $name: String) {
+  updateCategory(input: { id: $id, name: $name }) {
+    id
+    name
+  }
+}
+
+mutation DeleteCategory($id: UUID!) {
+  deleteCategory(id: $id)
+}

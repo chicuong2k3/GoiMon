@@ -1,0 +1,24 @@
+query GetCombos($skip: Int, $take: Int, $where: ProductComboFilterInput) {
+  combos(skip: $skip, take: $take, where: $where) {
+    items {
+      id
+      name
+      price
+      items {
+        id
+        qty
+        productId
+        product {
+          id
+          name
+          price
+        }
+      }
+    }
+    totalCount
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+    }
+  }
+}
