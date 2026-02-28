@@ -12,7 +12,7 @@ builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.
 
 builder.Services
     .AddGoiMonClient()
-    .ConfigureHttpClient(client => client.BaseAddress = new Uri("http://localhost:5000/graphql"));
+    .ConfigureHttpClient(client => client.BaseAddress = new Uri(new Uri(builder.HostEnvironment.BaseAddress), "graphql"));
 
 // Register Blazor Blueprint services (primitives, toast, dialog)
 builder.Services.AddBlazorBlueprintComponents();
