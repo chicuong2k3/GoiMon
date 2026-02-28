@@ -28,6 +28,16 @@ jobs:
     - name: Publish
       run: dotnet publish src/GoiMon.Api/GoiMon.Api.csproj -c Release -o publish
 
+    - name: Prepare deploy directory
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          sudo mkdir -p /var/www/goimon-api
+          sudo chown $USER:$USER /var/www/goimon-api
+
     - name: Deploy via SCP
       uses: appleboy/scp-action@v0.1.7
       with:
@@ -36,6 +46,7 @@ jobs:
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         source: "publish/*"
         target: "/var/www/goimon-api"
+        strip_components: 1
 
     - name: Restart service
       uses: appleboy/ssh-action@v1.0.3
