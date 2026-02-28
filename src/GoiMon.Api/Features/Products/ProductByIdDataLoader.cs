@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
-using GoiMon.Api.Data;
+using GoiMon.Api.Infrastructure.Data;
 using GoiMon.Api.Domain.Entities;
 
-namespace GoiMon.Api.DataLoaders;
+namespace GoiMon.Api.Features.Products;
 
 /// <summary>
 /// Batch DataLoader to load <see cref="Product"/> by Id and avoid N+1 queries.

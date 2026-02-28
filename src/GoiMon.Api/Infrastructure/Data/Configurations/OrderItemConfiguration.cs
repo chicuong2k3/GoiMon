@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using GoiMon.Api.Domain.Entities;
 
-namespace GoiMon.Api.Data.Configurations;
+namespace GoiMon.Api.Infrastructure.Data.Configurations;
 
 public class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
 {
@@ -12,6 +12,6 @@ public class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
         builder.Property(oi => oi.OrderId).IsRequired();
         builder.Property(oi => oi.ProductId).IsRequired();
         builder.Property(oi => oi.Qty).IsRequired();
-        builder.Property(oi => oi.UnitPriceCents).IsRequired();
+        builder.Property(oi => oi.UnitPrice).IsRequired().HasPrecision(18, 2);
     }
 }

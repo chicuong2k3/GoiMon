@@ -13,7 +13,7 @@ else
     <ul>
         @foreach (var it in items)
         {
-            <li>@it.Name - @((it.PriceCents / 100.0).ToString("C"))</li>
+            <li>@it.Name - @(it.Price.ToString("C"))</li>
         }
     </ul>
 }

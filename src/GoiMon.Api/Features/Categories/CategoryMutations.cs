@@ -1,8 +1,7 @@
-using GoiMon.Api.Data;
+using GoiMon.Api.Infrastructure.Data;
 using GoiMon.Api.Domain.Entities;
-using Microsoft.EntityFrameworkCore;
 
-namespace GoiMon.Api.GraphQL;
+namespace GoiMon.Api.Features.Categories;
 
 [ExtendObjectType("Mutation")]
 public class CategoryMutations
@@ -22,8 +21,7 @@ public class CategoryMutations
         var c = await db.Categories.FirstOrDefaultAsync(x => x.Id == input.Id);
         if (c is null) return null;
         if (input.Name is not null)
-            c = new Category(c.Id, input.Name); // simple replace to preserve immutability-like pattern
-        db.Categories.Update(c);
+            c.Rename(input.Name);
         await db.SaveChangesAsync();
         return c;
     }

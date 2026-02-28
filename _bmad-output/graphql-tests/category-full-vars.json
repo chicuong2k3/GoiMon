@@ -1,0 +1,15 @@
+{
+  "query": "query ListCategoriesFull($first: Int, $after: String, $where: CategoryFilterInput, $order: [CategorySortInput!]){ categories(first: $first, after: $after, where: $where, order: $order) { totalCount pageInfo { hasNextPage hasPreviousPage startCursor endCursor } edges { cursor node { id name } } nodes { id name } } }",
+  "variables": {
+    "first": 10,
+    "after": null,
+    "where": {
+      "name": {
+        "contains": "bev"
+      }
+    },
+    "order": [
+      { "name": "ASC" }
+    ]
+  }
+}

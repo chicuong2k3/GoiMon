@@ -1,9 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
-using Microsoft.Extensions.Configuration;
-using System.IO;
 
-namespace GoiMon.Api.Data;
+namespace GoiMon.Api.Infrastructure.Data;
 
 public class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
 {

@@ -1,0 +1,18 @@
+# Categories using offset (index) paging
+query ListCategoriesOffset($skip: Int = 0, $take: Int = 10, $where: CategoryFilterInput, $order: [CategorySortInput!]) {
+  categoriesOffset(skip: $skip, take: $take, where: $where, order: $order) {
+    totalCount
+    items {
+      id
+      name
+    }
+  }
+}
+
+# Example variables (skip/take): page 2 equivalent -> skip = (page-1)*pageSize
+{
+  "skip": 10,
+  "take": 10,
+  "where": { "name": { "contains": "bev" } },
+  "order": [ { "name": "ASC" } ]
+}

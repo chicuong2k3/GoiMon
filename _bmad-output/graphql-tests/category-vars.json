@@ -1,0 +1,6 @@
+{
+  "query": "mutation CreateCategory($input: CreateCategoryInput!) { createCategory(input: $input) { id name } }",
+  "variables": {
+    "input": { "name": "Beverages" }
+  }
+}

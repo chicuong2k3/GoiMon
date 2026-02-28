@@ -1,4 +1,4 @@
-namespace GoiMon.Api.Legacy.Domain.Entities;
+namespace GoiMon.Api.Domain.Entities;
 
 using System.Linq;
 using GoiMon.Api.Domain;
@@ -10,16 +10,16 @@ public class ProductCombo : AggregateRoot
 {
     private ProductCombo() { Items = new List<ProductComboItem>(); }
 
-    public ProductCombo(Guid id, string name, int priceCents)
+    public ProductCombo(Guid id, string name, decimal price)
     {
         Id = id;
-        Name = name;
-        PriceCents = priceCents;
+        Name = name?.Trim().ToLowerInvariant();
+        Price = price;
         Items = new List<ProductComboItem>();
     }
 
     public string? Name { get; private set; }
-    public int PriceCents { get; private set; }
+    public decimal Price { get; private set; }
     public List<ProductComboItem> Items { get; private set; }
 
     public void AddItem(Guid productId, int qty)
@@ -27,6 +27,7 @@ public class ProductCombo : AggregateRoot
         if (qty <= 0) throw new ArgumentOutOfRangeException(nameof(qty));
         var item = new ProductComboItem(Guid.NewGuid(), Id, productId, qty);
         Items.Add(item);
+        AddDomainEvent(new Events.ComboItemAddedEvent(Id, item.Id, productId, qty));
     }
 
     /// <summary>
@@ -35,16 +36,16 @@ public class ProductCombo : AggregateRoot
     public void UpdateName(string name)
     {
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Name cannot be empty", nameof(name));
-        Name = name.Trim();
+        Name = name.Trim().ToLowerInvariant();
     }
 
     /// <summary>
-    /// Update the price in cents for the combo.
+    /// Update the price for the combo.
     /// </summary>
-    public void UpdatePrice(int priceCents)
+    public void UpdatePrice(decimal price)
     {
-        if (priceCents < 0) throw new ArgumentOutOfRangeException(nameof(priceCents));
-        PriceCents = priceCents;
+        if (price < 0) throw new ArgumentOutOfRangeException(nameof(price));
+        Price = price;
     }
 
     /// <summary>
@@ -64,6 +65,15 @@ public class ProductCombo : AggregateRoot
         if (item is not null)
             Items.Remove(item);
     }
+
+    /// <summary>
+    /// Update the quantity of an existing item in the combo.
+    /// </summary>
+    public void UpdateItem(Guid itemId, int qty)
+    {
+        var item = Items.FirstOrDefault(i => i.Id == itemId);
+        item?.UpdateQty(qty);
+    }
 }
 
 public class ProductComboItem
@@ -82,4 +92,10 @@ public class ProductComboItem
     public Guid ComboId { get; private set; }
     public Guid ProductId { get; private set; }
     public int Qty { get; private set; }
+
+    public void UpdateQty(int qty)
+    {
+        if (qty <= 0) throw new ArgumentOutOfRangeException(nameof(qty));
+        Qty = qty;
+    }
 }

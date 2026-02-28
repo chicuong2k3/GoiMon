@@ -1,14 +1,10 @@
-using GoiMon.Api.Data;
-using GoiMon.Api.Domain.Entities;
-using Microsoft.EntityFrameworkCore;
-using GoiMon.Api.GraphQL.Types;
-
-namespace GoiMon.Api.GraphQL;
+namespace GoiMon.Api.Features.Products;
 
 [ExtendObjectType("Query")]
 public class ProductQueries
 {
     [UseDbContext(typeof(AppDbContext))]
+    [UseOffsetPaging(IncludeTotalCount = true)]
     [UseProjection]
     [UseFiltering]
     [UseSorting]
@@ -16,19 +12,13 @@ public class ProductQueries
         => db.Products.AsQueryable();
 
     [UseDbContext(typeof(AppDbContext))]
+    [UseOffsetPaging(IncludeTotalCount = true)]
     [UseProjection]
     [UseFiltering]
     [UseSorting]
-    public IQueryable<Product> ProductsByCategory(Guid categoryId, [Service(ServiceKind.Pooled)] AppDbContext db)
-        => db.Products.Where(p => p.CategoryId == categoryId).AsQueryable();
-
-    [UseDbContext(typeof(AppDbContext))]
-    [UseProjection]
-    [UseFiltering]
-    [UseSorting]
-    public IQueryable<Product> ProductsByCategoryEnum(ProductCategory category, [Service(ServiceKind.Pooled)] AppDbContext db)
+    public IQueryable<Product> ProductsByCategoryName(string categoryName, [Service(ServiceKind.Pooled)] AppDbContext db)
     {
-        var cat = db.Categories.FirstOrDefault(c => c.Name == category.ToString());
+        var cat = db.Categories.FirstOrDefault(c => c.Name == categoryName);
         if (cat is null) return Enumerable.Empty<Product>().AsQueryable();
         return db.Products.Where(p => p.CategoryId == cat.Id).AsQueryable();
     }

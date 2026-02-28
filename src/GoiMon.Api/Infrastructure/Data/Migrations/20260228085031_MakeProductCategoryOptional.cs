@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace GoiMon.Api.Data.Migrations
+namespace GoiMon.Api.Infrastructure.Data.Migrations
 {
     /// <inheritdoc />
     public partial class MakeProductCategoryOptional : Migration

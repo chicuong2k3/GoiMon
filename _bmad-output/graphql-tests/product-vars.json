@@ -1,0 +1,11 @@
+{
+  "query": "mutation AddProduct($input: ProductInput!) { addProduct(input: $input) { id name price description categoryId } }",
+  "variables": {
+    "input": {
+      "name": "Cola",
+      "price": 1.50,
+      "categoryId": null,
+      "description": "Refreshing soda"
+    }
+  }
+}

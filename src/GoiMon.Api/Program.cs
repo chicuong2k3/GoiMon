@@ -1,7 +1,28 @@
-using GoiMon.Api.Data;
-using Microsoft.EntityFrameworkCore;
+using GoiMon.Api.Infrastructure.Data;
+using Hangfire;
+using Hangfire.PostgreSql;
+using GoiMon.Api.Infrastructure.Outbox;
+using Microsoft.Extensions.ObjectPool;
+using Serilog;
+using Serilog.Sinks.SystemConsole.Themes;
+using FluentValidation;
+using GoiMon.Api.Features.Products;
+using GoiMon.Api.Features.Categories;
+using GoiMon.Api.Features.Orders;
+using GoiMon.Api.Features.Combos;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((context, services, loggerConfiguration) =>
+{
+    loggerConfiguration
+        .ReadFrom.Configuration(context.Configuration)
+        .Enrich.FromLogContext()
+        .Enrich.WithMachineName()
+        .WriteTo.Console(
+            theme: AnsiConsoleTheme.Code,
+            outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss} {Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}");
+});
 
 // Configuration
 var conn = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -9,6 +30,44 @@ var conn = builder.Configuration.GetConnectionString("DefaultConnection");
 // EF Core
 builder.Services.AddPooledDbContextFactory<AppDbContext>(options =>
     options.UseNpgsql(conn));
+
+// CORS: allow requests from Nitro app
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowNitro", policy =>
+    {
+        policy
+            .WithOrigins("https://nitro.chillicream.com")
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
+});
+
+// FluentValidation: register validators from this assembly
+builder.Services.AddValidatorsFromAssemblyContaining<GoiMon.Api.Features.Categories.Validators.CreateCategoryInputValidator>();
+
+// MediatR removed — validation is handled via FluentValidation middleware and error filter
+
+// Bridge: HC's ServiceKind.Pooled resolves ObjectPool<T> from DI at request time.
+// AddPooledDbContextFactory only registers IDbContextFactory<T>, so we wrap it here.
+builder.Services.AddSingleton<ObjectPool<AppDbContext>>(sp =>
+    new PooledDbContextObjectPool<AppDbContext>(
+        sp.GetRequiredService<IDbContextFactory<AppDbContext>>()));
+
+// Register the outbox worker as an injectable service (invoked by the chosen background processor)
+builder.Services.AddTransient<OutboxService>();
+
+// Hangfire: dashboard + background server using PostgreSQL storage (use a dedicated schema)
+builder.Services.AddHangfire(cfg => cfg.UsePostgreSqlStorage(conn, new Hangfire.PostgreSql.PostgreSqlStorageOptions
+{
+    SchemaName = "hangfire"
+}));
+builder.Services.AddHangfireServer();
+
+// Domain event dispatcher and handlers
+builder.Services.AddScoped<GoiMon.Api.Domain.Events.IDomainEventDispatcher, GoiMon.Api.Infrastructure.DomainEvents.DomainEventDispatcher>();
+builder.Services.AddScoped(typeof(GoiMon.Api.Domain.Events.IDomainEventHandler<>), typeof(GoiMon.Api.Infrastructure.DomainEvents.LoggingDomainEventHandler<>));
 
 // GraphQL (HotChocolate)
 builder.Services
@@ -18,20 +77,21 @@ builder.Services
     .AddProjections()
     .AddFiltering()
     .AddSorting()
-    // Enable Relay-style global object identification (Node interface, global IDs)
-    .AddGlobalObjectIdentification()
+    .ModifyRequestOptions(o => o.IncludeExceptionDetails = true)
     // Register aggregate-specific extensions
-    .AddTypeExtension<GoiMon.Api.GraphQL.ProductQueries>()
-    .AddTypeExtension<GoiMon.Api.GraphQL.OrderQueries>()
-    .AddTypeExtension<GoiMon.Api.GraphQL.ProductMutations>()
-    .AddTypeExtension<GoiMon.Api.GraphQL.OrderMutations>()
-    .AddTypeExtension<GoiMon.Api.GraphQL.ProductResolvers>()
-    .AddTypeExtension<GoiMon.Api.GraphQL.ComboQueries>()
-    .AddTypeExtension<GoiMon.Api.GraphQL.ComboMutations>()
-    .AddTypeExtension<GoiMon.Api.GraphQL.ProductComboItemResolvers>()
-        .AddTypeExtension<GoiMon.Api.GraphQL.CategoryQueries>()
-        .AddTypeExtension<GoiMon.Api.GraphQL.CategoryMutations>()
-    .AddType<GoiMon.Api.GraphQL.Types.ProductCategory>();
+    .AddTypeExtension<ProductQueries>()
+    .AddTypeExtension<OrderQueries>()
+    .AddTypeExtension<ProductMutations>()
+    .AddTypeExtension<OrderMutations>()
+    .AddTypeExtension<ProductResolvers>()
+    .AddTypeExtension<CategoryQueries>()
+    .AddTypeExtension<CategoryMutations>()
+    .AddTypeExtension<ComboQueries>()
+    .AddTypeExtension<ComboMutations>()
+    .AddTypeExtension<ProductComboItemResolvers>()
+    .AddErrorFilter<GoiMon.Api.Infrastructure.Validation.FluentValidationErrorFilter>()
+    // Validate input objects via FluentValidation middleware
+    .UseField<GoiMon.Api.Infrastructure.Validation.FluentValidationMiddleware>();
 
 // Repositories currently unused by GraphQL resolvers (using DB-backed resolvers instead).
 // If you later want to reintroduce repository abstractions, register them here.
@@ -52,13 +112,51 @@ using (var scope = app.Services.CreateScope())
     }
     catch (Exception ex)
     {
-        // Log or ignore for now; surface minimal info to console for developer
-        Console.WriteLine($"Database migrate/seed error: {ex.Message}");
+        Log.Error(ex, "Database migrate/seed error");
     }
 }
 
 app.MapGet("/health", () => Results.Ok("ok"));
 
+// Enable CORS for browser clients (must be before endpoints that serve requests)
+app.UseCors("AllowNitro");
+
+// Hangfire dashboard and recurring job for outbox processing
+// Expose the dashboard at /hangfire (no auth configured here — restrict in production)
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    Authorization = Array.Empty<Hangfire.Dashboard.IDashboardAuthorizationFilter>()
+});
+
+RecurringJob.AddOrUpdate<OutboxService>(
+    "outbox-poll",
+    s => s.ProcessPendingAsync(CancellationToken.None),
+    Cron.Minutely);
+
 app.MapGraphQL();
 
-app.Run();
+try
+{
+    Log.Information("Starting web host");
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Host terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
+
+/// <summary>
+/// Adapts IDbContextFactory&lt;T&gt; as ObjectPool&lt;T&gt; so HotChocolate's ServiceKind.Pooled
+/// can resolve the DbContext from the DI container.
+/// Get() rents a context from EF Core's internal pool; Return() disposes it back.
+/// </summary>
+file sealed class PooledDbContextObjectPool<TContext>(IDbContextFactory<TContext> factory)
+    : ObjectPool<TContext> where TContext : DbContext
+{
+    public override TContext Get() => factory.CreateDbContext();
+    public override void Return(TContext obj) => obj.Dispose();
+}

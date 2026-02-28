@@ -1,7 +1,7 @@
 using GoiMon.Api.Domain.Entities;
-using GoiMon.Api.Data;
+using GoiMon.Api.Infrastructure.Data;
 
-namespace GoiMon.Api.GraphQL;
+namespace GoiMon.Api.Features.Orders;
 
 /// <summary>
 /// GraphQL mutation extensions for order-related operations.
@@ -23,7 +23,7 @@ public class OrderMutations
 
         foreach (var it in input.Items)
         {
-            order.AddItem(it.ProductId, it.Qty, it.UnitPriceCents);
+            order.AddItem(it.ProductId, it.Qty, it.UnitPrice);
         }
 
         db.Orders.Add(order);
@@ -43,5 +43,5 @@ public record OrderInput(List<OrderItemInput> Items);
 /// </summary>
 /// <param name="ProductId">Referenced product identifier.</param>
 /// <param name="Qty">Quantity of the product.</param>
-/// <param name="UnitPriceCents">Unit price in cents.</param>
-public record OrderItemInput(Guid ProductId, int Qty, int UnitPriceCents);
+/// <param name="UnitPrice">Unit price.</param>
+public record OrderItemInput(Guid ProductId, int Qty, decimal UnitPrice);

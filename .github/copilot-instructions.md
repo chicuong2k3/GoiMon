@@ -36,6 +36,7 @@
 - Follow step-based workflow execution: load steps JIT, never multiple at once
 - Save outputs after EACH step when using the workflow engine
 - The `{project-root}` variable resolves to the workspace root at runtime
+ - Prefer project-level global using directives: create a `GlobalUsings.cs` in each project containing common `global using` statements. When generating or refactoring C# code, prefer adding shared namespaces to the project `GlobalUsings.cs` rather than repeating file-level `using` statements. Only add file-level `using` directives when a namespace is highly specific to a single file.
 
 ## Available Agents
 

@@ -13,20 +13,21 @@ public class Order : AggregateRoot
     public Order(Guid id)
     {
         Id = id;
-        Status = "open";
+        Status = OrderStatus.Open;
         Items = new List<OrderItem>();
-        TotalCents = 0;
+        Total = 0m;
+        AddDomainEvent(new Events.OrderCreatedEvent(id));
     }
 
     /// <summary>
-    /// Current status of the order (for example "open" or "completed").
+    /// Current status of the order.
     /// </summary>
-    public string Status { get; private set; } = "open";
+    public OrderStatus Status { get; private set; } = OrderStatus.Open;
 
     /// <summary>
-    /// Total amount for the order in cents.
+    /// Total amount for the order.
     /// </summary>
-    public int TotalCents { get; private set; }
+    public decimal Total { get; private set; }
 
     /// <summary>
     /// Mutable list used internally to store order items. Exposed as read-only in contracts.
@@ -39,14 +40,15 @@ public class Order : AggregateRoot
     /// <param name="productId">Referenced product identifier.</param>
     /// <param name="qty">Quantity to add; must be greater than zero.</param>
     /// <param name="unitPriceCents">Unit price in cents; must be non-negative.</param>
-    public void AddItem(Guid productId, int qty, int unitPriceCents)
+    public void AddItem(Guid productId, int qty, decimal unitPrice)
     {
         if (qty <= 0) throw new ArgumentOutOfRangeException(nameof(qty));
-        if (unitPriceCents < 0) throw new ArgumentOutOfRangeException(nameof(unitPriceCents));
+        if (unitPrice < 0) throw new ArgumentOutOfRangeException(nameof(unitPrice));
 
-        var item = new OrderItem(Guid.NewGuid(), Id, productId, qty, unitPriceCents);
+        var item = new OrderItem(Guid.NewGuid(), Id, productId, qty, unitPrice);
         Items.Add(item);
         RecalculateTotal();
+        AddDomainEvent(new Events.OrderItemAddedEvent(Id, item.Id, productId, qty));
     }
 
     /// <summary>
@@ -66,12 +68,13 @@ public class Order : AggregateRoot
     /// </summary>
     public void MarkCompleted()
     {
-        Status = "completed";
+        Status = OrderStatus.Completed;
+        AddDomainEvent(new Events.OrderCompletedEvent(Id));
     }
 
     private void RecalculateTotal()
     {
-        TotalCents = Items.Sum(i => i.Qty * i.UnitPriceCents);
+        Total = Items.Sum(i => i.Qty * i.UnitPrice);
     }
 }
 
@@ -85,13 +88,13 @@ public class OrderItem
     /// <summary>
     /// Create a new order item instance.
     /// </summary>
-    public OrderItem(Guid id, Guid orderId, Guid productId, int qty, int unitPriceCents)
+    public OrderItem(Guid id, Guid orderId, Guid productId, int qty, decimal unitPrice)
     {
         Id = id;
         OrderId = orderId;
         ProductId = productId;
         Qty = qty;
-        UnitPriceCents = unitPriceCents;
+        UnitPrice = unitPrice;
     }
 
     /// <summary>
@@ -115,7 +118,7 @@ public class OrderItem
     public int Qty { get; private set; }
 
     /// <summary>
-    /// Unit price in cents for the product at the time of ordering.
+    /// Unit price for the product at the time of ordering.
     /// </summary>
-    public int UnitPriceCents { get; private set; }
+    public decimal UnitPrice { get; private set; }
 }

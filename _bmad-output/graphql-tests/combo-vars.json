@@ -1,0 +1,13 @@
+{
+  "query": "mutation CreateCombo($input: CreateComboInput!) { createCombo(input: $input) { id name price items { id productId qty } } }",
+  "variables": {
+    "input": {
+      "name": "Pho Set",
+      "price": 75000,
+      "items": [
+        { "productId": "00000000-0000-0000-0000-000000000001", "qty": 1 },
+        { "productId": "00000000-0000-0000-0000-000000000002", "qty": 2 }
+      ]
+    }
+  }
+}

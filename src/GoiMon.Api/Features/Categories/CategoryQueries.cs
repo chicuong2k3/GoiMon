@@ -1,8 +1,4 @@
-using GoiMon.Api.Data;
-using GoiMon.Api.Domain.Entities;
-using Microsoft.EntityFrameworkCore;
-
-namespace GoiMon.Api.GraphQL;
+namespace GoiMon.Api.Features.Categories;
 
 [ExtendObjectType("Query")]
 public class CategoryQueries
@@ -13,6 +9,15 @@ public class CategoryQueries
     [UseFiltering]
     [UseSorting]
     public IQueryable<Category> Categories([Service(ServiceKind.Pooled)] AppDbContext db)
+        => db.Categories.AsQueryable();
+
+    // Offset (index) paging variant: clients can request by page number/size.
+    [UseDbContext(typeof(AppDbContext))]
+    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting]
+    public IQueryable<Category> CategoriesOffset([Service(ServiceKind.Pooled)] AppDbContext db)
         => db.Categories.AsQueryable();
 
     [UseDbContext(typeof(AppDbContext))]

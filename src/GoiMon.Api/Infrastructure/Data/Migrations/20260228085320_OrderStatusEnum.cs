@@ -2,7 +2,7 @@
 
 #nullable disable
 
-namespace GoiMon.Api.Data.Migrations
+namespace GoiMon.Api.Infrastructure.Data.Migrations
 {
     /// <inheritdoc />
     public partial class OrderStatusEnum : Migration

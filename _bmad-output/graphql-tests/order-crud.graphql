@@ -1,0 +1,43 @@
+# Create an order (requires product IDs)
+mutation CreateOrder($input: OrderInput!) {
+  createOrder(input: $input) {
+    id
+    items {
+      id
+      productId
+      qty
+      unitPrice
+    }
+  }
+}
+
+# Get order by id (includes items and product enrichment via resolver)
+query GetOrder($id: UUID!) {
+  orderById(id: $id) {
+    id
+    items {
+      id
+      productId
+      productName
+      qty
+      unitPrice
+    }
+  }
+}
+
+# List orders (paged)
+query ListOrders($first: Int, $after: String) {
+  orders(first: $first, after: $after) {
+    nodes {
+      id
+      items {
+        id
+        productId
+        productName
+        qty
+        unitPrice
+      }
+    }
+    totalCount
+  }
+}

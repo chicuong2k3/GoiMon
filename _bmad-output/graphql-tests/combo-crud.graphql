@@ -1,0 +1,121 @@
+fragment ComboItemFields on ProductComboItem {
+  id
+  comboId
+  productId
+  qty
+  product {
+    id
+    name
+    price
+  }
+}
+
+fragment ComboFields on ProductCombo {
+  id
+  name
+  price
+  items {
+    ...ComboItemFields
+  }
+}
+
+# ─── Queries ───────────────────────────────────────────────────────────────────
+
+# Get a single combo by id (includes all items with resolved product info)
+# Variables: { "id": "00000000-0000-0000-0000-000000000001" }
+query GetCombo($id: UUID!) {
+  comboById(id: $id) {
+    ...ComboFields
+  }
+}
+
+# List all combos (offset paging)
+# Variables: { "skip": 0, "take": 10 }
+query ListCombos($skip: Int, $take: Int) {
+  combos(skip: $skip, take: $take) {
+    items {
+      ...ComboFields
+    }
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+    }
+    totalCount
+  }
+}
+
+# List combos filtered by name (HC filtering)
+# Variables: { "where": { "name": { "contains": "combo" } }, "skip": 0, "take": 10 }
+query ListCombosFiltered($where: ProductComboFilterInput, $skip: Int, $take: Int) {
+  combos(where: $where, skip: $skip, take: $take) {
+    items {
+      ...ComboFields
+    }
+    totalCount
+  }
+}
+
+# ─── Mutations ─────────────────────────────────────────────────────────────────
+
+# Create a combo without initial items
+# Variables: { "input": { "name": "Pho Set", "price": 75000, "items": null } }
+mutation CreateCombo($input: CreateComboInput!) {
+  createCombo(input: $input) {
+    ...ComboFields
+  }
+}
+
+# Create a combo with initial items
+# Variables: {
+#   "input": {
+#     "name": "Family Set",
+#     "price": 250000,
+#     "items": [
+#       { "productId": "00000000-0000-0000-0000-000000000001", "qty": 2 },
+#       { "productId": "00000000-0000-0000-0000-000000000002", "qty": 1 }
+#     ]
+#   }
+# }
+mutation CreateComboWithItems($input: CreateComboInput!) {
+  createCombo(input: $input) {
+    ...ComboFields
+  }
+}
+
+# Update combo name and/or price — omit fields you don't want changed
+# Variables: { "input": { "id": "00000000-0000-0000-0000-000000000001", "name": "Pho Set Deluxe", "price": 85000 } }
+mutation UpdateCombo($input: UpdateComboInput!) {
+  updateCombo(input: $input) {
+    ...ComboFields
+  }
+}
+
+# Add a single item to an existing combo
+# Variables: { "input": { "comboId": "00000000-0000-0000-0000-000000000001", "productId": "00000000-0000-0000-0000-000000000002", "qty": 1 } }
+mutation AddComboItem($input: AddComboItemInput!) {
+  addComboItem(input: $input) {
+    ...ComboFields
+  }
+}
+
+# Update the quantity of an existing item in the combo
+# Variables: { "input": { "comboId": "00000000-0000-0000-0000-000000000001", "itemId": "00000000-0000-0000-0000-000000000010", "qty": 3 } }
+mutation UpdateComboItem($input: UpdateComboItemInput!) {
+  updateComboItem(input: $input) {
+    ...ComboFields
+  }
+}
+
+# Remove a single item from a combo by item id
+# Variables: { "input": { "comboId": "00000000-0000-0000-0000-000000000001", "itemId": "00000000-0000-0000-0000-000000000010" } }
+mutation RemoveComboItem($input: RemoveComboItemInput!) {
+  removeComboItem(input: $input) {
+    ...ComboFields
+  }
+}
+
+# Delete a combo — returns true if deleted, false if not found
+# Variables: { "id": "00000000-0000-0000-0000-000000000001" }
+mutation DeleteCombo($id: UUID!) {
+  deleteCombo(id: $id)
+}

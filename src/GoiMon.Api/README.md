@@ -24,10 +24,10 @@ curl http://localhost:5000/health
 
 EF Core migrations (when you change domain models)
 
-Create a migration (from repo root):
+Create a migration (from repo root). Migrations are stored in `src/GoiMon.Api/Data/Migrations`:
 
 ```bash
-dotnet ef migrations add Init -p src/GoiMon.Api -s src/GoiMon.Api
+dotnet ef migrations add Init -p src/GoiMon.Api -s src/GoiMon.Api --output-dir Data/Migrations
 ```
 
 Apply migrations to the database:

@@ -1,0 +1,90 @@
+fragment ProductFields on Product {
+  id
+  name
+  price
+  description
+  categoryId
+}
+
+# Create a single product
+# Variables: { "input": { "name": "Pho Bo", "price": 50000, "categoryId": null, "description": "Traditional beef noodle soup" } }
+mutation CreateProduct($input: ProductInput!) {
+  createProduct(input: $input) {
+    ...ProductFields
+  }
+}
+
+# Create multiple products at once
+# Variables: { "inputs": [{ "name": "Pho Bo", "price": 50000, "categoryId": null, "description": null }] }
+mutation CreateProducts($inputs: [ProductInput!]!) {
+  createProducts(inputs: $inputs) {
+    ...ProductFields
+  }
+}
+
+# Get a single product by id (no category navigation — use categoryId to join separately)
+# Variables: { "id": "00000000-0000-0000-0000-000000000001" }
+query GetProduct($id: UUID!) {
+  productById(id: $id) {
+    ...ProductFields
+  }
+}
+
+# List all products with offset paging
+# Variables: { "skip": 0, "take": 10 }
+query ListProducts($skip: Int, $take: Int) {
+  products(skip: $skip, take: $take) {
+    items {
+      ...ProductFields
+    }
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+    }
+    totalCount
+  }
+}
+
+# List products with HC filtering + paging
+# Variables: { "where": { "categoryId": { "eq": "00000000-0000-0000-0000-000000000001" } }, "skip": 0, "take": 10 }
+query ListProductsFiltered($where: ProductFilterInput, $skip: Int, $take: Int) {
+  products(where: $where, skip: $skip, take: $take) {
+    items {
+      ...ProductFields
+    }
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+    }
+    totalCount
+  }
+}
+
+# Get products by category name with paging
+# Variables: { "categoryName": "drinks", "skip": 0, "take": 10 }
+query ProductsByCategoryName($categoryName: String!, $skip: Int, $take: Int) {
+  productsByCategoryName(categoryName: $categoryName, skip: $skip, take: $take) {
+    items {
+      ...ProductFields
+    }
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+    }
+    totalCount
+  }
+}
+
+# Update a product (full replacement — all fields required)
+# Variables: { "input": { "id": "00000000-0000-0000-0000-000000000001", "name": "Pho Bo", "price": 60000, "categoryId": null, "description": "Updated description" } }
+mutation UpdateProduct($input: UpdateProductInput!) {
+  updateProduct(input: $input) {
+    ...ProductFields
+  }
+}
+
+# Delete a product by id — returns true if deleted, false if not found
+# Variables: { "id": "00000000-0000-0000-0000-000000000001" }
+mutation DeleteProduct($id: UUID!) {
+  deleteProduct(id: $id)
+}

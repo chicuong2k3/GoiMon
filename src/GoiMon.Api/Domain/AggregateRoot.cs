@@ -33,4 +33,7 @@ public abstract class AggregateRoot : IAggregateRoot
     }
 
     protected void ClearDomainEvents() => _domainEvents.Clear();
+
+    // Public helper for infrastructure to clear events after dispatch
+    public void ClearEvents() => ClearDomainEvents();
 }

@@ -1,6 +1,7 @@
 using FluentValidation;
+using GoiMon.Api.Features.Orders;
 
-namespace GoiMon.Api.GraphQL.Validators;
+namespace GoiMon.Api.Features.Orders.Validators;
 
 public class OrderInputValidator : AbstractValidator<OrderInput>
 {

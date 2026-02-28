@@ -1,0 +1,38 @@
+# Create a category
+mutation CreateCategory($input: CreateCategoryInput!) {
+  createCategory(input: $input) {
+    ... on Category { id name }
+  }
+}
+
+# Read categories (paged)
+query ListCategories($first: Int, $after: String) {
+  categories(first: $first, after: $after) {
+    nodes {
+      id
+      name
+    }
+    totalCount
+  }
+}
+
+# Read category by id
+query GetCategory($id: UUID!) {
+  categoryById(id: $id) {
+    id
+    name
+  }
+}
+
+# Update a category
+mutation UpdateCategory($input: UpdateCategoryInput!) {
+  updateCategory(input: $input) {
+    id
+    name
+  }
+}
+
+# Delete a category
+mutation DeleteCategory($id: UUID!) {
+  deleteCategory(id: $id)
+}

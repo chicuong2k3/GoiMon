@@ -27,7 +27,7 @@ public partial class OrderItemDto
     public int Qty { get; set; }
 
     /// <summary>
-    /// Unit price in cents for the line item.
+    /// Unit price for the line item.
     /// </summary>
-    public int UnitPriceCents { get; set; }
+    public decimal UnitPrice { get; set; }
 }

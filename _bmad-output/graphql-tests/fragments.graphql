@@ -1,0 +1,48 @@
+fragment ProductFields on Product {
+  id
+  name
+  price
+  description
+  categoryId
+}
+
+fragment CategoryFields on Category {
+  id
+  name
+}
+
+fragment OrderItemFields on OrderItemDto {
+  id
+  productId
+  productName
+  qty
+  unitPrice
+}
+
+fragment OrderFields on Order {
+  id
+  items {
+    ...OrderItemFields
+  }
+}
+
+fragment ComboItemFields on ProductComboItem {
+  id
+  comboId
+  productId
+  qty
+  product {
+    id
+    name
+    price
+  }
+}
+
+fragment ComboFields on ProductCombo {
+  id
+  name
+  price
+  items {
+    ...ComboItemFields
+  }
+}

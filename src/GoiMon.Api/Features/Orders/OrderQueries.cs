@@ -1,10 +1,10 @@
-using GoiMon.Api.Data;
+using GoiMon.Api.Infrastructure.Data;
 using GoiMon.Api.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
-using GoiMon.Api.DataLoaders;
+using GoiMon.Api.Features.Products;
 using GoiMon.Shared.Models;
 
-namespace GoiMon.Api.GraphQL;
+namespace GoiMon.Api.Features.Orders;
 
 [ExtendObjectType("Query")]
 public class OrderQueries
@@ -38,7 +38,7 @@ public class OrderQueries
                 ProductId = it.ProductId,
                 ProductName = product?.Name,
                 Qty = it.Qty,
-                UnitPriceCents = it.UnitPriceCents
+                UnitPrice = it.UnitPrice
             };
         });
 

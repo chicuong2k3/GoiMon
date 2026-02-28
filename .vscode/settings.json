@@ -7,6 +7,16 @@
         "/^dotnet ef migrations add AddCategory --project /home/chicuong/Desktop/code/GoiMon/src/GoiMon\\.Api/GoiMon\\.Api\\.csproj --startup-project /home/chicuong/Desktop/code/GoiMon/src/GoiMon\\.Api/GoiMon\\.Api\\.csproj$/": {
             "approve": true,
             "matchCommandLine": true
+        },
+        "/^dotnet ef migrations add AddConfigurations --project /home/chicuong/Desktop/code/GoiMon/src/GoiMon\\.Api/GoiMon\\.Api\\.csproj --startup-project /home/chicuong/Desktop/code/GoiMon/src/GoiMon\\.Api/GoiMon\\.Api\\.csproj && dotnet ef database update --project /home/chicuong/Desktop/code/GoiMon/src/GoiMon\\.Api/GoiMon\\.Api\\.csproj --startup-project /home/chicuong/Desktop/code/GoiMon/src/GoiMon\\.Api/GoiMon\\.Api\\.csproj$/": {
+            "approve": true,
+            "matchCommandLine": true
         }
-    }
+    },
+    "cSpell.words": [
+        "appsettings",
+        "Mediat",
+        "Npgsql",
+        "Serilog"
+    ]
 }
