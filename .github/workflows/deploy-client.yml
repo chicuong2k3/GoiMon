@@ -1,0 +1,52 @@
+name: Deploy GoiMon Client
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Restore
+      run: dotnet restore src/GoiMon.Client/GoiMon.Client.csproj
+
+    - name: Publish
+      run: dotnet publish src/GoiMon.Client/GoiMon.Client.csproj -c Release -o publish
+
+    - name: Prepare deploy directory
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          sudo mkdir -p /var/www/goimon-client
+          sudo chown $USER:$USER /var/www/goimon-client
+
+    - name: Deploy via SCP
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        source: "publish/wwwroot/*"
+        target: "/var/www/goimon-client"
+        strip_components: 2
+
+    - name: Reload web server
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          sudo systemctl reload nginx
