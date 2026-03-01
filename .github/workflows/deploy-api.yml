@@ -35,6 +35,10 @@ jobs:
                   username: ${{ secrets.SSH_USER }}
                   key: ${{ secrets.SSH_PRIVATE_KEY }}
                   script: |
+                      if ! dotnet --list-runtimes | grep -q 'Microsoft.AspNetCore.App 10\.'; then
+                        sudo apt-get update
+                        sudo apt-get install -y aspnetcore-runtime-10.0
+                      fi
                       sudo mkdir -p /var/www/goimon-api
                       sudo chown $USER:$USER /var/www/goimon-api
 
@@ -56,3 +60,11 @@ jobs:
                   key: ${{ secrets.SSH_PRIVATE_KEY }}
                   script: |
                       sudo systemctl restart goimon-api
+                      sleep 2
+                      if ! sudo systemctl is-active --quiet goimon-api; then
+                        sudo systemctl status goimon-api --no-pager -l
+                        sudo journalctl -u goimon-api -n 120 --no-pager
+                        exit 1
+                      fi
+                      curl -fsS http://127.0.0.1:5000/health
+                      curl -fsS -X POST -H "Content-Type: application/json" -d '{"query":"{ __typename }"}' http://127.0.0.1:5000/graphql > /dev/null
