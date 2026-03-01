@@ -1,58 +1,58 @@
 name: Deploy GoiMon API
 
 on:
-  push:
-    branches: [ "main" ]
+    push:
+        branches: ["main"]
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
+    deploy:
+        runs-on: ubuntu-latest
 
-    steps:
-    - uses: actions/checkout@v4
+        steps:
+            - uses: actions/checkout@v4
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '8.0.x'
+            - name: Setup .NET
+              uses: actions/setup-dotnet@v4
+              with:
+                  dotnet-version: "10.0.x"
 
-    - name: Restore
-      run: dotnet restore GoiMon.sln
+            - name: Restore
+              run: dotnet restore GoiMon.sln
 
-    - name: Build
-      run: dotnet build GoiMon.sln -c Release --no-restore
+            - name: Build
+              run: dotnet build GoiMon.sln -c Release --no-restore
 
-    - name: Test
-      run: dotnet test tests/GoiMon.Api.Tests/GoiMon.Api.Tests.csproj -c Release --no-build --verbosity normal
+            - name: Test
+              run: dotnet test tests/GoiMon.Api.Tests/GoiMon.Api.Tests.csproj -c Release --no-build --verbosity normal
 
-    - name: Publish
-      run: dotnet publish src/GoiMon.Api/GoiMon.Api.csproj -c Release -o publish
+            - name: Publish
+              run: dotnet publish src/GoiMon.Api/GoiMon.Api.csproj -c Release -o publish
 
-    - name: Prepare deploy directory
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.SSH_HOST }}
-        username: ${{ secrets.SSH_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        script: |
-          sudo mkdir -p /var/www/goimon-api
-          sudo chown $USER:$USER /var/www/goimon-api
+            - name: Prepare deploy directory
+              uses: appleboy/ssh-action@v1.0.3
+              with:
+                  host: ${{ secrets.SSH_HOST }}
+                  username: ${{ secrets.SSH_USER }}
+                  key: ${{ secrets.SSH_PRIVATE_KEY }}
+                  script: |
+                      sudo mkdir -p /var/www/goimon-api
+                      sudo chown $USER:$USER /var/www/goimon-api
 
-    - name: Deploy via SCP
-      uses: appleboy/scp-action@v0.1.7
-      with:
-        host: ${{ secrets.SSH_HOST }}
-        username: ${{ secrets.SSH_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        source: "publish/*"
-        target: "/var/www/goimon-api"
-        strip_components: 1
+            - name: Deploy via SCP
+              uses: appleboy/scp-action@v0.1.7
+              with:
+                  host: ${{ secrets.SSH_HOST }}
+                  username: ${{ secrets.SSH_USER }}
+                  key: ${{ secrets.SSH_PRIVATE_KEY }}
+                  source: "publish/*"
+                  target: "/var/www/goimon-api"
+                  strip_components: 1
 
-    - name: Restart service
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.SSH_HOST }}
-        username: ${{ secrets.SSH_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        script: |
-          sudo systemctl restart goimon-api
+            - name: Restart service
+              uses: appleboy/ssh-action@v1.0.3
+              with:
+                  host: ${{ secrets.SSH_HOST }}
+                  username: ${{ secrets.SSH_USER }}
+                  key: ${{ secrets.SSH_PRIVATE_KEY }}
+                  script: |
+                      sudo systemctl restart goimon-api
