@@ -133,12 +133,12 @@
 
 <!-- Create Dialog -->
 <BbDialog Open="@_showCreate" OpenChanged="@(v => _showCreate = v)">
-    <BbDialogContent>
+    <BbDialogContent Class="max-w-md flex flex-col max-h-[90vh]">
         <BbDialogHeader>
             <BbDialogTitle>Thêm danh mục</BbDialogTitle>
             <BbDialogDescription>Nhập tên danh mục mới.</BbDialogDescription>
         </BbDialogHeader>
-        <div class="py-4">
+        <div class="overflow-y-auto flex-1 py-4 pr-1">
             <BbInput @bind-Value="_formName" Placeholder="Tên danh mục" />
         </div>
         <BbDialogFooter>
@@ -189,12 +189,12 @@
 
 <!-- Edit Dialog -->
 <BbDialog Open="@_showEdit" OpenChanged="@(v => _showEdit = v)">
-    <BbDialogContent>
+    <BbDialogContent Class="max-w-md flex flex-col max-h-[90vh]">
         <BbDialogHeader>
             <BbDialogTitle>Sửa danh mục</BbDialogTitle>
             <BbDialogDescription>Cập nhật tên danh mục.</BbDialogDescription>
         </BbDialogHeader>
-        <div class="py-4">
+        <div class="overflow-y-auto flex-1 py-4 pr-1">
             <BbInput @bind-Value="_formName" Placeholder="Tên danh mục" />
         </div>
         <BbDialogFooter>

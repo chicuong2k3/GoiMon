@@ -119,7 +119,21 @@
                                 <BbCheckbox Checked="@_selectedIds.Contains(item.Id)"
                                             CheckedChanged="@(v => ToggleSelect(item.Id, v))" />
                             </td>
-                            <td class="px-4 py-3 font-medium">@(item.Name ?? "—")</td>
+                            <td class="px-4 py-3 font-medium">
+                                <div class="flex items-center gap-3">
+                                    @if (!string.IsNullOrEmpty(item.ImageUrl))
+                                    {
+                                        <img src="@item.ImageUrl" alt="@(item.Name ?? "")" class="h-10 w-10 rounded object-cover shrink-0" />
+                                    }
+                                    else
+                                    {
+                                        <div class="h-10 w-10 rounded bg-muted flex items-center justify-center shrink-0">
+                                            <LucideIcon Name="image" Class="h-4 w-4 text-muted-foreground" />
+                                        </div>
+                                    }
+                                    <span>@(item.Name ?? "—")</span>
+                                </div>
+                            </td>
                             <td class="px-4 py-3 text-right font-medium tabular-nums">
                                 @item.Price.ToString("#,##0") đ
                             </td>
@@ -299,12 +313,12 @@
 
 <!-- Manage Items Dialog -->
 <BbDialog Open="@_showManageItems" OpenChanged="@(v => _showManageItems = v)">
-    <BbDialogContent Class="max-w-lg">
+    <BbDialogContent Class="max-w-lg flex flex-col max-h-[90vh]">
         <BbDialogHeader>
             <BbDialogTitle>Quản lý món — @(_currentCombo?.Name ?? "")</BbDialogTitle>
             <BbDialogDescription>Thêm hoặc xóa món trong combo.</BbDialogDescription>
         </BbDialogHeader>
-        <div class="space-y-4 py-4">
+        <div class="overflow-y-auto flex-1 space-y-4 py-4 pr-1">
             @if (_currentCombo?.Items.Any() == true)
             {
                 <div class="space-y-1">

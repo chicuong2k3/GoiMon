@@ -124,7 +124,21 @@
                                 <BbCheckbox Checked="@_selectedIds.Contains(item.Id)"
                                             CheckedChanged="@(v => ToggleSelect(item.Id, v))" />
                             </td>
-                            <td class="px-4 py-3 font-medium">@item.Name</td>
+                            <td class="px-4 py-3 font-medium">
+                                <div class="flex items-center gap-3">
+                                    @if (!string.IsNullOrEmpty(item.ImageUrl))
+                                    {
+                                        <img src="@item.ImageUrl" alt="@item.Name" class="h-10 w-10 rounded object-cover shrink-0" />
+                                    }
+                                    else
+                                    {
+                                        <div class="h-10 w-10 rounded bg-muted flex items-center justify-center shrink-0">
+                                            <LucideIcon Name="image" Class="h-4 w-4 text-muted-foreground" />
+                                        </div>
+                                    }
+                                    <span>@item.Name</span>
+                                </div>
+                            </td>
                             <td class="px-4 py-3">
                                 @if (item.CategoryName is not null)
                                 {
