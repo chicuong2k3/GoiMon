@@ -40,7 +40,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowNitro", policy =>
     {
         policy
-            .WithOrigins("https://nitro.chillicream.com", "http://localhost:5002", "http://localhost:5003", "http://localhost:5000")
+            .WithOrigins("https://nitro.chillicream.com", "http://localhost:5001", "http://localhost:5002", "http://localhost:5003", "http://localhost:5000")
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
@@ -151,7 +151,7 @@ RecurringJob.AddOrUpdate<OutboxService>(
     s => s.ProcessPendingAsync(CancellationToken.None),
     Cron.Minutely);
 
-app.MapGraphQL();
+app.MapGraphQL().RequireCors("AllowNitro");
 
 try
 {
