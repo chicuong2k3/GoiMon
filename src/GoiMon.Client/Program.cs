@@ -15,12 +15,17 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 
-var graphqlEndpoint = builder.Configuration["GraphQL:Endpoint"];
-if (string.IsNullOrWhiteSpace(graphqlEndpoint))
+var appBaseUri = new Uri(builder.HostEnvironment.BaseAddress);
+var configuredGraphqlEndpoint = builder.Configuration["GraphQL:Endpoint"]?.Trim();
+var graphqlEndpoint = string.IsNullOrWhiteSpace(configuredGraphqlEndpoint)
+    ? new Uri(appBaseUri, "graphql").ToString()
+    : new Uri(appBaseUri, configuredGraphqlEndpoint).ToString();
+
+if (!builder.HostEnvironment.IsDevelopment()
+    && Uri.TryCreate(graphqlEndpoint, UriKind.Absolute, out var endpointUri)
+    && endpointUri.IsLoopback)
 {
-    graphqlEndpoint = builder.HostEnvironment.IsDevelopment()
-        ? "http://localhost:5000/graphql"
-        : new Uri(new Uri(builder.HostEnvironment.BaseAddress), "graphql").ToString();
+    graphqlEndpoint = new Uri(appBaseUri, "graphql").ToString();
 }
 
 builder.Services

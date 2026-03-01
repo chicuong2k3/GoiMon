@@ -40,7 +40,14 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowNitro", policy =>
     {
         policy
-            .WithOrigins("https://nitro.chillicream.com", "http://localhost:5001", "http://localhost:5002", "http://localhost:5003", "http://localhost:5000")
+            .WithOrigins(
+                "https://nitro.chillicream.com",
+                "http://localhost:5000",
+                "http://localhost:5001",
+                "http://localhost:5002",
+                "http://localhost:5003",
+                "http://45.115.16.61",
+                "https://45.115.16.61")
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
