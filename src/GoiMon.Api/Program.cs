@@ -49,7 +49,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowLocalDev", p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
 });
 
-// FluentValidation: register validators from this assembly
+// FluentValidation: register validators from this assemblyl
 builder.Services.AddValidatorsFromAssemblyContaining<GoiMon.Api.Features.Categories.Validators.CreateCategoryInputValidator>();
 
 // Authentication Services
@@ -95,6 +95,7 @@ builder.Services
     .AddProjections()
     .AddFiltering()
     .AddSorting()
+    .AddUploadType()
     .ModifyRequestOptions(o => o.IncludeExceptionDetails = true)
     // Register aggregate-specific extensions
     .AddTypeExtension<ProductQueries>()
@@ -146,12 +147,19 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
     Authorization = Array.Empty<Hangfire.Dashboard.IDashboardAuthorizationFilter>()
 });
 
-RecurringJob.AddOrUpdate<OutboxService>(
-    "outbox-poll",
-    s => s.ProcessPendingAsync(CancellationToken.None),
-    Cron.Minutely);
+try
+{
+    RecurringJob.AddOrUpdate<OutboxService>(
+        "outbox-poll",
+        s => s.ProcessPendingAsync(CancellationToken.None),
+        Cron.Minutely);
+}
+catch (Exception ex)
+{
+    Log.Warning(ex, "Failed to register recurring outbox job (lock timeout). Job may already exist.");
+}
 
-app.MapGraphQL().RequireCors("AllowNitro");
+app.MapGraphQL();
 
 try
 {
