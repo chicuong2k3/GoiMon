@@ -13,7 +13,6 @@ using GoiMon.Api.Features.Orders;
 using GoiMon.Api.Features.Combos;
 using CloudinaryDotNet;
 using GoiMon.Api.Features.ImageUpload.Services;
-using GoiMon.Api.Features.ImageUpload.Mutations;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -108,7 +107,6 @@ builder.Services
     .AddTypeExtension<ComboMutations>()
     .AddTypeExtension<ProductComboItemResolvers>()
     .AddTypeExtension<AuthenticationMutations>()
-    .AddTypeExtension<ImageUploadMutations>()
     .AddErrorFilter<GoiMon.Api.Infrastructure.Validation.FluentValidationErrorFilter>()
     // Validate input objects via FluentValidation middleware
     .UseField<GoiMon.Api.Infrastructure.Validation.FluentValidationMiddleware>();

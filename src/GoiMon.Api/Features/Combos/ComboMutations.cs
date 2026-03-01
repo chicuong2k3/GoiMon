@@ -1,10 +1,16 @@
+using GoiMon.Api.Features.ImageUpload.Services;
+
 namespace GoiMon.Api.Features.Combos;
 
 [ExtendObjectType("Mutation")]
 public class ComboMutations
 {
     [UseDbContext(typeof(AppDbContext))]
-    public async Task<ProductCombo> CreateCombo(CreateComboInput input, [Service(ServiceKind.Pooled)] AppDbContext db)
+    public async Task<ProductCombo> CreateCombo(
+        CreateComboInput input, 
+        IFile? image,
+        [Service(ServiceKind.Pooled)] AppDbContext db,
+        [Service] IImageUploadService imageService)
     {
         var combo = new ProductCombo(Guid.NewGuid(), input.Name, input.Price);
         if (input.Items is not null)
@@ -12,13 +18,26 @@ public class ComboMutations
             foreach (var item in input.Items)
                 combo.AddItem(item.ProductId, item.Qty);
         }
+        
+        // Upload image if provided
+        if (image is not null)
+        {
+            await using var stream = image.OpenReadStream();
+            var imageUrl = await imageService.UploadImageAsync(stream, image.Name, "combos");
+            combo.UpdateImage(imageUrl);
+        }
+        
         db.ProductCombos.Add(combo);
         await db.SaveChangesAsync();
         return combo;
     }
 
     [UseDbContext(typeof(AppDbContext))]
-    public async Task<ProductCombo?> UpdateCombo(UpdateComboInput input, [Service(ServiceKind.Pooled)] AppDbContext db)
+    public async Task<ProductCombo?> UpdateCombo(
+        UpdateComboInput input, 
+        IFile? image,
+        [Service(ServiceKind.Pooled)] AppDbContext db,
+        [Service] IImageUploadService imageService)
     {
         var combo = await db.ProductCombos.Include(c => c.Items).FirstOrDefaultAsync(c => c.Id == input.Id);
         if (combo is null) return null;
@@ -28,15 +47,54 @@ public class ComboMutations
         if (input.Price.HasValue)
             combo.UpdatePrice(input.Price.Value);
 
+        // Handle image upload/update
+        if (image is not null)
+        {
+            // Delete old image if exists
+            if (!string.IsNullOrEmpty(combo.ImageUrl))
+            {
+                try
+                {
+                    await imageService.DeleteImageAsync(combo.ImageUrl);
+                }
+                catch
+                {
+                    // Log but don't fail the update
+                }
+            }
+            
+            // Upload new image
+            await using var stream = image.OpenReadStream();
+            var imageUrl = await imageService.UploadImageAsync(stream, image.Name, "combos");
+            combo.UpdateImage(imageUrl);
+        }
+
         await db.SaveChangesAsync();
         return combo;
     }
 
     [UseDbContext(typeof(AppDbContext))]
-    public async Task<bool> DeleteCombo(Guid id, [Service(ServiceKind.Pooled)] AppDbContext db)
+    public async Task<bool> DeleteCombo(
+        Guid id, 
+        [Service(ServiceKind.Pooled)] AppDbContext db,
+        [Service] IImageUploadService imageService)
     {
         var combo = await db.ProductCombos.FindAsync(id);
         if (combo is null) return false;
+        
+        // Delete image from Cloudinary if exists
+        if (!string.IsNullOrEmpty(combo.ImageUrl))
+        {
+            try
+            {
+                await imageService.DeleteImageAsync(combo.ImageUrl);
+            }
+            catch
+            {
+                // Log but don't fail the delete
+            }
+        }
+        
         db.ProductCombos.Remove(combo);
         await db.SaveChangesAsync();
         return true;
