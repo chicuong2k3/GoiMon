@@ -66,5 +66,18 @@ jobs:
                         sudo journalctl -u goimon-api -n 120 --no-pager
                         exit 1
                       fi
-                      curl -fsS http://127.0.0.1:5000/health
+                      curl -fsS http://127.0.0.1:5000/health > /dev/null
                       curl -fsS -X POST -H "Content-Type: application/json" -d '{"query":"{ __typename }"}' http://127.0.0.1:5000/graphql > /dev/null
+
+                      if ! curl -fsS -X POST -H "Content-Type: application/json" -d '{"query":"{ __typename }"}' http://127.0.0.1/graphql > /dev/null; then
+                        echo "Local API is healthy but reverse proxy for /graphql is failing (likely source of 502)."
+                        echo "--- goimon-api status ---"
+                        sudo systemctl status goimon-api --no-pager -l || true
+                        echo "--- goimon-api logs ---"
+                        sudo journalctl -u goimon-api -n 120 --no-pager || true
+                        echo "--- nginx status ---"
+                        sudo systemctl status nginx --no-pager -l || true
+                        echo "--- nginx site config ---"
+                        sudo nginx -T 2>/dev/null | sed -n '/server_name\|location \/graphql\|proxy_pass/p' || true
+                        exit 1
+                      fi
