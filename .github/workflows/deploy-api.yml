@@ -62,13 +62,27 @@ jobs:
                   key: ${{ secrets.SSH_PRIVATE_KEY }}
                   script: |
                       sudo systemctl restart goimon-api
-                      sleep 2
-                      if ! sudo systemctl is-active --quiet goimon-api; then
+
+                      # Wait up to 60s for the API to bind to port 5000
+                      for i in $(seq 1 60); do
+                        if curl -fsS http://127.0.0.1:5000/health > /dev/null 2>&1; then
+                          break
+                        fi
+                        if ! sudo systemctl is-active --quiet goimon-api; then
+                          sudo systemctl status goimon-api --no-pager -l
+                          sudo journalctl -u goimon-api -n 120 --no-pager
+                          exit 1
+                        fi
+                        sleep 1
+                      done
+
+                      if ! curl -fsS http://127.0.0.1:5000/health > /dev/null; then
+                        echo "API did not become ready within 60 seconds."
                         sudo systemctl status goimon-api --no-pager -l
                         sudo journalctl -u goimon-api -n 120 --no-pager
                         exit 1
                       fi
-                      curl -fsS http://127.0.0.1:5000/health > /dev/null
+
                       curl -fsS -X POST -H "Content-Type: application/json" -d '{"query":"{ __typename }"}' http://127.0.0.1:5000/graphql > /dev/null
 
                       if ! curl -fsS -X POST -H "Content-Type: application/json" -d '{"query":"{ __typename }"}' http://127.0.0.1/graphql > /dev/null; then
