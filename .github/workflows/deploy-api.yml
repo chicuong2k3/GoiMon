@@ -35,9 +35,11 @@ jobs:
                   username: ${{ secrets.SSH_USER }}
                   key: ${{ secrets.SSH_PRIVATE_KEY }}
                   script: |
-                      if ! dotnet --list-runtimes | grep -q 'Microsoft.AspNetCore.App 10\.'; then
-                        sudo apt-get update
-                        sudo apt-get install -y aspnetcore-runtime-10.0
+                      if ! dotnet --list-runtimes 2>/dev/null | grep -q 'Microsoft.AspNetCore.App 10\.'; then
+                        curl -sSL https://dot.net/v1/dotnet-install.sh | sudo bash -s -- \
+                          --runtime aspnetcore \
+                          --channel 10.0 \
+                          --install-dir /usr/share/dotnet
                       fi
                       sudo mkdir -p /var/www/goimon-api
                       sudo chown $USER:$USER /var/www/goimon-api
