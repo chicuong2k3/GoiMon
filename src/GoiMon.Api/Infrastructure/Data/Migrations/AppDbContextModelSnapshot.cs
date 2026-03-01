@@ -83,6 +83,53 @@ namespace GoiMon.Api.Migrations
                     b.ToTable("OrderItems");
                 });
 
+            modelBuilder.Entity("GoiMon.Api.Domain.Entities.OtpToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DeliveryMethod")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("FailedAttempts")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<bool>("IsUsed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("UserId", "IsUsed", "ExpiresAt");
+
+                    b.ToTable("OtpTokens");
+                });
+
             modelBuilder.Entity("GoiMon.Api.Domain.Entities.Product", b =>
                 {
                     b.Property<Guid>("Id")
@@ -151,6 +198,73 @@ namespace GoiMon.Api.Migrations
                     b.ToTable("ProductComboItems");
                 });
 
+            modelBuilder.Entity("GoiMon.Api.Domain.Entities.User", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("FacebookId")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("GoogleId")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("IsVerified")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("PhotoUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("FacebookId")
+                        .IsUnique();
+
+                    b.HasIndex("GoogleId")
+                        .IsUnique();
+
+                    b.ToTable("Users");
+                });
+
             modelBuilder.Entity("GoiMon.Api.Infrastructure.Outbox.OutboxEvent", b =>
                 {
                     b.Property<Guid>("Id")
@@ -194,6 +308,17 @@ namespace GoiMon.Api.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("GoiMon.Api.Domain.Entities.OtpToken", b =>
+                {
+                    b.HasOne("GoiMon.Api.Domain.Entities.User", "User")
+                        .WithMany("OtpTokens")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("GoiMon.Api.Domain.Entities.ProductComboItem", b =>
                 {
                     b.HasOne("GoiMon.Api.Domain.Entities.ProductCombo", null)
@@ -211,6 +336,11 @@ namespace GoiMon.Api.Migrations
             modelBuilder.Entity("GoiMon.Api.Domain.Entities.ProductCombo", b =>
                 {
                     b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("GoiMon.Api.Domain.Entities.User", b =>
+                {
+                    b.Navigation("OtpTokens");
                 });
 #pragma warning restore 612, 618
         }

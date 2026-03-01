@@ -1,7 +1,8 @@
-
 using Hangfire;
 using Hangfire.PostgreSql;
 using GoiMon.Api.Infrastructure.Outbox;
+using GoiMon.Api.Infrastructure.Services;
+using GoiMon.Api.Features.Authentication.Mutations;
 using Microsoft.Extensions.ObjectPool;
 using Serilog;
 using Serilog.Sinks.SystemConsole.Themes;
@@ -49,6 +50,11 @@ builder.Services.AddCors(options =>
 // FluentValidation: register validators from this assembly
 builder.Services.AddValidatorsFromAssemblyContaining<GoiMon.Api.Features.Categories.Validators.CreateCategoryInputValidator>();
 
+// Authentication Services
+builder.Services.AddHttpClient<IOAuthExchangeService, OAuthExchangeService>();
+builder.Services.AddScoped<IOtpService, OtpService>();
+builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
+
 // MediatR removed — validation is handled via FluentValidation middleware and error filter
 
 // Bridge: HC's ServiceKind.Pooled resolves ObjectPool<T> from DI at request time.
@@ -90,6 +96,7 @@ builder.Services
     .AddTypeExtension<ComboQueries>()
     .AddTypeExtension<ComboMutations>()
     .AddTypeExtension<ProductComboItemResolvers>()
+    .AddTypeExtension<AuthenticationMutations>()
     .AddErrorFilter<GoiMon.Api.Infrastructure.Validation.FluentValidationErrorFilter>()
     // Validate input objects via FluentValidation middleware
     .UseField<GoiMon.Api.Infrastructure.Validation.FluentValidationMiddleware>();

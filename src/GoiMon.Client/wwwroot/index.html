@@ -2,6 +2,7 @@
 <html>
 
 <head>
+    <base href="/" />
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GoiMon Client</title>
@@ -11,6 +12,23 @@
 
 <body>
     <div id="app">Loading...</div>
+
+    <!-- Google OAuth SDK -->
+    <script async defer crossorigin="anonymous"
+        src="https://apis.google.com/js/platform.js?onload=onGoogleLoad&appid=[GOOGLE_CLIENT_ID]"></script>
+
+    <!-- Facebook SDK -->
+    <script>
+        window.fbAsyncInit = function () {
+            FB.init({
+                appId: '[FACEBOOK_APP_ID]',
+                xfbml: true,
+                version: 'v20.0'
+            });
+        };
+    </script>
+    <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
+
     <script src="_framework/blazor.webassembly.js"></script>
 </body>
 

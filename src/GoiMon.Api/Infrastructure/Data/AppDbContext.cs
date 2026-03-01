@@ -18,6 +18,8 @@ public class AppDbContext : DbContext
     public DbSet<OrderItem> OrderItems { get; set; } = null!;
     public DbSet<ProductCombo> ProductCombos { get; set; } = null!;
     public DbSet<ProductComboItem> ProductComboItems { get; set; } = null!;
+    public DbSet<User> Users { get; set; } = null!;
+    public DbSet<OtpToken> OtpTokens { get; set; } = null!;
     public DbSet<Infrastructure.Outbox.OutboxEvent> OutboxEvents { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

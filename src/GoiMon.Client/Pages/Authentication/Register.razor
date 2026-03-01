@@ -1,0 +1,170 @@
+@page "/authentication/register"
+@using GoiMon.Client.Features.Authentication.Helpers
+
+@inject NavigationManager Navigation
+@inject IConfiguration Configuration
+@inject ILogger<Register> Logger
+
+<div class="flex min-h-[80vh] items-center justify-center p-4">
+    <BbCard Class="w-full max-w-md">
+        @if (IsShowingOtpVerification)
+        {
+            <BbCardHeader>
+                <BbCardTitle>Verify Your Account</BbCardTitle>
+                <BbCardDescription>We've sent a verification code to your @SelectedDeliveryMethod</BbCardDescription>
+            </BbCardHeader>
+            <BbCardContent>
+                <GoiMon.Client.Features.Authentication.Components.OtpVerification DeliveryMethod="@SelectedDeliveryMethod"
+                                                                                  UserId="@CurrentUserId" />
+            </BbCardContent>
+            <BbCardFooter>
+                <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.Small" OnClick="BackToOAuthSelection">
+                    <LucideIcon Name="arrow-left" Class="mr-1 h-4 w-4" />
+                    Back
+                </BbButton>
+            </BbCardFooter>
+        }
+        else
+        {
+            <BbCardHeader Class="text-center space-y-1">
+                <BbCardTitle>Create Account</BbCardTitle>
+                <BbCardDescription>Sign up with your social account to get started</BbCardDescription>
+            </BbCardHeader>
+
+            <BbCardContent Class="space-y-4">
+                @if (!string.IsNullOrEmpty(ErrorMessage))
+                {
+                    <BbAlert Variant="AlertVariant.Danger">
+                        <BbAlertTitle>Error</BbAlertTitle>
+                        <BbAlertDescription>@ErrorMessage</BbAlertDescription>
+                    </BbAlert>
+                }
+
+                <!-- OTP Delivery Method -->
+                <div class="space-y-2">
+                    <BbLabel>How to receive verification code?</BbLabel>
+                    <BbRadioGroup TValue="string" Value="@SelectedDeliveryMethod"
+                                  ValueChanged="@(v => SelectedDeliveryMethod = v)" Class="flex gap-4">
+                        <div class="flex items-center gap-2">
+                            <BbRadioGroupItem TValue="string" Value="@("email")" Id="delivery-email" />
+                            <BbLabel For="delivery-email">Email</BbLabel>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <BbRadioGroupItem TValue="string" Value="@("sms")" Id="delivery-sms" />
+                            <BbLabel For="delivery-sms">SMS</BbLabel>
+                        </div>
+                    </BbRadioGroup>
+                </div>
+
+                <BbSeparator />
+
+                <!-- OAuth Buttons -->
+                <div class="grid gap-3">
+                    <BbButton Variant="ButtonVariant.Outline" OnClick="RegisterWithGoogle" Disabled="@IsLoading"
+                              Class="w-full">
+                        @if (IsLoading)
+                        {
+                            <BbSpinner Class="mr-2 h-4 w-4" />
+                        }
+                        else
+                        {
+                            <img src="https://www.google.com/favicon.ico" alt="Google" class="mr-2 h-4 w-4" />
+                        }
+                        Sign up with Google
+                    </BbButton>
+
+                    <BbButton Variant="ButtonVariant.Default" OnClick="RegisterWithFacebook" Disabled="@IsLoading"
+                              Class="w-full">
+                        @if (IsLoading)
+                        {
+                            <BbSpinner Class="mr-2 h-4 w-4" />
+                        }
+                        else
+                        {
+                            <LucideIcon Name="facebook" Class="mr-2 h-4 w-4" />
+                        }
+                        Sign up with Facebook
+                    </BbButton>
+                </div>
+            </BbCardContent>
+
+            <BbCardFooter Class="justify-center">
+                <BbTypographyMuted>
+                    Already have an account?
+                    <BbButton Variant="ButtonVariant.Link" Href="/authentication/login" Class="px-1">Sign in here</BbButton>
+                </BbTypographyMuted>
+            </BbCardFooter>
+        }
+    </BbCard>
+</div>
+
+@code {
+    private bool IsLoading;
+    private bool IsShowingOtpVerification;
+    private string? ErrorMessage;
+    private string SelectedDeliveryMethod = "email";
+    private Guid CurrentUserId = Guid.Empty;
+
+    private async Task RegisterWithGoogle()
+    {
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = null;
+
+            var clientId = Configuration["OAuth:Google:ClientId"];
+            var redirectUri = Configuration["OAuth:Google:RedirectUri"];
+
+            if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(redirectUri))
+            {
+                ErrorMessage = "Google OAuth is not configured. Please contact support.";
+                Logger.LogError("Google OAuth ClientId or RedirectUri not configured");
+                return;
+            }
+
+            var authUrl = OAuthHelper.GetGoogleAuthUrl(clientId, redirectUri);
+            Navigation.NavigateTo(authUrl, forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error during Google registration");
+            ErrorMessage = "An error occurred. Please try again.";
+            IsLoading = false;
+        }
+    }
+
+    private async Task RegisterWithFacebook()
+    {
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = null;
+
+            var appId = Configuration["OAuth:Facebook:AppId"];
+            var redirectUri = Configuration["OAuth:Facebook:RedirectUri"];
+
+            if (string.IsNullOrEmpty(appId) || string.IsNullOrEmpty(redirectUri))
+            {
+                ErrorMessage = "Facebook OAuth is not configured. Please contact support.";
+                Logger.LogError("Facebook OAuth AppId or RedirectUri not configured");
+                return;
+            }
+
+            var authUrl = OAuthHelper.GetFacebookAuthUrl(appId, redirectUri);
+            Navigation.NavigateTo(authUrl, forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error during Facebook registration");
+            ErrorMessage = "An error occurred. Please try again.";
+            IsLoading = false;
+        }
+    }
+
+    private void BackToOAuthSelection()
+    {
+        IsShowingOtpVerification = false;
+        CurrentUserId = Guid.Empty;
+        ErrorMessage = null;
+    }
+}
