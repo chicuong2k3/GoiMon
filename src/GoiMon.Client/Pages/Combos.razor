@@ -106,18 +106,25 @@
 
         <div class="flex items-center justify-between text-sm text-muted-foreground">
             <span>Hiển thị @(_items.Count) / @_total combo</span>
-            <div class="flex gap-2">
+            <div class="flex items-center gap-2">
                 <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small"
-                          Disabled="@(_skip == 0)" OnClick="PrevPage">Trước</BbButton>
+                          Disabled="@(CurrentPage <= 1)" OnClick="() => GoToPageAsync(CurrentPage - 1)">Trước</BbButton>
+                @foreach (var page in VisiblePages)
+                {
+                    <BbButton Variant="@(page == CurrentPage ? ButtonVariant.Default : ButtonVariant.Outline)"
+                              Size="ButtonSize.Small"
+                              Disabled="@(page == CurrentPage)"
+                              OnClick="() => GoToPageAsync(page)">@(page)</BbButton>
+                }
                 <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small"
-                          Disabled="@(_skip + _take >= _total)" OnClick="NextPage">Sau</BbButton>
+                          Disabled="@(CurrentPage >= TotalPages)" OnClick="() => GoToPageAsync(CurrentPage + 1)">Sau</BbButton>
             </div>
         </div>
     }
 </div>
 
 <!-- Create Dialog -->
-<BbDialog @bind-Open="_showCreate">
+<BbDialog Open="@_showCreate" OpenChanged="@(v => _showCreate = v)">
     <BbDialogContent>
         <BbDialogHeader>
             <BbDialogTitle>Thêm combo</BbDialogTitle>
@@ -147,7 +154,7 @@
 </BbDialog>
 
 <!-- Edit Dialog -->
-<BbDialog @bind-Open="_showEdit">
+<BbDialog Open="@_showEdit" OpenChanged="@(v => _showEdit = v)">
     <BbDialogContent>
         <BbDialogHeader>
             <BbDialogTitle>Sửa combo</BbDialogTitle>
@@ -176,7 +183,7 @@
 </BbDialog>
 
 <!-- Manage Items Dialog -->
-<BbDialog @bind-Open="_showManageItems">
+<BbDialog Open="@_showManageItems" OpenChanged="@(v => _showManageItems = v)">
     <BbDialogContent Class="max-w-lg">
         <BbDialogHeader>
             <BbDialogTitle>Quản lý món — @(_currentCombo?.Name ?? "")</BbDialogTitle>
@@ -247,7 +254,7 @@
     private List<ComboDto> _items = [];
     private List<ProductItem> _allProducts = [];
     private bool _loading, _saving, _savingItem;
-    private int _skip, _take = 10, _total;
+    private int _skip, _take = 5, _total;
     private string _search = "";
     private string? _error;
 
@@ -262,7 +269,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await Task.WhenAll(LoadProductsAsync(), LoadAsync());
+        await Task.WhenAll(LoadProductsAsync(), LoadAsync(showLoading: true));
     }
 
     private async Task LoadProductsAsync()
@@ -272,11 +279,12 @@
             _allProducts = prods.Select(p => new ProductItem(p.Id, p.Name)).ToList();
     }
 
-    private async Task LoadAsync()
+    private async Task LoadAsync(bool showLoading = false)
     {
-        _loading = true;
+        _loading = showLoading;
         _error = null;
-        StateHasChanged();
+        if (showLoading)
+            StateHasChanged();
         try
         {
             ProductComboFilterInput? where = string.IsNullOrWhiteSpace(_search) ? null
@@ -300,10 +308,36 @@
         _loading = false;
     }
 
-    private async Task PrevPage() { _skip = Math.Max(0, _skip - _take); await LoadAsync(); }
-    private async Task NextPage() { _skip += _take; await LoadAsync(); }
+    private bool MatchesCurrentFilter(string? name)
+        => string.IsNullOrWhiteSpace(_search) || (name?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false);
+
+    private int CurrentPage => (_skip / _take) + 1;
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(_total / (double)_take));
+    private IEnumerable<int> VisiblePages
+    {
+        get
+        {
+            if (TotalPages <= 7)
+                return Enumerable.Range(1, TotalPages);
+
+            var start = Math.Max(1, CurrentPage - 2);
+            var end = Math.Min(TotalPages, start + 4);
+            start = Math.Max(1, end - 4);
+            return Enumerable.Range(start, end - start + 1);
+        }
+    }
+
+    private async Task GoToPageAsync(int page)
+    {
+        var targetPage = Math.Clamp(page, 1, TotalPages);
+        _skip = (targetPage - 1) * _take;
+        await LoadAsync();
+    }
 
     private void OpenCreate() { _formName = ""; _formPriceStr = ""; _showCreate = true; }
+    private void CloseCreate() => _showCreate = false;
+    private void CloseEdit() => _showEdit = false;
+    private void CloseManageItems() => _showManageItems = false;
 
     private void OpenEdit(ComboDto item)
     {
@@ -321,17 +355,25 @@
         _showManageItems = true;
     }
 
+
     private async Task HandleCreate()
     {
         if (!decimal.TryParse(_formPriceStr, out var price)) return;
         _saving = true;
         var result = await Client.CreateCombo.ExecuteAsync(_formName, price);
         _saving = false;
-        if (result.Data?.CreateCombo is not null)
+        if (result.Data?.CreateCombo is { } created)
         {
             _showCreate = false;
             ToastService.Success("Đã thêm combo.");
-            await LoadAsync();
+
+            if (MatchesCurrentFilter(created.Name))
+            {
+                _total++;
+                _items.Insert(0, new ComboDto(created.Id, created.Name, created.Price, []));
+                if (_items.Count > _take)
+                    _items.RemoveAt(_items.Count - 1);
+            }
         }
         else
         {
@@ -346,11 +388,37 @@
         var name = string.IsNullOrWhiteSpace(_formName) ? null : _formName;
         var result = await Client.UpdateCombo.ExecuteAsync(_editId!.Value, name, price);
         _saving = false;
-        if (result.Data?.UpdateCombo is not null)
+        if (result.Data?.UpdateCombo is { } updated)
         {
             _showEdit = false;
             ToastService.Success("Đã cập nhật combo.");
-            await LoadAsync();
+
+            var index = _items.FindIndex(x => x.Id == updated.Id);
+            if (index >= 0)
+            {
+                if (MatchesCurrentFilter(updated.Name))
+                {
+                    _items[index] = _items[index] with
+                    {
+                        Name = updated.Name,
+                        Price = updated.Price
+                    };
+                }
+                else
+                {
+                    _items.RemoveAt(index);
+                    _total = Math.Max(0, _total - 1);
+                    if (_items.Count == 0 && _skip > 0 && _total > 0)
+                    {
+                        _skip = Math.Max(0, _skip - _take);
+                        await LoadAsync();
+                    }
+                }
+            }
+            else
+            {
+                await LoadAsync();
+            }
         }
         else
         {
@@ -370,8 +438,22 @@
         if (result.Data?.DeleteCombo == true)
         {
             ToastService.Success("Đã xóa combo.");
-            if (_items.Count == 1 && _skip > 0) _skip -= _take;
-            await LoadAsync();
+            var index = _items.FindIndex(x => x.Id == id);
+            if (index >= 0)
+            {
+                _items.RemoveAt(index);
+                _total = Math.Max(0, _total - 1);
+
+                if (_items.Count == 0 && _skip > 0 && _total > 0)
+                    _skip = Math.Max(0, _skip - _take);
+
+                if ((_items.Count < _take && _total > _items.Count) || (_items.Count == 0 && _total > 0))
+                    await LoadAsync();
+            }
+            else
+            {
+                await LoadAsync();
+            }
         }
         else
         {
@@ -393,12 +475,13 @@
             ToastService.Success("Đã thêm món vào combo.");
             _addProductId = null;
             _addQtyStr = "1";
-            _currentCombo = _currentCombo with
-            {
-                Items = updated.Items.Select(ci => new ComboItemDto(
-                    ci.Id, ci.ProductId, ci.Product?.Name, ci.Qty)).ToList()
-            };
-            await LoadAsync();
+            var updatedItems = updated.Items.Select(ci => new ComboItemDto(
+                ci.Id, ci.ProductId, ci.Product?.Name, ci.Qty)).ToList();
+            _currentCombo = _currentCombo with { Items = updatedItems };
+
+            var listIndex = _items.FindIndex(c => c.Id == _currentCombo.Id);
+            if (listIndex >= 0)
+                _items[listIndex] = _items[listIndex] with { Items = updatedItems };
         }
         else
         {
@@ -420,11 +503,12 @@
         if (result.Data?.RemoveComboItem is not null)
         {
             ToastService.Success("Đã xóa món khỏi combo.");
-            _currentCombo = _currentCombo with
-            {
-                Items = _currentCombo.Items.Where(ci => ci.Id != itemId).ToList()
-            };
-            await LoadAsync();
+            var updatedItems = _currentCombo.Items.Where(ci => ci.Id != itemId).ToList();
+            _currentCombo = _currentCombo with { Items = updatedItems };
+
+            var listIndex = _items.FindIndex(c => c.Id == _currentCombo.Id);
+            if (listIndex >= 0)
+                _items[listIndex] = _items[listIndex] with { Items = updatedItems };
         }
         else
         {

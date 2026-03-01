@@ -85,18 +85,25 @@
 
         <div class="flex items-center justify-between text-sm text-muted-foreground">
             <span>Hiển thị @(_items.Count) / @_total danh mục</span>
-            <div class="flex gap-2">
+            <div class="flex items-center gap-2">
                 <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small"
-                          Disabled="@(_skip == 0)" OnClick="PrevPage">Trước</BbButton>
+                          Disabled="@(CurrentPage <= 1)" OnClick="() => GoToPageAsync(CurrentPage - 1)">Trước</BbButton>
+                @foreach (var page in VisiblePages)
+                {
+                    <BbButton Variant="@(page == CurrentPage ? ButtonVariant.Default : ButtonVariant.Outline)"
+                              Size="ButtonSize.Small"
+                              Disabled="@(page == CurrentPage)"
+                              OnClick="() => GoToPageAsync(page)">@(page)</BbButton>
+                }
                 <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small"
-                          Disabled="@(_skip + _take >= _total)" OnClick="NextPage">Sau</BbButton>
+                          Disabled="@(CurrentPage >= TotalPages)" OnClick="() => GoToPageAsync(CurrentPage + 1)">Sau</BbButton>
             </div>
         </div>
     }
 </div>
 
 <!-- Create Dialog -->
-<BbDialog @bind-Open="_showCreate">
+<BbDialog Open="@_showCreate" OpenChanged="@(v => _showCreate = v)">
     <BbDialogContent>
         <BbDialogHeader>
             <BbDialogTitle>Thêm danh mục</BbDialogTitle>
@@ -119,7 +126,7 @@
 </BbDialog>
 
 <!-- Edit Dialog -->
-<BbDialog @bind-Open="_showEdit">
+<BbDialog Open="@_showEdit" OpenChanged="@(v => _showEdit = v)">
     <BbDialogContent>
         <BbDialogHeader>
             <BbDialogTitle>Sửa danh mục</BbDialogTitle>
@@ -144,7 +151,7 @@
 @code {
     private List<CategoryDto> _items = [];
     private bool _loading, _saving;
-    private int _skip, _take = 10, _total;
+    private int _skip, _take = 5, _total;
     private string _search = "";
     private string? _error;
 
@@ -152,13 +159,14 @@
     private Guid? _editId;
     private string _formName = "";
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnInitializedAsync() => await LoadAsync(showLoading: true);
 
-    private async Task LoadAsync()
+    private async Task LoadAsync(bool showLoading = false)
     {
-        _loading = true;
+        _loading = showLoading;
         _error = null;
-        StateHasChanged();
+        if (showLoading)
+            StateHasChanged();
         try
         {
             CategoryFilterInput? where = string.IsNullOrWhiteSpace(_search) ? null
@@ -179,8 +187,31 @@
         _loading = false;
     }
 
-    private async Task PrevPage() { _skip = Math.Max(0, _skip - _take); await LoadAsync(); }
-    private async Task NextPage() { _skip += _take; await LoadAsync(); }
+    private int CurrentPage => (_skip / _take) + 1;
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(_total / (double)_take));
+    private IEnumerable<int> VisiblePages
+    {
+        get
+        {
+            if (TotalPages <= 7)
+                return Enumerable.Range(1, TotalPages);
+
+            var start = Math.Max(1, CurrentPage - 2);
+            var end = Math.Min(TotalPages, start + 4);
+            start = Math.Max(1, end - 4);
+            return Enumerable.Range(start, end - start + 1);
+        }
+    }
+
+    private async Task GoToPageAsync(int page)
+    {
+        var targetPage = Math.Clamp(page, 1, TotalPages);
+        _skip = (targetPage - 1) * _take;
+        await LoadAsync();
+    }
+
+    private bool MatchesCurrentFilter(string name)
+        => string.IsNullOrWhiteSpace(_search) || name.Contains(_search, StringComparison.OrdinalIgnoreCase);
 
     private void OpenCreate() { _formName = ""; _showCreate = true; }
     private void OpenEdit(CategoryDto item) { _editId = item.Id; _formName = item.Name; _showEdit = true; }
@@ -190,11 +221,17 @@
         _saving = true;
         var result = await Client.CreateCategory.ExecuteAsync(_formName);
         _saving = false;
-        if (result.Data?.CreateCategory is not null)
+        if (result.Data?.CreateCategory is { } created)
         {
             _showCreate = false;
             ToastService.Success("Đã thêm danh mục.");
-            await LoadAsync();
+            if (MatchesCurrentFilter(created.Name))
+            {
+                _total++;
+                _items.Insert(0, new CategoryDto(created.Id, created.Name));
+                if (_items.Count > _take)
+                    _items.RemoveAt(_items.Count - 1);
+            }
         }
         else
         {
@@ -207,11 +244,33 @@
         _saving = true;
         var result = await Client.UpdateCategory.ExecuteAsync(_editId!.Value, _formName);
         _saving = false;
-        if (result.Data?.UpdateCategory is not null)
+        if (result.Data?.UpdateCategory is { } updated)
         {
             _showEdit = false;
             ToastService.Success("Đã cập nhật danh mục.");
-            await LoadAsync();
+
+            var index = _items.FindIndex(x => x.Id == updated.Id);
+            if (index >= 0)
+            {
+                if (MatchesCurrentFilter(updated.Name))
+                {
+                    _items[index] = new CategoryDto(updated.Id, updated.Name);
+                }
+                else
+                {
+                    _items.RemoveAt(index);
+                    _total = Math.Max(0, _total - 1);
+                    if (_items.Count == 0 && _skip > 0 && _total > 0)
+                    {
+                        _skip = Math.Max(0, _skip - _take);
+                        await LoadAsync();
+                    }
+                }
+            }
+            else
+            {
+                await LoadAsync();
+            }
         }
         else
         {
@@ -231,8 +290,22 @@
         if (result.Data?.DeleteCategory == true)
         {
             ToastService.Success("Đã xóa danh mục.");
-            if (_items.Count == 1 && _skip > 0) _skip -= _take;
-            await LoadAsync();
+            var index = _items.FindIndex(x => x.Id == id);
+            if (index >= 0)
+            {
+                _items.RemoveAt(index);
+                _total = Math.Max(0, _total - 1);
+
+                if (_items.Count == 0 && _skip > 0 && _total > 0)
+                    _skip = Math.Max(0, _skip - _take);
+
+                if ((_items.Count < _take && _total > _items.Count) || (_items.Count == 0 && _total > 0))
+                    await LoadAsync();
+            }
+            else
+            {
+                await LoadAsync();
+            }
         }
         else
         {

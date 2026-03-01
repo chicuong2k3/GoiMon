@@ -23,6 +23,22 @@
         "/^dotnet graphql generate --config strawberryshake\\.yml$/": {
             "approve": true,
             "matchCommandLine": true
+        },
+        "/^dotnet-symbol /home/chicuong/\\.nuget/packages/blazorblueprint\\.components/3\\.2\\.0/lib/net8\\.0/BlazorBlueprint\\.Components\\.dll 2>/dev/null \\|\\| true && \\\\\ngrep -A10 \"BbDialog\\\\b\" /home/chicuong/\\.nuget/packages/blazorblueprint\\.components/3\\.2\\.0/lib/net8\\.0/BlazorBlueprint\\.Components\\.xml \\| head -30$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^cd /tmp && cat > decompile\\.csx << 'EOF'\n#r \"nuget: ICSharpCode\\.Decompiler, 9\\.1\\.0\\.7988\"\nusing ICSharpCode\\.Decompiler;\nusing ICSharpCode\\.Decompiler\\.CSharp;\n\nvar dll = \"/home/chicuong/\\.nuget/packages/blazorblueprint\\.components/3\\.2\\.0/lib/net8\\.0/BlazorBlueprint\\.Components\\.dll\";\nvar decompiler = new CSharpDecompiler\\(dll, new DecompilerSettings\\(\\)\\);\nvar types = decompiler\\.TypeSystem\\.MainModule\\.TypeDefinitions\n    \\.Where\\(t => t\\.Name == \"BbDialog\"\\)\n    \\.ToList\\(\\);\n\nforeach \\(var t in types\\)\n\\{\n    Console\\.WriteLine\\(decompiler\\.DecompileTypeAsString\\(t\\.FullTypeName\\)\\);\n\\}\nEOF\ndotnet script decompile\\.csx 2>/dev/null \\| head -100 \\|\\| echo \"dotnet script not available\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^dotnet run 2>&1$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^dotnet run 2>&1 \\| head -60$/": {
+            "approve": true,
+            "matchCommandLine": true
         }
     },
     "cSpell.words": [

@@ -8,7 +8,7 @@
     <BbSeparator Orientation="SeparatorOrientation.Vertical" Class="h-4" />
     <h1 class="text-sm font-semibold">Sản phẩm</h1>
     <div class="ml-auto">
-        <BbButton OnClick="OpenCreate" Size="ButtonSize.Small">
+        <BbButton OnClick="OpenCreateAsync" Size="ButtonSize.Small">
             <LucideIcon Name="plus" Class="h-4 w-4 mr-1" />
             Thêm sản phẩm
         </BbButton>
@@ -104,7 +104,7 @@
                             <td class="px-4 py-3 text-right">
                                 <div class="flex justify-end gap-1">
                                     <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall"
-                                              AriaLabel="Sửa" OnClick="() => OpenEdit(item)">
+                                              AriaLabel="Sửa" OnClick="async () => await OpenEditAsync(item)">
                                         <LucideIcon Name="pencil" Class="h-4 w-4" />
                                     </BbButton>
                                     <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall"
@@ -122,18 +122,25 @@
 
         <div class="flex items-center justify-between text-sm text-muted-foreground">
             <span>Hiển thị @(_items.Count) / @_total sản phẩm</span>
-            <div class="flex gap-2">
+            <div class="flex items-center gap-2">
                 <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small"
-                          Disabled="@(_skip == 0)" OnClick="PrevPage">Trước</BbButton>
+                          Disabled="@(CurrentPage <= 1)" OnClick="() => GoToPageAsync(CurrentPage - 1)">Trước</BbButton>
+                @foreach (var page in VisiblePages)
+                {
+                    <BbButton Variant="@(page == CurrentPage ? ButtonVariant.Default : ButtonVariant.Outline)"
+                              Size="ButtonSize.Small"
+                              Disabled="@(page == CurrentPage)"
+                              OnClick="() => GoToPageAsync(page)">@(page)</BbButton>
+                }
                 <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small"
-                          Disabled="@(_skip + _take >= _total)" OnClick="NextPage">Sau</BbButton>
+                          Disabled="@(CurrentPage >= TotalPages)" OnClick="() => GoToPageAsync(CurrentPage + 1)">Sau</BbButton>
             </div>
         </div>
     }
 </div>
 
 <!-- Create Dialog -->
-<BbDialog @bind-Open="_showCreate">
+<BbDialog Open="@_showCreate" OpenChanged="@(v => _showCreate = v)">
     <BbDialogContent Class="max-w-md">
         <BbDialogHeader>
             <BbDialogTitle>Thêm sản phẩm</BbDialogTitle>
@@ -162,6 +169,10 @@
                         }
                     </BbSelectContent>
                 </BbSelect>
+                @if (_formCategoryId.HasValue)
+                {
+                    <p class="text-xs text-muted-foreground">Đã chọn: @GetCategoryDisplayName(_formCategoryId)</p>
+                }
             </div>
             <div class="space-y-1">
                 <label class="text-sm font-medium">Mô tả</label>
@@ -182,7 +193,7 @@
 </BbDialog>
 
 <!-- Edit Dialog -->
-<BbDialog @bind-Open="_showEdit">
+<BbDialog Open="@_showEdit" OpenChanged="@(v => _showEdit = v)">
     <BbDialogContent Class="max-w-md">
         <BbDialogHeader>
             <BbDialogTitle>Sửa sản phẩm</BbDialogTitle>
@@ -211,6 +222,10 @@
                         }
                     </BbSelectContent>
                 </BbSelect>
+                @if (_formCategoryId.HasValue)
+                {
+                    <p class="text-xs text-muted-foreground">Đã chọn: @GetCategoryDisplayName(_formCategoryId)</p>
+                }
             </div>
             <div class="space-y-1">
                 <label class="text-sm font-medium">Mô tả</label>
@@ -234,7 +249,7 @@
     private List<ProductDto> _items = [];
     private List<CategoryItem> _allCategories = [];
     private bool _loading, _saving;
-    private int _skip, _take = 10, _total;
+    private int _skip, _take = 5, _total;
     private string _search = "";
     private Guid? _filterCategoryId;
     private string? _error;
@@ -248,21 +263,41 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await Task.WhenAll(LoadCategoriesAsync(), LoadAsync());
+        await Task.WhenAll(LoadCategoriesAsync(), LoadAsync(showLoading: true));
     }
 
     private async Task LoadCategoriesAsync()
     {
-        var result = await Client.GetAllCategories.ExecuteAsync();
-        if (result.Data?.CategoriesOffset?.Items is { } cats)
-            _allCategories = cats.Select(c => new CategoryItem(c.Id, c.Name)).ToList();
+        try
+        {
+            var result = await Client.GetCategories.ExecuteAsync(0, 500, null);
+            if (result.Data?.CategoriesOffset?.Items is { } cats)
+            {
+                _allCategories = cats.Select(c => new CategoryItem(c.Id, c.Name)).ToList();
+                return;
+            }
+
+            _allCategories = [];
+        }
+        catch (Exception ex)
+        {
+            _allCategories = [];
+            _error = ex.Message;
+        }
     }
 
-    private async Task LoadAsync()
+    private async Task EnsureCategoriesLoadedAsync()
     {
-        _loading = true;
+        if (_allCategories.Count == 0)
+            await LoadCategoriesAsync();
+    }
+
+    private async Task LoadAsync(bool showLoading = false)
+    {
+        _loading = showLoading;
         _error = null;
-        StateHasChanged();
+        if (showLoading)
+            StateHasChanged();
         try
         {
             var result = await Client.GetProducts.ExecuteAsync(_skip, _take, BuildFilter());
@@ -295,11 +330,42 @@
         };
     }
 
-    private async Task PrevPage() { _skip = Math.Max(0, _skip - _take); await LoadAsync(); }
-    private async Task NextPage() { _skip += _take; await LoadAsync(); }
-
-    private void OpenCreate()
+    private bool MatchesCurrentFilter(string name, Guid? categoryId)
     {
+        var nameMatches = string.IsNullOrWhiteSpace(_search) || name.Contains(_search, StringComparison.OrdinalIgnoreCase);
+        var categoryMatches = !_filterCategoryId.HasValue || categoryId == _filterCategoryId;
+        return nameMatches && categoryMatches;
+    }
+
+    private int CurrentPage => (_skip / _take) + 1;
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(_total / (double)_take));
+    private IEnumerable<int> VisiblePages
+    {
+        get
+        {
+            if (TotalPages <= 7)
+                return Enumerable.Range(1, TotalPages);
+
+            var start = Math.Max(1, CurrentPage - 2);
+            var end = Math.Min(TotalPages, start + 4);
+            start = Math.Max(1, end - 4);
+            return Enumerable.Range(start, end - start + 1);
+        }
+    }
+
+    private async Task GoToPageAsync(int page)
+    {
+        var targetPage = Math.Clamp(page, 1, TotalPages);
+        _skip = (targetPage - 1) * _take;
+        await LoadAsync();
+    }
+
+    private async Task OpenCreateAsync()
+    {
+        await EnsureCategoriesLoadedAsync();
+        if (_allCategories.Count == 0)
+            ToastService.Warning("Chưa có danh mục để chọn. Vui lòng tạo danh mục trước.");
+
         _editId = null;
         _formName = "";
         _formPriceStr = "";
@@ -307,15 +373,33 @@
         _formDescription = "";
         _showCreate = true;
     }
+    private void CloseCreate() => _showCreate = false;
+    private void CloseEdit() => _showEdit = false;
 
-    private void OpenEdit(ProductDto item)
+    private async Task OpenEditAsync(ProductDto item)
     {
+        await EnsureCategoriesLoadedAsync();
+        if (_allCategories.Count == 0)
+            ToastService.Warning("Chưa có danh mục để chọn. Vui lòng tạo danh mục trước.");
+
         _editId = item.Id;
         _formName = item.Name;
         _formPriceStr = item.Price.ToString();
         _formCategoryId = item.CategoryId;
         _formDescription = item.Description ?? "";
         _showEdit = true;
+    }
+
+    private string GetCategoryDisplayName(Guid? categoryId)
+    {
+        if (!categoryId.HasValue) return "Không có";
+        return _allCategories.FirstOrDefault(c => c.Id == categoryId.Value)?.Name ?? "(Không tìm thấy danh mục)";
+    }
+
+    private string? GetCategoryName(Guid? categoryId)
+    {
+        if (!categoryId.HasValue) return null;
+        return _allCategories.FirstOrDefault(c => c.Id == categoryId.Value)?.Name;
     }
 
     private async Task HandleCreate()
@@ -325,11 +409,24 @@
         var desc = string.IsNullOrWhiteSpace(_formDescription) ? null : _formDescription;
         var result = await Client.CreateProduct.ExecuteAsync(_formName, price, _formCategoryId, desc);
         _saving = false;
-        if (result.Data?.CreateProduct is not null)
+        if (result.Data?.CreateProduct is { } created)
         {
             _showCreate = false;
             ToastService.Success("Đã thêm sản phẩm.");
-            await LoadAsync();
+
+            if (MatchesCurrentFilter(created.Name, created.CategoryId))
+            {
+                _total++;
+                _items.Insert(0, new ProductDto(
+                    created.Id,
+                    created.Name,
+                    created.Price,
+                    created.Description,
+                    created.CategoryId,
+                    GetCategoryName(created.CategoryId)));
+                if (_items.Count > _take)
+                    _items.RemoveAt(_items.Count - 1);
+            }
         }
         else
         {
@@ -344,11 +441,39 @@
         var desc = string.IsNullOrWhiteSpace(_formDescription) ? null : _formDescription;
         var result = await Client.UpdateProduct.ExecuteAsync(_editId!.Value, _formName, price, _formCategoryId, desc);
         _saving = false;
-        if (result.Data?.UpdateProduct is not null)
+        if (result.Data?.UpdateProduct is { } updated)
         {
             _showEdit = false;
             ToastService.Success("Đã cập nhật sản phẩm.");
-            await LoadAsync();
+
+            var index = _items.FindIndex(x => x.Id == updated.Id);
+            if (index >= 0)
+            {
+                if (MatchesCurrentFilter(updated.Name, updated.CategoryId))
+                {
+                    _items[index] = new ProductDto(
+                        updated.Id,
+                        updated.Name,
+                        updated.Price,
+                        updated.Description,
+                        updated.CategoryId,
+                        GetCategoryName(updated.CategoryId));
+                }
+                else
+                {
+                    _items.RemoveAt(index);
+                    _total = Math.Max(0, _total - 1);
+                    if (_items.Count == 0 && _skip > 0 && _total > 0)
+                    {
+                        _skip = Math.Max(0, _skip - _take);
+                        await LoadAsync();
+                    }
+                }
+            }
+            else
+            {
+                await LoadAsync();
+            }
         }
         else
         {
@@ -368,8 +493,22 @@
         if (result.Data?.DeleteProduct == true)
         {
             ToastService.Success("Đã xóa sản phẩm.");
-            if (_items.Count == 1 && _skip > 0) _skip -= _take;
-            await LoadAsync();
+            var index = _items.FindIndex(x => x.Id == id);
+            if (index >= 0)
+            {
+                _items.RemoveAt(index);
+                _total = Math.Max(0, _total - 1);
+
+                if (_items.Count == 0 && _skip > 0 && _total > 0)
+                    _skip = Math.Max(0, _skip - _take);
+
+                if ((_items.Count < _take && _total > _items.Count) || (_items.Count == 0 && _total > 0))
+                    await LoadAsync();
+            }
+            else
+            {
+                await LoadAsync();
+            }
         }
         else
         {
