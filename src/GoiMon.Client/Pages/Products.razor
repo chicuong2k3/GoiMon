@@ -1,7 +1,6 @@
 @page "/products"
 @inject IGoiMonClient Client
 @inject ToastService ToastService
-@inject DialogService DialogService
 @inject IStateReader<UiCacheState> UiStateReader
 @inject IStateWriter<UiCacheState> UiStateWriter
 
@@ -29,21 +28,43 @@
                      DebounceInterval="400"
                      Placeholder="Tìm kiếm sản phẩm..." />
         </div>
-        <div class="w-52">
-            <BbSelect TValue="Guid?"
-                      Value="@_filterCategoryId"
-                      ValueChanged="@(async v => { _filterCategoryId = v; _skip = 0; await LoadAsync(); })">
-                <BbSelectTrigger>
-                    <BbSelectValue Placeholder="Tất cả danh mục" />
-                </BbSelectTrigger>
-                <BbSelectContent>
-                    <BbSelectItem Value="@((Guid?)null)">Tất cả danh mục</BbSelectItem>
-                    @foreach (var c in _allCategories)
-                    {
-                        <BbSelectItem Value="@((Guid?)c.Id)">@c.Name</BbSelectItem>
-                    }
-                </BbSelectContent>
-            </BbSelect>
+        <div class="flex items-center gap-2">
+            <div class="w-52">
+                <BbCombobox TValue="Guid?"
+                            Value="@_filterCategoryId"
+                            ValueChanged="@(async v => { _filterCategoryId = v; _skip = 0; await LoadAsync(); })"
+                            Options="FilterCategoryOptions"
+                            Placeholder="Tất cả danh mục"
+                            SearchPlaceholder="Tìm danh mục..."
+                            EmptyMessage="Không tìm thấy danh mục."
+                            MatchTriggerWidth="true" />
+            </div>
+        </div>
+    </div>
+    <div class="flex flex-wrap items-center gap-3">
+        <div class="w-40">
+            <BbInput Value="@_filterPriceMin"
+                     ValueChanged="@(async v => { _filterPriceMin = v; _skip = 0; await LoadAsync(); })"
+                     UpdateTiming="UpdateTiming.Debounced"
+                     DebounceInterval="400"
+                     Placeholder="Giá từ" />
+        </div>
+        <div class="w-40">
+            <BbInput Value="@_filterPriceMax"
+                     ValueChanged="@(async v => { _filterPriceMax = v; _skip = 0; await LoadAsync(); })"
+                     UpdateTiming="UpdateTiming.Debounced"
+                     DebounceInterval="400"
+                     Placeholder="Giá đến" />
+        </div>
+        <div class="w-56">
+            <BbCombobox TValue="string"
+                        Value="@_sortOption"
+                        ValueChanged="@(async v => { _sortOption = v; _skip = 0; await LoadAsync(); })"
+                        Options="SortOptions"
+                        Placeholder="Sắp xếp"
+                        SearchPlaceholder="Tìm kiểu sắp xếp..."
+                        EmptyMessage="Không có trường."
+                        MatchTriggerWidth="true" />
         </div>
     </div>
 
@@ -114,7 +135,7 @@
                                     </BbButton>
                                     <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall"
                                               AriaLabel="Xóa" Class="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                              OnClick="() => HandleDelete(item.Id)">
+                                              OnClick="() => OpenDeleteConfirm(item.Id)">
                                         <LucideIcon Name="trash-2" Class="h-4 w-4" />
                                     </BbButton>
                                 </div>
@@ -162,18 +183,13 @@
             </div>
             <div class="space-y-1">
                 <label class="text-sm font-medium">Danh mục</label>
-                <BbSelect TValue="Guid?" @bind-Value="_formCategoryId">
-                    <BbSelectTrigger>
-                        <BbSelectValue Placeholder="Chọn danh mục..." />
-                    </BbSelectTrigger>
-                    <BbSelectContent>
-                        <BbSelectItem Value="@((Guid?)null)">Không có</BbSelectItem>
-                        @foreach (var c in _allCategories)
-                        {
-                            <BbSelectItem Value="@((Guid?)c.Id)">@c.Name</BbSelectItem>
-                        }
-                    </BbSelectContent>
-                </BbSelect>
+                <BbCombobox TValue="Guid?"
+                            @bind-Value="_formCategoryId"
+                            Options="CategoryOptions"
+                            Placeholder="Chọn danh mục..."
+                            SearchPlaceholder="Tìm danh mục..."
+                            EmptyMessage="Không tìm thấy danh mục."
+                            MatchTriggerWidth="true" />
                 @if (_formCategoryId.HasValue)
                 {
                     <p class="text-xs text-muted-foreground">Đã chọn: @GetCategoryDisplayName(_formCategoryId)</p>
@@ -197,6 +213,22 @@
     </BbDialogContent>
 </BbDialog>
 
+<!-- Delete Confirm Dialog -->
+<BbDialog Open="@_showDeleteConfirm" OpenChanged="@(v => _showDeleteConfirm = v)">
+    <BbDialogContent Class="max-w-md">
+        <BbDialogHeader>
+            <BbDialogTitle>Xóa sản phẩm?</BbDialogTitle>
+            <BbDialogDescription>Hành động này không thể hoàn tác.</BbDialogDescription>
+        </BbDialogHeader>
+        <BbDialogFooter>
+            <BbDialogClose>
+                <BbButton Variant="ButtonVariant.Outline">Hủy</BbButton>
+            </BbDialogClose>
+            <BbButton Variant="ButtonVariant.Destructive" OnClick="ConfirmDeleteAsync">Xóa</BbButton>
+        </BbDialogFooter>
+    </BbDialogContent>
+</BbDialog>
+
 <!-- Edit Dialog -->
 <BbDialog Open="@_showEdit" OpenChanged="@(v => _showEdit = v)">
     <BbDialogContent Class="max-w-md">
@@ -215,18 +247,13 @@
             </div>
             <div class="space-y-1">
                 <label class="text-sm font-medium">Danh mục</label>
-                <BbSelect TValue="Guid?" @bind-Value="_formCategoryId">
-                    <BbSelectTrigger>
-                        <BbSelectValue Placeholder="Chọn danh mục..." />
-                    </BbSelectTrigger>
-                    <BbSelectContent>
-                        <BbSelectItem Value="@((Guid?)null)">Không có</BbSelectItem>
-                        @foreach (var c in _allCategories)
-                        {
-                            <BbSelectItem Value="@((Guid?)c.Id)">@c.Name</BbSelectItem>
-                        }
-                    </BbSelectContent>
-                </BbSelect>
+                <BbCombobox TValue="Guid?"
+                            @bind-Value="_formCategoryId"
+                            Options="CategoryOptions"
+                            Placeholder="Chọn danh mục..."
+                            SearchPlaceholder="Tìm danh mục..."
+                            EmptyMessage="Không tìm thấy danh mục."
+                            MatchTriggerWidth="true" />
                 @if (_formCategoryId.HasValue)
                 {
                     <p class="text-xs text-muted-foreground">Đã chọn: @GetCategoryDisplayName(_formCategoryId)</p>
@@ -257,6 +284,9 @@
     private int _skip, _take = 5, _total;
     private string _search = "";
     private Guid? _filterCategoryId;
+    private string _filterPriceMin = "";
+    private string _filterPriceMax = "";
+    private string _sortOption = "name_asc";
     private string? _error;
 
     private bool _showCreate, _showEdit;
@@ -265,11 +295,30 @@
     private string _formPriceStr = "";
     private Guid? _formCategoryId;
     private string _formDescription = "";
+    private bool _showDeleteConfirm;
+    private Guid? _pendingDeleteId;
+
+    private static readonly List<SelectOption<string>> SortOptions =
+    [
+        new("name_asc", "Tên A → Z"),
+        new("name_desc", "Tên Z → A"),
+        new("price_asc", "Giá tăng dần"),
+        new("price_desc", "Giá giảm dần")
+    ];
+
+    private List<SelectOption<Guid?>> CategoryOptions =>
+        [new SelectOption<Guid?>(null, "Không có"), .. _allCategories.Select(c => new SelectOption<Guid?>(c.Id, c.Name))];
+
+    private List<SelectOption<Guid?>> FilterCategoryOptions =>
+        [new SelectOption<Guid?>(null, "✕ Tất cả danh mục"), .. _allCategories.Select(c => new SelectOption<Guid?>(c.Id, c.Name))];
 
     protected override async Task OnInitializedAsync()
     {
         if (TryRestoreState())
+        {
+            _ = LoadCategoriesAsync(silent: true);
             return;
+        }
 
         await Task.WhenAll(LoadCategoriesAsync(), LoadAsync(showLoading: true));
     }
@@ -303,33 +352,74 @@
         return UiStateWriter.UpdateAsync(s => s with { Products = snapshot }, "cache.products");
     }
 
-    private async Task LoadCategoriesAsync()
+    private async Task LoadCategoriesAsync(bool silent = false)
     {
         try
         {
-            var result = await Client.GetCategories.ExecuteAsync(0, 500, null);
-            if (result.Data?.CategoriesOffset?.Items is { } cats)
-            {
-                _allCategories = cats.Select(c => new CategoryItem(c.Id, c.Name)).ToList();
-                await PersistStateAsync();
-                return;
-            }
-
-            _allCategories = [];
+            _allCategories = await FetchAllCategoriesAsync();
             await PersistStateAsync();
         }
         catch (Exception ex)
         {
-            _allCategories = [];
-            _error = ex.Message;
+            if (!silent)
+                ToastService.Warning($"Không tải được danh mục: {ex.Message}");
         }
     }
 
-    private async Task EnsureCategoriesLoadedAsync()
+    private async Task EnsureCategoriesLoadedAsync(bool forceRefresh = false)
     {
-        if (_allCategories.Count == 0)
-            await LoadCategoriesAsync();
+        if (forceRefresh || _allCategories.Count == 0)
+            await LoadCategoriesAsync(silent: true);
     }
+
+    private async Task<List<CategoryItem>> FetchAllCategoriesAsync()
+    {
+        var pageSize = 100;
+        const int minPageSize = 1;
+        var skip = 0;
+        var all = new List<CategoryItem>();
+
+        while (true)
+        {
+            var result = await Client.GetCategories.ExecuteAsync(skip, pageSize, null, [new CategorySortInput { Name = SortEnumType.Asc }]);
+            if (result.Data?.CategoriesOffset is { } data)
+            {
+                if (data.Items is { } cats)
+                    all.AddRange(cats.Select(c => new CategoryItem(c.Id, c.Name)));
+
+                if (data.PageInfo?.HasNextPage != true)
+                    break;
+
+                skip += pageSize;
+                continue;
+            }
+
+            if (result.Errors.Count > 0)
+            {
+                var message = result.Errors[0].Message;
+                if (IsPageSizeExceededError(message) && pageSize > minPageSize)
+                {
+                    pageSize = Math.Max(minPageSize, pageSize / 2);
+                    continue;
+                }
+
+                throw new InvalidOperationException(message);
+            }
+
+            break;
+        }
+
+        return all
+            .GroupBy(c => c.Id)
+            .Select(g => g.First())
+            .ToList();
+    }
+
+    private static bool IsPageSizeExceededError(string message)
+        => message.Contains("maximum allowed items per page", StringComparison.OrdinalIgnoreCase)
+           || message.Contains("items per page", StringComparison.OrdinalIgnoreCase)
+           || message.Contains("page size", StringComparison.OrdinalIgnoreCase)
+           || message.Contains("take", StringComparison.OrdinalIgnoreCase);
 
     private async Task LoadAsync(bool showLoading = false)
     {
@@ -339,17 +429,35 @@
             StateHasChanged();
         try
         {
-            var result = await Client.GetProducts.ExecuteAsync(_skip, _take, BuildFilter());
-            if (result.Data?.Products is { } data)
+            var serverFilter = BuildServerFilter();
+            var order = BuildOrder();
+
+            if (_filterCategoryId.HasValue)
             {
-                _items = data.Items?.Select(i => new ProductDto(
-                    i.Id, i.Name, i.Price, i.Description, i.CategoryId, i.Category?.Name
-                )).ToList() ?? [];
-                _total = data.TotalCount;
+                var allItems = await FetchAllProductsAsync(serverFilter, order);
+                var filtered = allItems.Where(i => i.CategoryId == _filterCategoryId).ToList();
+
+                _total = filtered.Count;
+                if (_skip >= _total && _total > 0)
+                    _skip = Math.Max(0, ((_total - 1) / _take) * _take);
+
+                _items = filtered.Skip(_skip).Take(_take).ToList();
                 await PersistStateAsync();
             }
-            else if (result.Errors.Count > 0)
-                _error = result.Errors[0].Message;
+            else
+            {
+                var result = await Client.GetProducts.ExecuteAsync(_skip, _take, serverFilter, order);
+                if (result.Data?.Products is { } data)
+                {
+                    _items = data.Items?.Select(i => new ProductDto(
+                        i.Id, i.Name, i.Price, i.Description, i.CategoryId, i.Category?.Name
+                    )).ToList() ?? [];
+                    _total = data.TotalCount;
+                    await PersistStateAsync();
+                }
+                else if (result.Errors.Count > 0)
+                    _error = GraphQLErrorFormatter.Format(result.Errors, "Không tải được sản phẩm.");
+            }
         }
         catch (Exception ex)
         {
@@ -358,23 +466,120 @@
         _loading = false;
     }
 
-    private ProductFilterInput? BuildFilter()
+    private ProductFilterInput? BuildServerFilter()
     {
         var hasSearch = !string.IsNullOrWhiteSpace(_search);
-        var hasCat = _filterCategoryId.HasValue;
-        if (!hasSearch && !hasCat) return null;
+        var hasPriceMin = decimal.TryParse(_filterPriceMin, out var minPrice);
+        var hasPriceMax = decimal.TryParse(_filterPriceMax, out var maxPrice);
+
+        if (!hasSearch && !hasPriceMin && !hasPriceMax)
+            return null;
+
+        DecimalOperationFilterInput? priceFilter = null;
+        if (hasPriceMin || hasPriceMax)
+        {
+            priceFilter = new DecimalOperationFilterInput
+            {
+                Gte = hasPriceMin ? minPrice : null,
+                Lte = hasPriceMax ? maxPrice : null
+            };
+        }
+
         return new ProductFilterInput
         {
-            Name = hasSearch ? new StringOperationFilterInput { Contains = _search } : null,
-            CategoryId = hasCat ? new UuidOperationFilterInput { Eq = _filterCategoryId } : null
+            Or = hasSearch
+                ?
+                [
+                    new ProductFilterInput { Name = new StringOperationFilterInput { Contains = _search } },
+                    new ProductFilterInput { Description = new StringOperationFilterInput { Contains = _search } }
+                ]
+                : null,
+            Price = priceFilter
         };
     }
 
-    private bool MatchesCurrentFilter(string name, Guid? categoryId)
+    private async Task<List<ProductDto>> FetchAllProductsAsync(ProductFilterInput? filter, IReadOnlyList<ProductSortInput>? order)
     {
-        var nameMatches = string.IsNullOrWhiteSpace(_search) || name.Contains(_search, StringComparison.OrdinalIgnoreCase);
+        var pageSize = 100;
+        const int minPageSize = 1;
+        var skip = 0;
+        var all = new List<ProductDto>();
+
+        while (true)
+        {
+            var result = await Client.GetProducts.ExecuteAsync(skip, pageSize, filter, order);
+            if (result.Data?.Products is { } data)
+            {
+                if (data.Items is { } items)
+                {
+                    all.AddRange(items.Select(i => new ProductDto(
+                        i.Id,
+                        i.Name,
+                        i.Price,
+                        i.Description,
+                        i.CategoryId,
+                        i.Category?.Name)));
+                }
+
+                if (data.PageInfo?.HasNextPage != true)
+                    break;
+
+                skip += pageSize;
+                continue;
+            }
+
+            if (result.Errors.Count > 0)
+            {
+                var message = result.Errors[0].Message;
+                if (IsPageSizeExceededError(message) && pageSize > minPageSize)
+                {
+                    pageSize = Math.Max(minPageSize, pageSize / 2);
+                    continue;
+                }
+
+                throw new InvalidOperationException(GraphQLErrorFormatter.Format(result.Errors, "Không tải được sản phẩm."));
+            }
+
+            break;
+        }
+
+        return all
+            .GroupBy(i => i.Id)
+            .Select(g => g.First())
+            .ToList();
+    }
+
+    private IReadOnlyList<ProductSortInput>? BuildOrder()
+    {
+        var sort = new ProductSortInput();
+        switch (_sortOption)
+        {
+            case "name_desc":
+                sort.Name = SortEnumType.Desc;
+                break;
+            case "price_asc":
+                sort.Price = SortEnumType.Asc;
+                break;
+            case "price_desc":
+                sort.Price = SortEnumType.Desc;
+                break;
+            default:
+                sort.Name = SortEnumType.Asc;
+                break;
+        }
+
+        return [sort];
+    }
+
+    private bool MatchesCurrentFilter(Guid id, string name, decimal price, string? description, Guid? categoryId)
+    {
+        var textMatches = string.IsNullOrWhiteSpace(_search)
+            || name.Contains(_search, StringComparison.OrdinalIgnoreCase)
+            || (description?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false);
         var categoryMatches = !_filterCategoryId.HasValue || categoryId == _filterCategoryId;
-        return nameMatches && categoryMatches;
+        var priceMinMatches = !decimal.TryParse(_filterPriceMin, out var minPrice) || price >= minPrice;
+        var priceMaxMatches = !decimal.TryParse(_filterPriceMax, out var maxPrice) || price <= maxPrice;
+        return textMatches && categoryMatches && priceMinMatches && priceMaxMatches;
     }
 
     private int CurrentPage => (_skip / _take) + 1;
@@ -402,7 +607,7 @@
 
     private async Task OpenCreateAsync()
     {
-        await EnsureCategoriesLoadedAsync();
+        await EnsureCategoriesLoadedAsync(forceRefresh: true);
         if (_allCategories.Count == 0)
             ToastService.Warning("Chưa có danh mục để chọn. Vui lòng tạo danh mục trước.");
 
@@ -418,7 +623,7 @@
 
     private async Task OpenEditAsync(ProductDto item)
     {
-        await EnsureCategoriesLoadedAsync();
+        await EnsureCategoriesLoadedAsync(forceRefresh: true);
         if (_allCategories.Count == 0)
             ToastService.Warning("Chưa có danh mục để chọn. Vui lòng tạo danh mục trước.");
 
@@ -454,7 +659,7 @@
             _showCreate = false;
             ToastService.Success("Đã thêm sản phẩm.");
 
-            if (MatchesCurrentFilter(created.Name, created.CategoryId))
+            if (MatchesCurrentFilter(created.Id, created.Name, created.Price, created.Description, created.CategoryId))
             {
                 _total++;
                 _items.Insert(0, new ProductDto(
@@ -471,7 +676,7 @@
         }
         else
         {
-            ToastService.Error(result.Errors.FirstOrDefault()?.Message ?? "Có lỗi xảy ra.");
+            ToastService.Error(GraphQLErrorFormatter.Format(result.Errors));
         }
     }
 
@@ -490,7 +695,7 @@
             var index = _items.FindIndex(x => x.Id == updated.Id);
             if (index >= 0)
             {
-                if (MatchesCurrentFilter(updated.Name, updated.CategoryId))
+                if (MatchesCurrentFilter(updated.Id, updated.Name, updated.Price, updated.Description, updated.CategoryId))
                 {
                     _items[index] = new ProductDto(
                         updated.Id,
@@ -520,18 +725,29 @@
         }
         else
         {
-            ToastService.Error(result.Errors.FirstOrDefault()?.Message ?? "Có lỗi xảy ra.");
+            ToastService.Error(GraphQLErrorFormatter.Format(result.Errors));
         }
+    }
+
+    private void OpenDeleteConfirm(Guid id)
+    {
+        _pendingDeleteId = id;
+        _showDeleteConfirm = true;
+    }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (!_pendingDeleteId.HasValue)
+            return;
+
+        _showDeleteConfirm = false;
+        var id = _pendingDeleteId.Value;
+        _pendingDeleteId = null;
+        await HandleDelete(id);
     }
 
     private async Task HandleDelete(Guid id)
     {
-        var confirmed = await DialogService.Confirm(
-            "Xóa sản phẩm?",
-            "Hành động này không thể hoàn tác.",
-            new ConfirmDialogOptions { Destructive = true, ConfirmText = "Xóa" });
-        if (!confirmed) return;
-
         var result = await Client.DeleteProduct.ExecuteAsync(id);
         if (result.Data?.DeleteProduct == true)
         {
@@ -557,7 +773,7 @@
         }
         else
         {
-            ToastService.Error(result.Errors.FirstOrDefault()?.Message ?? "Có lỗi xảy ra.");
+            ToastService.Error(GraphQLErrorFormatter.Format(result.Errors));
         }
     }
 

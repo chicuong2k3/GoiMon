@@ -1,5 +1,5 @@
-query GetCombos($skip: Int, $take: Int, $where: ProductComboFilterInput) {
-  combos(skip: $skip, take: $take, where: $where) {
+query GetCombos($skip: Int, $take: Int, $where: ProductComboFilterInput, $order: [ProductComboSortInput!]) {
+  combos(skip: $skip, take: $take, where: $where, order: $order) {
     items {
       id
       name

@@ -1,7 +1,6 @@
 @page "/categories"
 @inject IGoiMonClient Client
 @inject ToastService ToastService
-@inject DialogService DialogService
 @inject IStateReader<UiCacheState> UiStateReader
 @inject IStateWriter<UiCacheState> UiStateWriter
 
@@ -28,6 +27,16 @@
                      UpdateTiming="UpdateTiming.Debounced"
                      DebounceInterval="400"
                      Placeholder="Tìm kiếm danh mục..." />
+        </div>
+        <div class="w-56">
+            <BbCombobox TValue="string"
+                        Value="@_sortOption"
+                        ValueChanged="@(async v => { _sortOption = v; _skip = 0; await LoadAsync(); })"
+                        Options="SortOptions"
+                        Placeholder="Sắp xếp"
+                        SearchPlaceholder="Tìm kiểu sắp xếp..."
+                        EmptyMessage="Không có thứ tự."
+                        MatchTriggerWidth="true" />
         </div>
     </div>
 
@@ -77,7 +86,7 @@
                                     </BbButton>
                                     <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall"
                                               AriaLabel="Xóa" Class="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                              OnClick="() => HandleDelete(item.Id)">
+                                              OnClick="() => OpenDeleteConfirm(item.Id)">
                                         <LucideIcon Name="trash-2" Class="h-4 w-4" />
                                     </BbButton>
                                 </div>
@@ -130,6 +139,22 @@
     </BbDialogContent>
 </BbDialog>
 
+<!-- Delete Confirm Dialog -->
+<BbDialog Open="@_showDeleteConfirm" OpenChanged="@(v => _showDeleteConfirm = v)">
+    <BbDialogContent Class="max-w-md">
+        <BbDialogHeader>
+            <BbDialogTitle>Xóa danh mục?</BbDialogTitle>
+            <BbDialogDescription>Hành động này không thể hoàn tác.</BbDialogDescription>
+        </BbDialogHeader>
+        <BbDialogFooter>
+            <BbDialogClose>
+                <BbButton Variant="ButtonVariant.Outline">Hủy</BbButton>
+            </BbDialogClose>
+            <BbButton Variant="ButtonVariant.Destructive" OnClick="ConfirmDeleteAsync">Xóa</BbButton>
+        </BbDialogFooter>
+    </BbDialogContent>
+</BbDialog>
+
 <!-- Edit Dialog -->
 <BbDialog Open="@_showEdit" OpenChanged="@(v => _showEdit = v)">
     <BbDialogContent>
@@ -158,11 +183,20 @@
     private bool _loading, _saving;
     private int _skip, _take = 5, _total;
     private string _search = "";
+    private string _sortOption = "name_asc";
     private string? _error;
 
     private bool _showCreate, _showEdit;
     private Guid? _editId;
     private string _formName = "";
+    private bool _showDeleteConfirm;
+    private Guid? _pendingDeleteId;
+
+    private static readonly List<SelectOption<string>> SortOptions =
+    [
+        new("name_asc", "Tên A → Z"),
+        new("name_desc", "Tên Z → A")
+    ];
 
     protected override async Task OnInitializedAsync()
     {
@@ -205,9 +239,7 @@
             StateHasChanged();
         try
         {
-            CategoryFilterInput? where = string.IsNullOrWhiteSpace(_search) ? null
-                : new CategoryFilterInput { Name = new StringOperationFilterInput { Contains = _search } };
-            var result = await Client.GetCategories.ExecuteAsync(_skip, _take, where);
+            var result = await Client.GetCategories.ExecuteAsync(_skip, _take, BuildFilter(), BuildOrder());
             if (result.Data?.CategoriesOffset is { } data)
             {
                 _items = data.Items?.Select(i => new CategoryDto(i.Id, i.Name)).ToList() ?? [];
@@ -215,13 +247,33 @@
                 await PersistStateAsync();
             }
             else if (result.Errors.Count > 0)
-                _error = result.Errors[0].Message;
+                _error = GraphQLErrorFormatter.Format(result.Errors, "Không tải được danh mục.");
         }
         catch (Exception ex)
         {
             _error = ex.Message;
         }
         _loading = false;
+    }
+
+    private CategoryFilterInput? BuildFilter()
+    {
+        var hasName = !string.IsNullOrWhiteSpace(_search);
+        if (!hasName)
+            return null;
+
+        return new CategoryFilterInput
+        {
+            Name = new StringOperationFilterInput { Contains = _search }
+        };
+    }
+
+    private IReadOnlyList<CategorySortInput>? BuildOrder()
+    {
+        var dir = _sortOption == "name_desc" ? SortEnumType.Desc : SortEnumType.Asc;
+        var sort = new CategorySortInput { Name = dir };
+
+        return [sort];
     }
 
     private int CurrentPage => (_skip / _take) + 1;
@@ -247,8 +299,11 @@
         await LoadAsync();
     }
 
-    private bool MatchesCurrentFilter(string name)
-        => string.IsNullOrWhiteSpace(_search) || name.Contains(_search, StringComparison.OrdinalIgnoreCase);
+    private bool MatchesCurrentFilter(Guid id, string name)
+    {
+        var nameMatches = string.IsNullOrWhiteSpace(_search) || name.Contains(_search, StringComparison.OrdinalIgnoreCase);
+        return nameMatches;
+    }
 
     private void OpenCreate() { _formName = ""; _showCreate = true; }
     private void OpenEdit(CategoryDto item) { _editId = item.Id; _formName = item.Name; _showEdit = true; }
@@ -262,7 +317,7 @@
         {
             _showCreate = false;
             ToastService.Success("Đã thêm danh mục.");
-            if (MatchesCurrentFilter(created.Name))
+            if (MatchesCurrentFilter(created.Id, created.Name))
             {
                 _total++;
                 _items.Insert(0, new CategoryDto(created.Id, created.Name));
@@ -273,7 +328,7 @@
         }
         else
         {
-            ToastService.Error(result.Errors.FirstOrDefault()?.Message ?? "Có lỗi xảy ra.");
+            ToastService.Error(GraphQLErrorFormatter.Format(result.Errors));
         }
     }
 
@@ -290,7 +345,7 @@
             var index = _items.FindIndex(x => x.Id == updated.Id);
             if (index >= 0)
             {
-                if (MatchesCurrentFilter(updated.Name))
+                if (MatchesCurrentFilter(updated.Id, updated.Name))
                 {
                     _items[index] = new CategoryDto(updated.Id, updated.Name);
                     await PersistStateAsync();
@@ -314,18 +369,29 @@
         }
         else
         {
-            ToastService.Error(result.Errors.FirstOrDefault()?.Message ?? "Có lỗi xảy ra.");
+            ToastService.Error(GraphQLErrorFormatter.Format(result.Errors));
         }
+    }
+
+    private void OpenDeleteConfirm(Guid id)
+    {
+        _pendingDeleteId = id;
+        _showDeleteConfirm = true;
+    }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (!_pendingDeleteId.HasValue)
+            return;
+
+        _showDeleteConfirm = false;
+        var id = _pendingDeleteId.Value;
+        _pendingDeleteId = null;
+        await HandleDelete(id);
     }
 
     private async Task HandleDelete(Guid id)
     {
-        var confirmed = await DialogService.Confirm(
-            "Xóa danh mục?",
-            "Hành động này không thể hoàn tác.",
-            new ConfirmDialogOptions { Destructive = true, ConfirmText = "Xóa" });
-        if (!confirmed) return;
-
         var result = await Client.DeleteCategory.ExecuteAsync(id);
         if (result.Data?.DeleteCategory == true)
         {
@@ -351,7 +417,7 @@
         }
         else
         {
-            ToastService.Error(result.Errors.FirstOrDefault()?.Message ?? "Có lỗi xảy ra.");
+            ToastService.Error(GraphQLErrorFormatter.Format(result.Errors));
         }
     }
 

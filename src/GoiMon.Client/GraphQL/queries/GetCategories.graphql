@@ -1,5 +1,5 @@
-query GetCategories($skip: Int, $take: Int, $where: CategoryFilterInput) {
-  categoriesOffset(skip: $skip, take: $take, where: $where) {
+query GetCategories($skip: Int, $take: Int, $where: CategoryFilterInput, $order: [CategorySortInput!]) {
+  categoriesOffset(skip: $skip, take: $take, where: $where, order: $order) {
     items {
       id
       name

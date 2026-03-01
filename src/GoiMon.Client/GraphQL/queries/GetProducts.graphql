@@ -1,5 +1,5 @@
-query GetProducts($skip: Int, $take: Int, $where: ProductFilterInput) {
-  products(skip: $skip, take: $take, where: $where) {
+query GetProducts($skip: Int, $take: Int, $where: ProductFilterInput, $order: [ProductSortInput!]) {
+  products(skip: $skip, take: $take, where: $where, order: $order) {
     items {
       id
       name
