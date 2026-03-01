@@ -197,12 +197,12 @@
 
 <!-- Create Dialog -->
 <BbDialog Open="@_showCreate" OpenChanged="@(v => _showCreate = v)">
-    <BbDialogContent Class="max-w-md flex flex-col max-h-[90vh]">
+    <BbDialogContent Class="max-w-md max-h-[90dvh] overflow-y-auto">
         <BbDialogHeader>
             <BbDialogTitle>Thêm sản phẩm</BbDialogTitle>
             <BbDialogDescription>Nhập thông tin sản phẩm mới.</BbDialogDescription>
         </BbDialogHeader>
-        <div class="overflow-y-auto flex-1 space-y-3 py-4 pr-1">
+        <div class="space-y-3 py-4 pr-1" style="max-height: 60vh; overflow-y: auto;">
             <div class="space-y-1">
                 <label class="text-sm font-medium">Tên sản phẩm <span class="text-destructive">*</span></label>
                 <BbInput @bind-Value="_formName" Placeholder="Tên sản phẩm" />
@@ -292,12 +292,12 @@
 
 <!-- Edit Dialog -->
 <BbDialog Open="@_showEdit" OpenChanged="@(v => _showEdit = v)">
-    <BbDialogContent Class="max-w-md flex flex-col max-h-[90vh]">
+    <BbDialogContent Class="max-w-md max-h-[90dvh] overflow-y-auto">
         <BbDialogHeader>
             <BbDialogTitle>Sửa sản phẩm</BbDialogTitle>
             <BbDialogDescription>Cập nhật thông tin sản phẩm.</BbDialogDescription>
         </BbDialogHeader>
-        <div class="overflow-y-auto flex-1 space-y-3 py-4 pr-1">
+        <div class="space-y-3 py-4 pr-1" style="max-height: 60vh; overflow-y: auto;">
             <div class="space-y-1">
                 <label class="text-sm font-medium">Tên sản phẩm <span class="text-destructive">*</span></label>
                 <BbInput @bind-Value="_formName" Placeholder="Tên sản phẩm" />

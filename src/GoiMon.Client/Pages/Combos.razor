@@ -195,12 +195,12 @@
 
 <!-- Create Dialog -->
 <BbDialog Open="@_showCreate" OpenChanged="@(v => _showCreate = v)">
-    <BbDialogContent Class="max-w-md flex flex-col max-h-[90vh]">
+    <BbDialogContent Class="max-w-md max-h-[90dvh] overflow-y-auto">
         <BbDialogHeader>
             <BbDialogTitle>Thêm combo</BbDialogTitle>
             <BbDialogDescription>Nhập thông tin combo mới.</BbDialogDescription>
         </BbDialogHeader>
-        <div class="overflow-y-auto flex-1 space-y-3 py-4 pr-1">
+        <div class="space-y-3 py-4 pr-1" style="max-height: 60vh; overflow-y: auto;">
             <div class="space-y-1">
                 <label class="text-sm font-medium">Tên combo <span class="text-destructive">*</span></label>
                 <BbInput @bind-Value="_formName" Placeholder="Tên combo" />
@@ -271,11 +271,11 @@
 
 <!-- Edit Dialog -->
 <BbDialog Open="@_showEdit" OpenChanged="@(v => _showEdit = v)">
-    <BbDialogContent Class="max-w-md flex flex-col max-h-[90vh]">
+    <BbDialogContent Class="max-w-md max-h-[90dvh] overflow-y-auto">
         <BbDialogHeader>
             <BbDialogTitle>Sửa combo</BbDialogTitle>
         </BbDialogHeader>
-        <div class="overflow-y-auto flex-1 space-y-3 py-4 pr-1">
+        <div class="space-y-3 py-4 pr-1" style="max-height: 60vh; overflow-y: auto;">
             <div class="space-y-1">
                 <label class="text-sm font-medium">Tên combo</label>
                 <BbInput @bind-Value="_formName" Placeholder="Tên combo" />
@@ -313,12 +313,12 @@
 
 <!-- Manage Items Dialog -->
 <BbDialog Open="@_showManageItems" OpenChanged="@(v => _showManageItems = v)">
-    <BbDialogContent Class="max-w-lg flex flex-col max-h-[90vh]">
+    <BbDialogContent Class="max-w-lg">
         <BbDialogHeader>
             <BbDialogTitle>Quản lý món — @(_currentCombo?.Name ?? "")</BbDialogTitle>
             <BbDialogDescription>Thêm hoặc xóa món trong combo.</BbDialogDescription>
         </BbDialogHeader>
-        <div class="overflow-y-auto flex-1 space-y-4 py-4 pr-1">
+        <div class="overflow-y-auto max-h-[60vh] space-y-4 py-4 pr-1">
             @if (_currentCombo?.Items.Any() == true)
             {
                 <div class="space-y-1">
