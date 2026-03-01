@@ -4,6 +4,7 @@ query GetCombos($skip: Int, $take: Int, $where: ProductComboFilterInput, $order:
       id
       name
       price
+      imageUrl
       items {
         id
         qty

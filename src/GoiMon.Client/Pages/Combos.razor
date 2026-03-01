@@ -3,6 +3,7 @@
 @inject ToastService ToastService
 @inject IStateReader<UiCacheState> UiStateReader
 @inject IStateWriter<UiCacheState> UiStateWriter
+@inject GoiMon.Client.Features.ImageUpload.Services.IImageUploadService ImageUploadSvc
 
 @using EasyAppDev.Blazor.Store.Core
 @using GoiMon.Client.State
@@ -11,7 +12,15 @@
     <BbSidebarTrigger />
     <BbSeparator Orientation="SeparatorOrientation.Vertical" Class="h-4" />
     <h1 class="text-sm font-semibold">Combo</h1>
-    <div class="ml-auto">
+    <div class="ml-auto flex items-center gap-2">
+        @if (_selectedIds.Count > 0)
+        {
+            <BbButton Variant="ButtonVariant.Destructive" Size="ButtonSize.Small"
+                      OnClick="OpenBulkDeleteConfirm">
+                <LucideIcon Name="trash-2" Class="h-4 w-4 mr-1" />
+                Xóa (@_selectedIds.Count)
+            </BbButton>
+        }
         <BbButton OnClick="OpenCreate" Size="ButtonSize.Small">
             <LucideIcon Name="plus" Class="h-4 w-4 mr-1" />
             Thêm combo
@@ -85,6 +94,9 @@
             <table class="w-full text-sm">
                 <thead class="border-b bg-muted/50">
                     <tr>
+                        <th class="h-10 w-10 px-3">
+                            <BbCheckbox Checked="@AllSelected" CheckedChanged="@ToggleSelectAll" />
+                        </th>
                         <th class="h-10 px-4 text-left font-medium text-muted-foreground">Tên combo</th>
                         <th class="h-10 px-4 text-right font-medium text-muted-foreground">Giá</th>
                         <th class="h-10 px-4 text-left font-medium text-muted-foreground hidden md:table-cell">Món trong combo</th>
@@ -95,14 +107,18 @@
                     @if (_items.Count == 0)
                     {
                         <tr>
-                            <td colspan="4" class="p-8 text-center text-muted-foreground">
+                            <td colspan="5" class="p-8 text-center text-muted-foreground">
                                 Không tìm thấy combo nào.
                             </td>
                         </tr>
                     }
                     @foreach (var item in _items)
                     {
-                        <tr class="border-b last:border-0 hover:bg-muted/50 transition-colors">
+                        <tr class="border-b last:border-0 hover:bg-muted/50 transition-colors @(_selectedIds.Contains(item.Id) ? "bg-muted/30" : "")">
+                            <td class="px-3 py-3">
+                                <BbCheckbox Checked="@_selectedIds.Contains(item.Id)"
+                                            CheckedChanged="@(v => ToggleSelect(item.Id, v))" />
+                            </td>
                             <td class="px-4 py-3 font-medium">@(item.Name ?? "—")</td>
                             <td class="px-4 py-3 text-right font-medium tabular-nums">
                                 @item.Price.ToString("#,##0") đ
@@ -165,12 +181,12 @@
 
 <!-- Create Dialog -->
 <BbDialog Open="@_showCreate" OpenChanged="@(v => _showCreate = v)">
-    <BbDialogContent>
+    <BbDialogContent Class="max-w-md flex flex-col max-h-[90vh]">
         <BbDialogHeader>
             <BbDialogTitle>Thêm combo</BbDialogTitle>
             <BbDialogDescription>Nhập thông tin combo mới.</BbDialogDescription>
         </BbDialogHeader>
-        <div class="space-y-3 py-4">
+        <div class="overflow-y-auto flex-1 space-y-3 py-4 pr-1">
             <div class="space-y-1">
                 <label class="text-sm font-medium">Tên combo <span class="text-destructive">*</span></label>
                 <BbInput @bind-Value="_formName" Placeholder="Tên combo" />
@@ -178,6 +194,19 @@
             <div class="space-y-1">
                 <label class="text-sm font-medium">Giá (đ) <span class="text-destructive">*</span></label>
                 <BbInput @bind-Value="_formPriceStr" Type="InputType.Number" Placeholder="0" />
+            </div>
+            <div class="space-y-1">
+                <label class="text-sm font-medium">Hình ảnh</label>
+                @if (HasImage)
+                {
+                    <img src="@DisplayImageUrl" class="w-full h-32 object-cover rounded-lg mb-2" alt="Combo image" />
+                }
+                <InputFile OnChange="HandleImageSelected" accept="image/*" class="hidden" id="create-combo-img" />
+                <label for="create-combo-img"
+                       class="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm hover:bg-accent hover:text-accent-foreground">
+                    <LucideIcon Name="image" Class="h-4 w-4" />
+                    <span>@(HasImage ? "Đổi ảnh" : "Chọn ảnh")</span>
+                </label>
             </div>
         </div>
         <BbDialogFooter>
@@ -209,13 +238,30 @@
     </BbDialogContent>
 </BbDialog>
 
+<!-- Bulk Delete Confirm Dialog -->
+<BbDialog Open="@_showBulkDeleteConfirm" OpenChanged="@(v => _showBulkDeleteConfirm = v)">
+    <BbDialogContent Class="max-w-md">
+        <BbDialogHeader>
+            <BbDialogTitle>Xóa @_selectedIds.Count combo?</BbDialogTitle>
+            <BbDialogDescription>Hành động này không thể hoàn tác.</BbDialogDescription>
+        </BbDialogHeader>
+        <BbDialogFooter>
+            <BbDialogClose>
+                <BbButton Variant="ButtonVariant.Outline">Hủy</BbButton>
+            </BbDialogClose>
+            <BbButton Variant="ButtonVariant.Destructive" Loading="@_bulkDeleting" LoadingText="Đang xóa..."
+                      OnClick="HandleBulkDelete">Xóa</BbButton>
+        </BbDialogFooter>
+    </BbDialogContent>
+</BbDialog>
+
 <!-- Edit Dialog -->
 <BbDialog Open="@_showEdit" OpenChanged="@(v => _showEdit = v)">
-    <BbDialogContent>
+    <BbDialogContent Class="max-w-md flex flex-col max-h-[90vh]">
         <BbDialogHeader>
             <BbDialogTitle>Sửa combo</BbDialogTitle>
         </BbDialogHeader>
-        <div class="space-y-3 py-4">
+        <div class="overflow-y-auto flex-1 space-y-3 py-4 pr-1">
             <div class="space-y-1">
                 <label class="text-sm font-medium">Tên combo</label>
                 <BbInput @bind-Value="_formName" Placeholder="Tên combo" />
@@ -223,6 +269,19 @@
             <div class="space-y-1">
                 <label class="text-sm font-medium">Giá (đ)</label>
                 <BbInput @bind-Value="_formPriceStr" Type="InputType.Number" Placeholder="0" />
+            </div>
+            <div class="space-y-1">
+                <label class="text-sm font-medium">Hình ảnh</label>
+                @if (HasImage)
+                {
+                    <img src="@DisplayImageUrl" class="w-full h-32 object-cover rounded-lg mb-2" alt="Combo image" />
+                }
+                <InputFile OnChange="HandleImageSelected" accept="image/*" class="hidden" id="edit-combo-img" />
+                <label for="edit-combo-img"
+                       class="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm hover:bg-accent hover:text-accent-foreground">
+                    <LucideIcon Name="image" Class="h-4 w-4" />
+                    <span>@(HasImage ? "Đổi ảnh" : "Chọn ảnh")</span>
+                </label>
             </div>
         </div>
         <BbDialogFooter>
@@ -318,8 +377,55 @@
     private Guid? _editId;
     private string _formName = "";
     private string _formPriceStr = "";
+    private string _formImageUrl = "";
+    private string? _imagePreviewUrl;
+    private IBrowserFile? _pendingImage;
+    private bool _uploadingImage;
+    private string? DisplayImageUrl => _imagePreviewUrl ?? (string.IsNullOrEmpty(_formImageUrl) ? null : _formImageUrl);
+    private bool HasImage => DisplayImageUrl is not null;
     private bool _showDeleteConfirm;
     private Guid? _pendingDeleteId;
+    private HashSet<Guid> _selectedIds = [];
+    private bool _showBulkDeleteConfirm;
+    private bool _bulkDeleting;
+
+    private bool AllSelected => _items.Count > 0 && _items.All(i => _selectedIds.Contains(i.Id));
+
+    private void ToggleSelect(Guid id, bool selected)
+    {
+        if (selected) _selectedIds.Add(id);
+        else _selectedIds.Remove(id);
+        _ = PersistStateAsync();
+    }
+
+    private void ToggleSelectAll(bool selected)
+    {
+        _selectedIds = selected ? _items.Select(i => i.Id).ToHashSet() : [];
+        _ = PersistStateAsync();
+    }
+
+    private void OpenBulkDeleteConfirm() => _showBulkDeleteConfirm = true;
+
+    private async Task HandleBulkDelete()
+    {
+        _bulkDeleting = true;
+        var ids = _selectedIds.ToList();
+        var tasks = ids.Select(id => Client.DeleteCombo.ExecuteAsync(id));
+        var results = await Task.WhenAll(tasks);
+        _bulkDeleting = false;
+        _showBulkDeleteConfirm = false;
+
+        var deleted = results.Count(r => r.Data?.DeleteCombo == true);
+        _selectedIds.Clear();
+
+        if (deleted > 0)
+        {
+            ToastService.Success($"Đã xóa {deleted} combo.");
+            await LoadAsync();
+        }
+        if (deleted < ids.Count)
+            ToastService.Error($"{ids.Count - deleted} combo không thể xóa.");
+    }
 
     private ComboDto? _currentCombo;
     private Guid? _addProductId;
@@ -365,9 +471,11 @@
         _total = cached.Total;
         _items = cached.Items
             .Select(c => new ComboDto(c.Id, c.Name, c.Price,
-                c.Items.Select(ci => new ComboItemDto(ci.Id, ci.ProductId, ci.ProductName, ci.Qty)).ToList()))
+                c.Items.Select(ci => new ComboItemDto(ci.Id, ci.ProductId, ci.ProductName, ci.Qty)).ToList(),
+                c.ImageUrl))
             .ToList();
         _allProducts = cached.Products.Select(p => new ProductItem(p.Id, p.Name)).ToList();
+        _selectedIds = cached.SelectedIds.ToHashSet();
         return true;
     }
 
@@ -382,9 +490,11 @@
                 c.Id,
                 c.Name,
                 c.Price,
-                c.Items.Select(ci => new ComboItemListItem(ci.Id, ci.ProductId, ci.ProductName, ci.Qty)).ToList()))
+                c.Items.Select(ci => new ComboItemListItem(ci.Id, ci.ProductId, ci.ProductName, ci.Qty)).ToList(),
+                c.ImageUrl))
                 .ToList(),
-            _allProducts.Select(p => new ProductLookupItem(p.Id, p.Name)).ToList());
+            _allProducts.Select(p => new ProductLookupItem(p.Id, p.Name)).ToList(),
+            _selectedIds.ToList());
 
         return UiStateWriter.UpdateAsync(s => s with { Combos = snapshot }, "cache.combos");
     }
@@ -490,7 +600,8 @@
                 {
                     _items = data.Items?.Select(c => new ComboDto(
                         c.Id, c.Name, c.Price,
-                        c.Items.Select(ci => new ComboItemDto(ci.Id, ci.ProductId, ci.Product?.Name, ci.Qty)).ToList()
+                        c.Items.Select(ci => new ComboItemDto(ci.Id, ci.ProductId, ci.Product?.Name, ci.Qty)).ToList(),
+                        c.ImageUrl
                     )).ToList() ?? [];
                     _total = data.TotalCount;
                     await PersistStateAsync();
@@ -556,7 +667,8 @@
                         c.Id,
                         c.Name,
                         c.Price,
-                        c.Items.Select(ci => new ComboItemDto(ci.Id, ci.ProductId, ci.Product?.Name, ci.Qty)).ToList())));
+                        c.Items.Select(ci => new ComboItemDto(ci.Id, ci.ProductId, ci.Product?.Name, ci.Qty)).ToList(),
+                        c.ImageUrl)));
                 }
 
                 if (data.PageInfo?.HasNextPage != true)
@@ -641,7 +753,7 @@
         await LoadAsync();
     }
 
-    private void OpenCreate() { _formName = ""; _formPriceStr = ""; _showCreate = true; }
+    private void OpenCreate() { _formName = ""; _formPriceStr = ""; ResetImageForm(); _showCreate = true; }
     private void CloseCreate() => _showCreate = false;
     private void CloseEdit() => _showEdit = false;
     private void CloseManageItems() => _showManageItems = false;
@@ -651,6 +763,9 @@
         _editId = item.Id;
         _formName = item.Name ?? "";
         _formPriceStr = item.Price.ToString();
+        _pendingImage = null;
+        _imagePreviewUrl = null;
+        _formImageUrl = item.ImageUrl ?? "";
         _showEdit = true;
     }
 
@@ -667,11 +782,44 @@
     }
 
 
+    private async Task HandleImageSelected(InputFileChangeEventArgs e)
+    {
+        _pendingImage = e.File;
+        var buffer = new byte[e.File.Size];
+        await using var stream = e.File.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+        await stream.ReadExactlyAsync(buffer);
+        _imagePreviewUrl = $"data:{e.File.ContentType};base64,{Convert.ToBase64String(buffer)}";
+    }
+
+    private async Task<string?> UploadPendingImageAsync(string folder)
+    {
+        if (_pendingImage is null) return null;
+        _uploadingImage = true;
+        StateHasChanged();
+        var url = await ImageUploadSvc.UploadAsync(_pendingImage, folder);
+        _uploadingImage = false;
+        _pendingImage = null;
+        _imagePreviewUrl = null;
+        if (url is null) ToastService.Error("Tải ảnh thất bại.");
+        return url;
+    }
+
+    private void ResetImageForm()
+    {
+        _pendingImage = null;
+        _imagePreviewUrl = null;
+        _formImageUrl = "";
+    }
+
     private async Task HandleCreate()
     {
         if (!decimal.TryParse(_formPriceStr, out var price)) return;
         _saving = true;
-        var result = await Client.CreateCombo.ExecuteAsync(_formName, price);
+
+        var uploadedUrl = await UploadPendingImageAsync("combos");
+        var imageUrl = uploadedUrl ?? (string.IsNullOrEmpty(_formImageUrl) ? null : _formImageUrl);
+
+        var result = await Client.CreateCombo.ExecuteAsync(_formName, price, imageUrl);
         _saving = false;
         if (result.Data?.CreateCombo is { } created)
         {
@@ -681,7 +829,7 @@
             if (MatchesCurrentFilter(created.Id, created.Name, created.Price, []))
             {
                 _total++;
-                _items.Insert(0, new ComboDto(created.Id, created.Name, created.Price, []));
+                _items.Insert(0, new ComboDto(created.Id, created.Name, created.Price, [], created.ImageUrl));
                 if (_items.Count > _take)
                     _items.RemoveAt(_items.Count - 1);
             }
@@ -697,8 +845,12 @@
     {
         if (!decimal.TryParse(_formPriceStr, out var price)) return;
         _saving = true;
+
+        var uploadedUrl = await UploadPendingImageAsync("combos");
+        var imageUrl = uploadedUrl ?? (string.IsNullOrEmpty(_formImageUrl) ? null : _formImageUrl);
+
         var name = string.IsNullOrWhiteSpace(_formName) ? null : _formName;
-        var result = await Client.UpdateCombo.ExecuteAsync(_editId!.Value, name, price);
+        var result = await Client.UpdateCombo.ExecuteAsync(_editId!.Value, name, price, imageUrl);
         _saving = false;
         if (result.Data?.UpdateCombo is { } updated)
         {
@@ -713,7 +865,8 @@
                     _items[index] = _items[index] with
                     {
                         Name = updated.Name,
-                        Price = updated.Price
+                        Price = updated.Price,
+                        ImageUrl = updated.ImageUrl
                     };
                     await PersistStateAsync();
                 }
@@ -841,5 +994,5 @@
 
     private record ProductItem(Guid Id, string Name);
     private record ComboItemDto(Guid Id, Guid ProductId, string? ProductName, int Qty);
-    private record ComboDto(Guid Id, string? Name, decimal Price, List<ComboItemDto> Items);
+    private record ComboDto(Guid Id, string? Name, decimal Price, List<ComboItemDto> Items, string? ImageUrl = null);
 }

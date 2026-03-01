@@ -3,6 +3,7 @@
 @inject ToastService ToastService
 @inject IStateReader<UiCacheState> UiStateReader
 @inject IStateWriter<UiCacheState> UiStateWriter
+@inject GoiMon.Client.Features.ImageUpload.Services.IImageUploadService ImageUploadSvc
 
 @using EasyAppDev.Blazor.Store.Core
 @using GoiMon.Client.State
@@ -11,7 +12,15 @@
     <BbSidebarTrigger />
     <BbSeparator Orientation="SeparatorOrientation.Vertical" Class="h-4" />
     <h1 class="text-sm font-semibold">Sản phẩm</h1>
-    <div class="ml-auto">
+    <div class="ml-auto flex items-center gap-2">
+        @if (_selectedIds.Count > 0)
+        {
+            <BbButton Variant="ButtonVariant.Destructive" Size="ButtonSize.Small"
+                      OnClick="OpenBulkDeleteConfirm">
+                <LucideIcon Name="trash-2" Class="h-4 w-4 mr-1" />
+                Xóa (@_selectedIds.Count)
+            </BbButton>
+        }
         <BbButton OnClick="OpenCreateAsync" Size="ButtonSize.Small">
             <LucideIcon Name="plus" Class="h-4 w-4 mr-1" />
             Thêm sản phẩm
@@ -89,6 +98,9 @@
             <table class="w-full text-sm">
                 <thead class="border-b bg-muted/50">
                     <tr>
+                        <th class="h-10 w-10 px-3">
+                            <BbCheckbox Checked="@AllSelected" CheckedChanged="@ToggleSelectAll" />
+                        </th>
                         <th class="h-10 px-4 text-left font-medium text-muted-foreground">Tên sản phẩm</th>
                         <th class="h-10 px-4 text-left font-medium text-muted-foreground">Danh mục</th>
                         <th class="h-10 px-4 text-right font-medium text-muted-foreground">Giá</th>
@@ -100,14 +112,18 @@
                     @if (_items.Count == 0)
                     {
                         <tr>
-                            <td colspan="5" class="p-8 text-center text-muted-foreground">
+                            <td colspan="6" class="p-8 text-center text-muted-foreground">
                                 Không tìm thấy sản phẩm nào.
                             </td>
                         </tr>
                     }
                     @foreach (var item in _items)
                     {
-                        <tr class="border-b last:border-0 hover:bg-muted/50 transition-colors">
+                        <tr class="border-b last:border-0 hover:bg-muted/50 transition-colors @(_selectedIds.Contains(item.Id) ? "bg-muted/30" : "")">
+                            <td class="px-3 py-3">
+                                <BbCheckbox Checked="@_selectedIds.Contains(item.Id)"
+                                            CheckedChanged="@(v => ToggleSelect(item.Id, v))" />
+                            </td>
                             <td class="px-4 py-3 font-medium">@item.Name</td>
                             <td class="px-4 py-3">
                                 @if (item.CategoryName is not null)
@@ -167,12 +183,12 @@
 
 <!-- Create Dialog -->
 <BbDialog Open="@_showCreate" OpenChanged="@(v => _showCreate = v)">
-    <BbDialogContent Class="max-w-md">
+    <BbDialogContent Class="max-w-md flex flex-col max-h-[90vh]">
         <BbDialogHeader>
             <BbDialogTitle>Thêm sản phẩm</BbDialogTitle>
             <BbDialogDescription>Nhập thông tin sản phẩm mới.</BbDialogDescription>
         </BbDialogHeader>
-        <div class="space-y-3 py-4">
+        <div class="overflow-y-auto flex-1 space-y-3 py-4 pr-1">
             <div class="space-y-1">
                 <label class="text-sm font-medium">Tên sản phẩm <span class="text-destructive">*</span></label>
                 <BbInput @bind-Value="_formName" Placeholder="Tên sản phẩm" />
@@ -189,6 +205,7 @@
                             Placeholder="Chọn danh mục..."
                             SearchPlaceholder="Tìm danh mục..."
                             EmptyMessage="Không tìm thấy danh mục."
+                            Class="w-full"
                             MatchTriggerWidth="true" />
                 @if (_formCategoryId.HasValue)
                 {
@@ -198,6 +215,19 @@
             <div class="space-y-1">
                 <label class="text-sm font-medium">Mô tả</label>
                 <BbInput @bind-Value="_formDescription" Placeholder="Mô tả sản phẩm" />
+            </div>
+            <div class="space-y-1">
+                <label class="text-sm font-medium">Hình ảnh</label>
+                @if (HasImage)
+                {
+                    <img src="@DisplayImageUrl" class="w-full h-32 object-cover rounded-lg mb-2" alt="Product image" />
+                }
+                <InputFile OnChange="HandleImageSelected" accept="image/*" class="hidden" id="create-product-img" />
+                <label for="create-product-img"
+                       class="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm hover:bg-accent hover:text-accent-foreground">
+                    <LucideIcon Name="image" Class="h-4 w-4" />
+                    <span>@(HasImage ? "Đổi ảnh" : "Chọn ảnh")</span>
+                </label>
             </div>
         </div>
         <BbDialogFooter>
@@ -229,14 +259,31 @@
     </BbDialogContent>
 </BbDialog>
 
+<!-- Bulk Delete Confirm Dialog -->
+<BbDialog Open="@_showBulkDeleteConfirm" OpenChanged="@(v => _showBulkDeleteConfirm = v)">
+    <BbDialogContent Class="max-w-md">
+        <BbDialogHeader>
+            <BbDialogTitle>Xóa @_selectedIds.Count sản phẩm?</BbDialogTitle>
+            <BbDialogDescription>Hành động này không thể hoàn tác.</BbDialogDescription>
+        </BbDialogHeader>
+        <BbDialogFooter>
+            <BbDialogClose>
+                <BbButton Variant="ButtonVariant.Outline">Hủy</BbButton>
+            </BbDialogClose>
+            <BbButton Variant="ButtonVariant.Destructive" Loading="@_bulkDeleting" LoadingText="Đang xóa..."
+                      OnClick="HandleBulkDelete">Xóa</BbButton>
+        </BbDialogFooter>
+    </BbDialogContent>
+</BbDialog>
+
 <!-- Edit Dialog -->
 <BbDialog Open="@_showEdit" OpenChanged="@(v => _showEdit = v)">
-    <BbDialogContent Class="max-w-md">
+    <BbDialogContent Class="max-w-md flex flex-col max-h-[90vh]">
         <BbDialogHeader>
             <BbDialogTitle>Sửa sản phẩm</BbDialogTitle>
             <BbDialogDescription>Cập nhật thông tin sản phẩm.</BbDialogDescription>
         </BbDialogHeader>
-        <div class="space-y-3 py-4">
+        <div class="overflow-y-auto flex-1 space-y-3 py-4 pr-1">
             <div class="space-y-1">
                 <label class="text-sm font-medium">Tên sản phẩm <span class="text-destructive">*</span></label>
                 <BbInput @bind-Value="_formName" Placeholder="Tên sản phẩm" />
@@ -253,6 +300,7 @@
                             Placeholder="Chọn danh mục..."
                             SearchPlaceholder="Tìm danh mục..."
                             EmptyMessage="Không tìm thấy danh mục."
+                            Class="w-full"
                             MatchTriggerWidth="true" />
                 @if (_formCategoryId.HasValue)
                 {
@@ -262,6 +310,19 @@
             <div class="space-y-1">
                 <label class="text-sm font-medium">Mô tả</label>
                 <BbInput @bind-Value="_formDescription" Placeholder="Mô tả sản phẩm" />
+            </div>
+            <div class="space-y-1">
+                <label class="text-sm font-medium">Hình ảnh</label>
+                @if (HasImage)
+                {
+                    <img src="@DisplayImageUrl" class="w-full h-32 object-cover rounded-lg mb-2" alt="Product image" />
+                }
+                <InputFile OnChange="HandleImageSelected" accept="image/*" class="hidden" id="edit-product-img" />
+                <label for="edit-product-img"
+                       class="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm hover:bg-accent hover:text-accent-foreground">
+                    <LucideIcon Name="image" Class="h-4 w-4" />
+                    <span>@(HasImage ? "Đổi ảnh" : "Chọn ảnh")</span>
+                </label>
             </div>
         </div>
         <BbDialogFooter>
@@ -295,8 +356,55 @@
     private string _formPriceStr = "";
     private Guid? _formCategoryId;
     private string _formDescription = "";
+    private string _formImageUrl = "";
+    private string? _imagePreviewUrl;
+    private IBrowserFile? _pendingImage;
+    private bool _uploadingImage;
+    private string? DisplayImageUrl => _imagePreviewUrl ?? (string.IsNullOrEmpty(_formImageUrl) ? null : _formImageUrl);
+    private bool HasImage => DisplayImageUrl is not null;
     private bool _showDeleteConfirm;
     private Guid? _pendingDeleteId;
+    private HashSet<Guid> _selectedIds = [];
+    private bool _showBulkDeleteConfirm;
+    private bool _bulkDeleting;
+
+    private bool AllSelected => _items.Count > 0 && _items.All(i => _selectedIds.Contains(i.Id));
+
+    private void ToggleSelect(Guid id, bool selected)
+    {
+        if (selected) _selectedIds.Add(id);
+        else _selectedIds.Remove(id);
+        _ = PersistStateAsync();
+    }
+
+    private void ToggleSelectAll(bool selected)
+    {
+        _selectedIds = selected ? _items.Select(i => i.Id).ToHashSet() : [];
+        _ = PersistStateAsync();
+    }
+
+    private void OpenBulkDeleteConfirm() => _showBulkDeleteConfirm = true;
+
+    private async Task HandleBulkDelete()
+    {
+        _bulkDeleting = true;
+        var ids = _selectedIds.ToList();
+        var tasks = ids.Select(id => Client.DeleteProduct.ExecuteAsync(id));
+        var results = await Task.WhenAll(tasks);
+        _bulkDeleting = false;
+        _showBulkDeleteConfirm = false;
+
+        var deleted = results.Count(r => r.Data?.DeleteProduct == true);
+        _selectedIds.Clear();
+
+        if (deleted > 0)
+        {
+            ToastService.Success($"Đã xóa {deleted} sản phẩm.");
+            await LoadAsync();
+        }
+        if (deleted < ids.Count)
+            ToastService.Error($"{ids.Count - deleted} sản phẩm không thể xóa.");
+    }
 
     private static readonly List<SelectOption<string>> SortOptions =
     [
@@ -333,8 +441,9 @@
         _skip = cached.Skip;
         _take = cached.Take;
         _total = cached.Total;
-        _items = cached.Items.Select(i => new ProductDto(i.Id, i.Name, i.Price, i.Description, i.CategoryId, i.CategoryName)).ToList();
+        _items = cached.Items.Select(i => new ProductDto(i.Id, i.Name, i.Price, i.Description, i.CategoryId, i.CategoryName, i.ImageUrl)).ToList();
         _allCategories = cached.Categories.Select(c => new CategoryItem(c.Id, c.Name)).ToList();
+        _selectedIds = cached.SelectedIds.ToHashSet();
         return true;
     }
 
@@ -346,8 +455,9 @@
             _skip,
             _take,
             _total,
-            _items.Select(i => new ProductListItem(i.Id, i.Name, i.Price, i.Description, i.CategoryId, i.CategoryName)).ToList(),
-            _allCategories.Select(c => new CategoryLookupItem(c.Id, c.Name)).ToList());
+            _items.Select(i => new ProductListItem(i.Id, i.Name, i.Price, i.Description, i.CategoryId, i.CategoryName, i.ImageUrl)).ToList(),
+            _allCategories.Select(c => new CategoryLookupItem(c.Id, c.Name)).ToList(),
+            _selectedIds.ToList());
 
         return UiStateWriter.UpdateAsync(s => s with { Products = snapshot }, "cache.products");
     }
@@ -450,7 +560,7 @@
                 if (result.Data?.Products is { } data)
                 {
                     _items = data.Items?.Select(i => new ProductDto(
-                        i.Id, i.Name, i.Price, i.Description, i.CategoryId, i.Category?.Name
+                        i.Id, i.Name, i.Price, i.Description, i.CategoryId, i.Category?.Name, i.ImageUrl
                     )).ToList() ?? [];
                     _total = data.TotalCount;
                     await PersistStateAsync();
@@ -518,7 +628,8 @@
                         i.Price,
                         i.Description,
                         i.CategoryId,
-                        i.Category?.Name)));
+                        i.Category?.Name,
+                        i.ImageUrl)));
                 }
 
                 if (data.PageInfo?.HasNextPage != true)
@@ -616,6 +727,7 @@
         _formPriceStr = "";
         _formCategoryId = null;
         _formDescription = "";
+        ResetImageForm();
         _showCreate = true;
     }
     private void CloseCreate() => _showCreate = false;
@@ -632,6 +744,9 @@
         _formPriceStr = item.Price.ToString();
         _formCategoryId = item.CategoryId;
         _formDescription = item.Description ?? "";
+        _pendingImage = null;
+        _imagePreviewUrl = null;
+        _formImageUrl = item.ImageUrl ?? "";
         _showEdit = true;
     }
 
@@ -647,12 +762,47 @@
         return _allCategories.FirstOrDefault(c => c.Id == categoryId.Value)?.Name;
     }
 
+    private async Task HandleImageSelected(InputFileChangeEventArgs e)
+    {
+        _pendingImage = e.File;
+        // Create a local data URL for preview without uploading
+        var buffer = new byte[e.File.Size];
+        await using var stream = e.File.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+        await stream.ReadExactlyAsync(buffer);
+        _imagePreviewUrl = $"data:{e.File.ContentType};base64,{Convert.ToBase64String(buffer)}";
+    }
+
+    private async Task<string?> UploadPendingImageAsync(string folder)
+    {
+        if (_pendingImage is null) return null;
+        _uploadingImage = true;
+        StateHasChanged();
+        var url = await ImageUploadSvc.UploadAsync(_pendingImage, folder);
+        _uploadingImage = false;
+        _pendingImage = null;
+        _imagePreviewUrl = null;
+        if (url is null) ToastService.Error("Tải ảnh thất bại.");
+        return url;
+    }
+
+    private void ResetImageForm()
+    {
+        _pendingImage = null;
+        _imagePreviewUrl = null;
+        _formImageUrl = "";
+    }
+
     private async Task HandleCreate()
     {
         if (!decimal.TryParse(_formPriceStr, out var price)) return;
         _saving = true;
+
+        // Upload pending image if any
+        var uploadedUrl = await UploadPendingImageAsync("products");
+        var imageUrl = uploadedUrl ?? (string.IsNullOrEmpty(_formImageUrl) ? null : _formImageUrl);
+
         var desc = string.IsNullOrWhiteSpace(_formDescription) ? null : _formDescription;
-        var result = await Client.CreateProduct.ExecuteAsync(_formName, price, _formCategoryId, desc);
+        var result = await Client.CreateProduct.ExecuteAsync(_formName, price, _formCategoryId, desc, imageUrl);
         _saving = false;
         if (result.Data?.CreateProduct is { } created)
         {
@@ -668,7 +818,8 @@
                     created.Price,
                     created.Description,
                     created.CategoryId,
-                    GetCategoryName(created.CategoryId)));
+                    GetCategoryName(created.CategoryId),
+                    created.ImageUrl));
                 if (_items.Count > _take)
                     _items.RemoveAt(_items.Count - 1);
             }
@@ -684,8 +835,13 @@
     {
         if (!decimal.TryParse(_formPriceStr, out var price)) return;
         _saving = true;
+
+        // Upload pending image if any
+        var uploadedUrl = await UploadPendingImageAsync("products");
+        var imageUrl = uploadedUrl ?? (string.IsNullOrEmpty(_formImageUrl) ? null : _formImageUrl);
+
         var desc = string.IsNullOrWhiteSpace(_formDescription) ? null : _formDescription;
-        var result = await Client.UpdateProduct.ExecuteAsync(_editId!.Value, _formName, price, _formCategoryId, desc);
+        var result = await Client.UpdateProduct.ExecuteAsync(_editId!.Value, _formName, price, _formCategoryId, desc, imageUrl);
         _saving = false;
         if (result.Data?.UpdateProduct is { } updated)
         {
@@ -703,7 +859,8 @@
                         updated.Price,
                         updated.Description,
                         updated.CategoryId,
-                        GetCategoryName(updated.CategoryId));
+                        GetCategoryName(updated.CategoryId),
+                        updated.ImageUrl);
                     await PersistStateAsync();
                 }
                 else
@@ -778,5 +935,5 @@
     }
 
     private record CategoryItem(Guid Id, string Name);
-    private record ProductDto(Guid Id, string Name, decimal Price, string? Description, Guid? CategoryId, string? CategoryName);
+    private record ProductDto(Guid Id, string Name, decimal Price, string? Description, Guid? CategoryId, string? CategoryName, string? ImageUrl = null);
 }

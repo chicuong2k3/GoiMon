@@ -86,16 +86,20 @@ builder.Services.AddHangfireServer();
 // Domain event dispatcher and handlers
 builder.Services.AddScoped<GoiMon.Api.Domain.Events.IDomainEventDispatcher, GoiMon.Api.Infrastructure.DomainEvents.DomainEventDispatcher>();
 builder.Services.AddScoped(typeof(GoiMon.Api.Domain.Events.IDomainEventHandler<>), typeof(GoiMon.Api.Infrastructure.DomainEvents.LoggingDomainEventHandler<>));
+builder.Services.AddScoped<GoiMon.Api.Domain.Events.IDomainEventHandler<GoiMon.Api.Domain.Events.ProductImageUpdatedEvent>, GoiMon.Api.Infrastructure.DomainEvents.ImageCleanupHandler>();
+builder.Services.AddScoped<GoiMon.Api.Domain.Events.IDomainEventHandler<GoiMon.Api.Domain.Events.ProductDeletedEvent>, GoiMon.Api.Infrastructure.DomainEvents.ImageCleanupHandler>();
+builder.Services.AddScoped<GoiMon.Api.Domain.Events.IDomainEventHandler<GoiMon.Api.Domain.Events.ComboImageUpdatedEvent>, GoiMon.Api.Infrastructure.DomainEvents.ImageCleanupHandler>();
+builder.Services.AddScoped<GoiMon.Api.Domain.Events.IDomainEventHandler<GoiMon.Api.Domain.Events.ComboDeletedEvent>, GoiMon.Api.Infrastructure.DomainEvents.ImageCleanupHandler>();
 
 // GraphQL (HotChocolate)
 builder.Services
     .AddGraphQLServer()
     .AddQueryType(d => d.Name("Query"))
     .AddMutationType(d => d.Name("Mutation"))
+    .AddType<UploadType>()
     .AddProjections()
     .AddFiltering()
     .AddSorting()
-    .AddUploadType()
     .ModifyRequestOptions(o => o.IncludeExceptionDetails = true)
     // Register aggregate-specific extensions
     .AddTypeExtension<ProductQueries>()
@@ -159,6 +163,7 @@ catch (Exception ex)
     Log.Warning(ex, "Failed to register recurring outbox job (lock timeout). Job may already exist.");
 }
 
+app.MapImageUploadEndpoints();
 app.MapGraphQL();
 
 try

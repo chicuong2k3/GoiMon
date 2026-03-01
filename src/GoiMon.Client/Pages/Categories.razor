@@ -11,7 +11,15 @@
     <BbSidebarTrigger />
     <BbSeparator Orientation="SeparatorOrientation.Vertical" Class="h-4" />
     <h1 class="text-sm font-semibold">Danh mục</h1>
-    <div class="ml-auto">
+    <div class="ml-auto flex items-center gap-2">
+        @if (_selectedIds.Count > 0)
+        {
+            <BbButton Variant="ButtonVariant.Destructive" Size="ButtonSize.Small"
+                      OnClick="OpenBulkDeleteConfirm">
+                <LucideIcon Name="trash-2" Class="h-4 w-4 mr-1" />
+                Xóa (@_selectedIds.Count)
+            </BbButton>
+        }
         <BbButton OnClick="OpenCreate" Size="ButtonSize.Small">
             <LucideIcon Name="plus" Class="h-4 w-4 mr-1" />
             Thêm danh mục
@@ -61,6 +69,9 @@
             <table class="w-full text-sm">
                 <thead class="border-b bg-muted/50">
                     <tr>
+                        <th class="h-10 w-10 px-3">
+                            <BbCheckbox Checked="@AllSelected" CheckedChanged="@ToggleSelectAll" />
+                        </th>
                         <th class="h-10 px-4 text-left font-medium text-muted-foreground">Tên danh mục</th>
                         <th class="h-10 px-4 text-right font-medium text-muted-foreground w-32">Thao tác</th>
                     </tr>
@@ -69,14 +80,18 @@
                     @if (_items.Count == 0)
                     {
                         <tr>
-                            <td colspan="2" class="p-8 text-center text-muted-foreground">
+                            <td colspan="3" class="p-8 text-center text-muted-foreground">
                                 Không tìm thấy danh mục nào.
                             </td>
                         </tr>
                     }
                     @foreach (var item in _items)
                     {
-                        <tr class="border-b last:border-0 hover:bg-muted/50 transition-colors">
+                        <tr class="border-b last:border-0 hover:bg-muted/50 transition-colors @(_selectedIds.Contains(item.Id) ? "bg-muted/30" : "")">
+                            <td class="px-3 py-3">
+                                <BbCheckbox Checked="@_selectedIds.Contains(item.Id)"
+                                            CheckedChanged="@(v => ToggleSelect(item.Id, v))" />
+                            </td>
                             <td class="px-4 py-3 font-medium">@item.Name</td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex justify-end gap-1">
@@ -155,6 +170,23 @@
     </BbDialogContent>
 </BbDialog>
 
+<!-- Bulk Delete Confirm Dialog -->
+<BbDialog Open="@_showBulkDeleteConfirm" OpenChanged="@(v => _showBulkDeleteConfirm = v)">
+    <BbDialogContent Class="max-w-md">
+        <BbDialogHeader>
+            <BbDialogTitle>Xóa @_selectedIds.Count danh mục?</BbDialogTitle>
+            <BbDialogDescription>Hành động này không thể hoàn tác.</BbDialogDescription>
+        </BbDialogHeader>
+        <BbDialogFooter>
+            <BbDialogClose>
+                <BbButton Variant="ButtonVariant.Outline">Hủy</BbButton>
+            </BbDialogClose>
+            <BbButton Variant="ButtonVariant.Destructive" Loading="@_bulkDeleting" LoadingText="Đang xóa..."
+                      OnClick="HandleBulkDelete">Xóa</BbButton>
+        </BbDialogFooter>
+    </BbDialogContent>
+</BbDialog>
+
 <!-- Edit Dialog -->
 <BbDialog Open="@_showEdit" OpenChanged="@(v => _showEdit = v)">
     <BbDialogContent>
@@ -191,6 +223,47 @@
     private string _formName = "";
     private bool _showDeleteConfirm;
     private Guid? _pendingDeleteId;
+    private HashSet<Guid> _selectedIds = [];
+    private bool _showBulkDeleteConfirm;
+    private bool _bulkDeleting;
+
+    private bool AllSelected => _items.Count > 0 && _items.All(i => _selectedIds.Contains(i.Id));
+
+    private void ToggleSelect(Guid id, bool selected)
+    {
+        if (selected) _selectedIds.Add(id);
+        else _selectedIds.Remove(id);
+        _ = PersistStateAsync();
+    }
+
+    private void ToggleSelectAll(bool selected)
+    {
+        _selectedIds = selected ? _items.Select(i => i.Id).ToHashSet() : [];
+        _ = PersistStateAsync();
+    }
+
+    private void OpenBulkDeleteConfirm() => _showBulkDeleteConfirm = true;
+
+    private async Task HandleBulkDelete()
+    {
+        _bulkDeleting = true;
+        var ids = _selectedIds.ToList();
+        var tasks = ids.Select(id => Client.DeleteCategory.ExecuteAsync(id));
+        var results = await Task.WhenAll(tasks);
+        _bulkDeleting = false;
+        _showBulkDeleteConfirm = false;
+
+        var deleted = results.Count(r => r.Data?.DeleteCategory == true);
+        _selectedIds.Clear();
+
+        if (deleted > 0)
+        {
+            ToastService.Success($"Đã xóa {deleted} danh mục.");
+            await LoadAsync();
+        }
+        if (deleted < ids.Count)
+            ToastService.Error($"{ids.Count - deleted} danh mục không thể xóa.");
+    }
 
     private static readonly List<SelectOption<string>> SortOptions =
     [
@@ -216,6 +289,7 @@
         _take = cached.Take;
         _total = cached.Total;
         _items = cached.Items.Select(i => new CategoryDto(i.Id, i.Name)).ToList();
+        _selectedIds = cached.SelectedIds.ToHashSet();
         return true;
     }
 
@@ -226,7 +300,8 @@
             _skip,
             _take,
             _total,
-            _items.Select(i => new CategoryListItem(i.Id, i.Name)).ToList());
+            _items.Select(i => new CategoryListItem(i.Id, i.Name)).ToList(),
+            _selectedIds.ToList());
 
         return UiStateWriter.UpdateAsync(s => s with { Categories = snapshot }, "cache.categories");
     }

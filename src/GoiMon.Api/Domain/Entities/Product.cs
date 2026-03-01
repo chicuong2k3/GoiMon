@@ -52,7 +52,13 @@ public class Product : AggregateRoot
 
     public void UpdateImage(string? imageUrl)
     {
+        var old = ImageUrl;
         ImageUrl = imageUrl?.Trim();
-        AddDomainEvent(new Events.ProductImageUpdatedEvent(Id, ImageUrl));
+        AddDomainEvent(new Events.ProductImageUpdatedEvent(Id, old, ImageUrl));
+    }
+
+    public void MarkDeleted()
+    {
+        AddDomainEvent(new Events.ProductDeletedEvent(Id, ImageUrl));
     }
 }

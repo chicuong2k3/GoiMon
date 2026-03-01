@@ -50,7 +50,7 @@ public class AppDbContext : DbContext
                 var outbox = new Infrastructure.Outbox.OutboxEvent
                 {
                     Id = Guid.NewGuid(),
-                    TypeName = @event.GetType().AssemblyQualifiedName ?? @event.GetType().FullName ?? @event.GetType().Name,
+                    TypeName = @event.GetType().FullName ?? @event.GetType().Name,
                     Content = payload,
                     OccurredOn = DateTimeOffset.UtcNow,
                     Processed = false,

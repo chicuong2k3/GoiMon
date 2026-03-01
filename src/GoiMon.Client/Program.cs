@@ -7,6 +7,7 @@ using EasyAppDev.Blazor.Store.Blazor;
 using Blazored.LocalStorage;
 using GoiMon.Client.State;
 using GoiMon.Client.Features.Authentication.Services;
+using GoiMon.Client.Features.ImageUpload.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -32,6 +33,7 @@ builder.Services.AddBlazorBlueprintComponents();
 // Register authentication services
 builder.Services.AddBlazoredLocalStorage();
 builder.Services.AddScoped<ITokenStorageService, TokenStorageService>();
+builder.Services.AddScoped<IImageUploadService, ImageUploadService>();
 builder.Services.AddScoped<AuthenticationStateProvider, GoimonAuthenticationStateProvider>();
 
 builder.Services.AddStoreUtilities();

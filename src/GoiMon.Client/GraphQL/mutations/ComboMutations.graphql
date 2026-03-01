@@ -1,16 +1,18 @@
-mutation CreateCombo($name: String!, $price: Decimal!) {
-  createCombo(input: { name: $name, price: $price }) {
+mutation CreateCombo($name: String!, $price: Decimal!, $imageUrl: String) {
+  createCombo(input: { name: $name, price: $price, imageUrl: $imageUrl }) {
     id
     name
     price
+    imageUrl
   }
 }
 
-mutation UpdateCombo($id: UUID!, $name: String, $price: Decimal) {
-  updateCombo(input: { id: $id, name: $name, price: $price }) {
+mutation UpdateCombo($id: UUID!, $name: String, $price: Decimal, $imageUrl: String) {
+  updateCombo(input: { id: $id, name: $name, price: $price, imageUrl: $imageUrl }) {
     id
     name
     price
+    imageUrl
   }
 }
 

@@ -1,20 +1,22 @@
-mutation CreateProduct($name: String!, $price: Decimal!, $categoryId: UUID, $description: String) {
-  createProduct(input: { name: $name, price: $price, categoryId: $categoryId, description: $description }) {
+mutation CreateProduct($name: String!, $price: Decimal!, $categoryId: UUID, $description: String, $imageUrl: String) {
+  createProduct(input: { name: $name, price: $price, categoryId: $categoryId, description: $description, imageUrl: $imageUrl }) {
     id
     name
     price
     description
     categoryId
+    imageUrl
   }
 }
 
-mutation UpdateProduct($id: UUID!, $name: String!, $price: Decimal!, $categoryId: UUID, $description: String) {
-  updateProduct(input: { id: $id, name: $name, price: $price, categoryId: $categoryId, description: $description }) {
+mutation UpdateProduct($id: UUID!, $name: String!, $price: Decimal!, $categoryId: UUID, $description: String, $imageUrl: String) {
+  updateProduct(input: { id: $id, name: $name, price: $price, categoryId: $categoryId, description: $description, imageUrl: $imageUrl }) {
     id
     name
     price
     description
     categoryId
+    imageUrl
   }
 }
 

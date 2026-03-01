@@ -78,8 +78,14 @@ public class ProductCombo : AggregateRoot
 
     public void UpdateImage(string? imageUrl)
     {
+        var old = ImageUrl;
         ImageUrl = imageUrl?.Trim();
-        AddDomainEvent(new Events.ComboImageUpdatedEvent(Id, ImageUrl));
+        AddDomainEvent(new Events.ComboImageUpdatedEvent(Id, old, ImageUrl));
+    }
+
+    public void MarkDeleted()
+    {
+        AddDomainEvent(new Events.ComboDeletedEvent(Id, ImageUrl));
     }
 }
 
