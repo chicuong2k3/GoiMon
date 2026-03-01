@@ -2,6 +2,11 @@
 @inject IGoiMonClient Client
 @inject ToastService ToastService
 @inject DialogService DialogService
+@inject IStateReader<UiCacheState> UiStateReader
+@inject IStateWriter<UiCacheState> UiStateWriter
+
+@using EasyAppDev.Blazor.Store.Core
+@using GoiMon.Client.State
 
 <header class="flex h-14 shrink-0 items-center gap-2 border-b px-4">
     <BbSidebarTrigger />
@@ -263,7 +268,39 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (TryRestoreState())
+            return;
+
         await Task.WhenAll(LoadCategoriesAsync(), LoadAsync(showLoading: true));
+    }
+
+    private bool TryRestoreState()
+    {
+        var cached = UiStateReader.GetState().Products;
+        if (cached is null) return false;
+
+        _search = cached.Search;
+        _filterCategoryId = cached.FilterCategoryId;
+        _skip = cached.Skip;
+        _take = cached.Take;
+        _total = cached.Total;
+        _items = cached.Items.Select(i => new ProductDto(i.Id, i.Name, i.Price, i.Description, i.CategoryId, i.CategoryName)).ToList();
+        _allCategories = cached.Categories.Select(c => new CategoryItem(c.Id, c.Name)).ToList();
+        return true;
+    }
+
+    private Task PersistStateAsync()
+    {
+        var snapshot = new ProductPageCache(
+            _search,
+            _filterCategoryId,
+            _skip,
+            _take,
+            _total,
+            _items.Select(i => new ProductListItem(i.Id, i.Name, i.Price, i.Description, i.CategoryId, i.CategoryName)).ToList(),
+            _allCategories.Select(c => new CategoryLookupItem(c.Id, c.Name)).ToList());
+
+        return UiStateWriter.UpdateAsync(s => s with { Products = snapshot }, "cache.products");
     }
 
     private async Task LoadCategoriesAsync()
@@ -274,10 +311,12 @@
             if (result.Data?.CategoriesOffset?.Items is { } cats)
             {
                 _allCategories = cats.Select(c => new CategoryItem(c.Id, c.Name)).ToList();
+                await PersistStateAsync();
                 return;
             }
 
             _allCategories = [];
+            await PersistStateAsync();
         }
         catch (Exception ex)
         {
@@ -307,6 +346,7 @@
                     i.Id, i.Name, i.Price, i.Description, i.CategoryId, i.Category?.Name
                 )).ToList() ?? [];
                 _total = data.TotalCount;
+                await PersistStateAsync();
             }
             else if (result.Errors.Count > 0)
                 _error = result.Errors[0].Message;
@@ -427,6 +467,7 @@
                 if (_items.Count > _take)
                     _items.RemoveAt(_items.Count - 1);
             }
+            await PersistStateAsync();
         }
         else
         {
@@ -458,6 +499,7 @@
                         updated.Description,
                         updated.CategoryId,
                         GetCategoryName(updated.CategoryId));
+                    await PersistStateAsync();
                 }
                 else
                 {
@@ -468,6 +510,7 @@
                         _skip = Math.Max(0, _skip - _take);
                         await LoadAsync();
                     }
+                    await PersistStateAsync();
                 }
             }
             else
@@ -504,6 +547,8 @@
 
                 if ((_items.Count < _take && _total > _items.Count) || (_items.Count == 0 && _total > 0))
                     await LoadAsync();
+                else
+                    await PersistStateAsync();
             }
             else
             {

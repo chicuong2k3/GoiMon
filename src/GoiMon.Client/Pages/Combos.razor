@@ -2,6 +2,11 @@
 @inject IGoiMonClient Client
 @inject ToastService ToastService
 @inject DialogService DialogService
+@inject IStateReader<UiCacheState> UiStateReader
+@inject IStateWriter<UiCacheState> UiStateWriter
+
+@using EasyAppDev.Blazor.Store.Core
+@using GoiMon.Client.State
 
 <header class="flex h-14 shrink-0 items-center gap-2 border-b px-4">
     <BbSidebarTrigger />
@@ -269,7 +274,45 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (TryRestoreState())
+            return;
+
         await Task.WhenAll(LoadProductsAsync(), LoadAsync(showLoading: true));
+    }
+
+    private bool TryRestoreState()
+    {
+        var cached = UiStateReader.GetState().Combos;
+        if (cached is null) return false;
+
+        _search = cached.Search;
+        _skip = cached.Skip;
+        _take = cached.Take;
+        _total = cached.Total;
+        _items = cached.Items
+            .Select(c => new ComboDto(c.Id, c.Name, c.Price,
+                c.Items.Select(ci => new ComboItemDto(ci.Id, ci.ProductId, ci.ProductName, ci.Qty)).ToList()))
+            .ToList();
+        _allProducts = cached.Products.Select(p => new ProductItem(p.Id, p.Name)).ToList();
+        return true;
+    }
+
+    private Task PersistStateAsync()
+    {
+        var snapshot = new ComboPageCache(
+            _search,
+            _skip,
+            _take,
+            _total,
+            _items.Select(c => new ComboListItem(
+                c.Id,
+                c.Name,
+                c.Price,
+                c.Items.Select(ci => new ComboItemListItem(ci.Id, ci.ProductId, ci.ProductName, ci.Qty)).ToList()))
+                .ToList(),
+            _allProducts.Select(p => new ProductLookupItem(p.Id, p.Name)).ToList());
+
+        return UiStateWriter.UpdateAsync(s => s with { Combos = snapshot }, "cache.combos");
     }
 
     private async Task LoadProductsAsync()
@@ -277,6 +320,7 @@
         var result = await Client.GetProducts.ExecuteAsync(0, 500, null);
         if (result.Data?.Products?.Items is { } prods)
             _allProducts = prods.Select(p => new ProductItem(p.Id, p.Name)).ToList();
+        await PersistStateAsync();
     }
 
     private async Task LoadAsync(bool showLoading = false)
@@ -297,6 +341,7 @@
                     c.Items.Select(ci => new ComboItemDto(ci.Id, ci.ProductId, ci.Product?.Name, ci.Qty)).ToList()
                 )).ToList() ?? [];
                 _total = data.TotalCount;
+                await PersistStateAsync();
             }
             else if (result.Errors.Count > 0)
                 _error = result.Errors[0].Message;
@@ -374,6 +419,7 @@
                 if (_items.Count > _take)
                     _items.RemoveAt(_items.Count - 1);
             }
+            await PersistStateAsync();
         }
         else
         {
@@ -403,6 +449,7 @@
                         Name = updated.Name,
                         Price = updated.Price
                     };
+                    await PersistStateAsync();
                 }
                 else
                 {
@@ -413,6 +460,7 @@
                         _skip = Math.Max(0, _skip - _take);
                         await LoadAsync();
                     }
+                    await PersistStateAsync();
                 }
             }
             else
@@ -449,6 +497,8 @@
 
                 if ((_items.Count < _take && _total > _items.Count) || (_items.Count == 0 && _total > 0))
                     await LoadAsync();
+                else
+                    await PersistStateAsync();
             }
             else
             {
@@ -482,6 +532,7 @@
             var listIndex = _items.FindIndex(c => c.Id == _currentCombo.Id);
             if (listIndex >= 0)
                 _items[listIndex] = _items[listIndex] with { Items = updatedItems };
+            await PersistStateAsync();
         }
         else
         {
@@ -509,6 +560,7 @@
             var listIndex = _items.FindIndex(c => c.Id == _currentCombo.Id);
             if (listIndex >= 0)
                 _items[listIndex] = _items[listIndex] with { Items = updatedItems };
+            await PersistStateAsync();
         }
         else
         {

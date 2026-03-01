@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using BlazorBlueprint.Components;
 using EasyAppDev.Blazor.Store.Blazor;
+using GoiMon.Client.State;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -26,5 +27,6 @@ builder.Services
 builder.Services.AddBlazorBlueprintComponents();
 
 builder.Services.AddStoreUtilities();
+builder.Services.AddScopedStoreWithUtilities(UiCacheState.Initial, (store, _) => store);
 
 await builder.Build().RunAsync();
