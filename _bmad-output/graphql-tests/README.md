@@ -9,8 +9,8 @@ Files in this folder:
 - `category-vars.json` — example variables for category operations.
 - `product-crud.graphql` — Create / Read flows for Product (single + bulk) and queries.
 - `product-vars.json` — example variables for product operations.
-- `order-crud.graphql` — Create / Read flows for Order and items resolution.
-- `order-vars.json` — example variables for order operations.
+- `order-crud.graphql` — 10 test operations for Orders: 4 happy-path creates + 6 validation error cases (snapshot model).
+- `order-vars.json` — variables for all 10 order test cases (TC-01 to TC-10).
 - `combo-crud.graphql` — Full CRUD for ProductCombo: create (with/without items), update, replace items, add/remove single item, delete.
 - `combo-vars.json` — example variables for combo operations.
 

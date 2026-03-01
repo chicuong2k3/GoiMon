@@ -103,6 +103,7 @@ builder.Services
     .AddGraphQLServer()
     .AddQueryType(d => d.Name("Query"))
     .AddMutationType(d => d.Name("Mutation"))
+    .AddSubscriptionType(d => d.Name("Subscription"))
     .AddType<UploadType>()
     .AddProjections()
     .AddFiltering()
@@ -112,6 +113,8 @@ builder.Services
     .AddTypeExtension<ProductQueries>()
     .AddTypeExtension<ProductMutations>()
     .AddTypeExtension<OrderMutations>()
+    .AddTypeExtension<OrderQueries>()
+    .AddTypeExtension<OrderSubscriptions>()
     .AddTypeExtension<ProductResolvers>()
     .AddTypeExtension<CategoryQueries>()
     .AddTypeExtension<CategoryMutations>()
@@ -121,7 +124,8 @@ builder.Services
     .AddTypeExtension<AuthenticationMutations>()
     .AddErrorFilter<GoiMon.Api.Infrastructure.Validation.FluentValidationErrorFilter>()
     // Validate input objects via FluentValidation middleware
-    .UseField<GoiMon.Api.Infrastructure.Validation.FluentValidationMiddleware>();
+    .UseField<GoiMon.Api.Infrastructure.Validation.FluentValidationMiddleware>()
+    .AddInMemorySubscriptions();
 
 // Repositories currently unused by GraphQL resolvers (using DB-backed resolvers instead).
 // If you later want to reintroduce repository abstractions, register them here.
@@ -147,6 +151,8 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.MapGet("/health", () => Results.Ok("ok"));
+
+app.UseWebSockets();
 
 // Enable CORS for browser clients (must be before endpoints that serve requests)
 app.UseCors("AllowNitro");

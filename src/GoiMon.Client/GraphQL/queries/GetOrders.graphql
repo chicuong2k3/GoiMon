@@ -1,0 +1,43 @@
+query GetOrders($first: Int, $after: String, $where: OrderFilterInput) {
+  orders(
+    first: $first
+    after: $after
+    where: $where
+    order: [{ createdAt: DESC }]
+  ) {
+    nodes {
+      id
+      status
+      total
+      createdAt
+      items {
+        id
+        productName
+        unitName
+        qty
+        unitPrice
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    totalCount
+  }
+}
+
+query GetOrderById($id: UUID!) {
+  orderById(id: $id) {
+    id
+    status
+    total
+    createdAt
+    items {
+      id
+      productName
+      unitName
+      qty
+      unitPrice
+    }
+  }
+}

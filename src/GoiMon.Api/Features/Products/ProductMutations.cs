@@ -58,6 +58,7 @@ public class ProductMutations
         p.ChangePrice(input.Price);
         p.ChangeCategory(input.CategoryId);
         p.UpdateDescription(input.Description);
+        p.UpdateUnitName(input.UnitName);
 
         if (image is not null)
         {
@@ -87,5 +88,5 @@ public class ProductMutations
     }
 }
 
-public record ProductInput(string Name, decimal Price, Guid? CategoryId, string? Description, string? ImageUrl = null);
-public record UpdateProductInput(Guid Id, string Name, decimal Price, Guid? CategoryId, string? Description, string? ImageUrl = null);
+public record ProductInput(string Name, decimal Price, Guid? CategoryId, string? Description, string? ImageUrl = null, string? UnitName = null);
+public record UpdateProductInput(Guid Id, string Name, decimal Price, Guid? CategoryId, string? Description, string? ImageUrl = null, string? UnitName = null);

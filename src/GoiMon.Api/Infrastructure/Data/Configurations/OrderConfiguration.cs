@@ -1,6 +1,4 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using GoiMon.Api.Domain.Entities;
 
 namespace GoiMon.Api.Infrastructure.Data.Configurations;
 
@@ -9,6 +7,7 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
     public void Configure(EntityTypeBuilder<Order> builder)
     {
         builder.HasKey(o => o.Id);
+        builder.Property(o => o.CreatedAt).IsRequired();
         // Store enum as string in the database
         builder.Property(o => o.Status)
             .HasConversion<string>()

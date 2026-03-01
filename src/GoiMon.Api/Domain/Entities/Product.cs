@@ -21,6 +21,8 @@ public class Product : AggregateRoot
     public Guid? CategoryId { get; private set; }
     public string? Description { get; private set; }
     public string? ImageUrl { get; private set; }
+    /// <summary>Optional unit label for display (e.g. "phần", "ly", "kg").</summary>
+    public string? UnitName { get; private set; }
 
     // Domain behaviors
     public void Rename(string newName)
@@ -48,6 +50,11 @@ public class Product : AggregateRoot
     {
         Description = description?.Trim();
         AddDomainEvent(new Events.ProductDescriptionUpdatedEvent(Id, Description));
+    }
+
+    public void UpdateUnitName(string? unitName)
+    {
+        UnitName = string.IsNullOrWhiteSpace(unitName) ? null : unitName.Trim();
     }
 
     public void UpdateImage(string? imageUrl)

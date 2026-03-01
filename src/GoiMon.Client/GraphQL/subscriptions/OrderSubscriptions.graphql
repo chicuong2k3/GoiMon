@@ -1,0 +1,15 @@
+subscription OnOrderChanged {
+  onOrderChanged {
+    id
+    status
+    total
+    createdAt
+    items {
+      id
+      productName
+      unitName
+      qty
+      unitPrice
+    }
+  }
+}

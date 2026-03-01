@@ -1,0 +1,31 @@
+mutation CreateOrder($input: OrderInput!) {
+  createOrder(input: $input) {
+    id
+    status
+    total
+    createdAt
+    items {
+      id
+      productName
+      unitName
+      qty
+      unitPrice
+    }
+  }
+}
+
+mutation CompleteOrder($orderId: UUID!) {
+  completeOrder(orderId: $orderId) {
+    id
+    status
+    total
+  }
+}
+
+mutation CancelOrder($orderId: UUID!) {
+  cancelOrder(orderId: $orderId) {
+    id
+    status
+    total
+  }
+}

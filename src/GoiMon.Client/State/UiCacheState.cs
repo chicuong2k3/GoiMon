@@ -3,9 +3,10 @@ namespace GoiMon.Client.State;
 public record UiCacheState(
     CategoryPageCache? Categories,
     ProductPageCache? Products,
-    ComboPageCache? Combos)
+    ComboPageCache? Combos,
+    OrderPageState? Orders)
 {
-    public static UiCacheState Initial => new(null, null, null);
+    public static UiCacheState Initial => new(null, null, null, null);
 }
 
 public record CategoryPageCache(
@@ -58,3 +59,22 @@ public record ComboListItem(
 public record ComboItemListItem(Guid Id, Guid ProductId, string? ProductName, int Qty);
 
 public record ProductLookupItem(Guid Id, string Name);
+
+public record OrderPageState(
+    string ActiveTab,
+    Guid? SelectedOrderId,
+    IReadOnlyList<OrderListItem> Items);
+
+public record OrderListItem(
+    Guid Id,
+    string Status,
+    decimal Total,
+    DateTimeOffset CreatedAt,
+    IReadOnlyList<OrderItemSnapshot> Items);
+
+public record OrderItemSnapshot(
+    Guid Id,
+    string ProductName,
+    string? UnitName,
+    int Qty,
+    decimal UnitPrice);

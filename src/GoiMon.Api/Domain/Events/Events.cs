@@ -1,8 +1,9 @@
 namespace GoiMon.Api.Domain.Events;
 
 public record OrderCreatedEvent(Guid OrderId);
-public record OrderItemAddedEvent(Guid OrderId, Guid OrderItemId, Guid ProductId, int Qty);
+public record OrderItemAddedEvent(Guid OrderId, Guid OrderItemId, Guid? ProductId, int Qty);
 public record OrderCompletedEvent(Guid OrderId);
+public record OrderCancelledEvent(Guid OrderId);
 
 public record ProductPriceChangedEvent(Guid ProductId, decimal OldPrice, decimal NewPrice);
 public record ProductCategoryChangedEvent(Guid ProductId, Guid? OldCategoryId, Guid? NewCategoryId);

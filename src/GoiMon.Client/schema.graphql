@@ -1,6 +1,7 @@
 schema {
   query: Query
   mutation: Mutation
+  subscription: Subscription
 }
 
 type Query {
@@ -24,6 +25,8 @@ type Mutation {
   updateProduct(input: UpdateProductInput!): Product
   deleteProduct(id: UUID!): Boolean!
   createOrder(input: OrderInput!): Order!
+  completeOrder(orderId: UUID!): Order
+  cancelOrder(orderId: UUID!): Order
   createCategory(input: CreateCategoryInput!): Category!
   updateCategory(input: UpdateCategoryInput!): Category
   deleteCategory(id: UUID!): Boolean!
@@ -33,6 +36,10 @@ type Mutation {
   addComboItem(input: AddComboItemInput!): ProductCombo
   updateComboItem(input: UpdateComboItemInput!): ProductCombo
   removeComboItem(input: RemoveComboItemInput!): ProductCombo
+}
+
+type Subscription {
+  onOrderChanged: Order!
 }
 
 input ProductFilterInput {
@@ -83,6 +90,7 @@ input OrderFilterInput {
 input OrderSortInput {
   status: SortEnumType
   total: SortEnumType
+  createdAt: SortEnumType
   id: SortEnumType
 }
 
@@ -252,6 +260,7 @@ type PageInfo {
 type Order {
   status: OrderStatus!
   total: Decimal!
+  createdAt: DateTime!
   items: [OrderItem!]!
   id: UUID!
 }
@@ -294,6 +303,8 @@ type ProductCombo {
 
 "The built-in `Decimal` scalar type."
 scalar Decimal
+
+scalar DateTime
 
 scalar UUID
 
@@ -371,7 +382,9 @@ input ProductInput {
 type OrderItem {
   id: UUID!
   orderId: UUID!
-  productId: UUID!
+  productId: UUID
+  productName: String!
+  unitName: String
   qty: Int!
   unitPrice: Decimal!
 }
@@ -429,7 +442,9 @@ input ComboItemInput {
 }
 
 input OrderItemInput {
-  productId: UUID!
+  productId: UUID
+  productName: String!
+  unitName: String
   qty: Int!
   unitPrice: Decimal!
 }

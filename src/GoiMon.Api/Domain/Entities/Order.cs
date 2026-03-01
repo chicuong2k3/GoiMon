@@ -16,8 +16,12 @@ public class Order : AggregateRoot
         Status = OrderStatus.Open;
         Items = new List<OrderItem>();
         Total = 0m;
+        CreatedAt = DateTimeOffset.UtcNow;
         AddDomainEvent(new Events.OrderCreatedEvent(id));
     }
+
+    /// <summary>UTC timestamp when the order was placed.</summary>
+    public DateTimeOffset CreatedAt { get; private set; }
 
     /// <summary>
     /// Current status of the order.
@@ -35,17 +39,20 @@ public class Order : AggregateRoot
     public List<OrderItem> Items { get; private set; }
 
     /// <summary>
-    /// Add a new line item to the order and recalculate the total.
+    /// Add a new line item to the order with a point-in-time product snapshot.
     /// </summary>
-    /// <param name="productId">Referenced product identifier.</param>
+    /// <param name="productId">Optional reference to the source product (for analytics/BI only).</param>
+    /// <param name="productName">Snapshot of the product name at order time.</param>
     /// <param name="qty">Quantity to add; must be greater than zero.</param>
-    /// <param name="unitPriceCents">Unit price in cents; must be non-negative.</param>
-    public void AddItem(Guid productId, int qty, decimal unitPrice)
+    /// <param name="unitPrice">Unit price at order time; must be non-negative.</param>
+    /// <param name="unitName">Snapshot of the product's unit label at order time (e.g. "phần", "ly").</param>
+    public void AddItem(Guid? productId, string productName, int qty, decimal unitPrice, string? unitName = null)
     {
+        if (string.IsNullOrWhiteSpace(productName)) throw new ArgumentException("Product name snapshot is required.", nameof(productName));
         if (qty <= 0) throw new ArgumentOutOfRangeException(nameof(qty));
         if (unitPrice < 0) throw new ArgumentOutOfRangeException(nameof(unitPrice));
 
-        var item = new OrderItem(Guid.NewGuid(), Id, productId, qty, unitPrice);
+        var item = new OrderItem(Guid.NewGuid(), Id, productId, productName, qty, unitPrice, unitName);
         Items.Add(item);
         RecalculateTotal();
         AddDomainEvent(new Events.OrderItemAddedEvent(Id, item.Id, productId, qty));
@@ -68,8 +75,19 @@ public class Order : AggregateRoot
     /// </summary>
     public void MarkCompleted()
     {
+        if (Status != OrderStatus.Open) throw new InvalidOperationException("Only open orders can be completed.");
         Status = OrderStatus.Completed;
         AddDomainEvent(new Events.OrderCompletedEvent(Id));
+    }
+
+    /// <summary>
+    /// Cancel the order. Only open orders can be cancelled.
+    /// </summary>
+    public void Cancel()
+    {
+        if (Status != OrderStatus.Open) throw new InvalidOperationException("Only open orders can be cancelled.");
+        Status = OrderStatus.Cancelled;
+        AddDomainEvent(new Events.OrderCancelledEvent(Id));
     }
 
     private void RecalculateTotal()
@@ -80,19 +98,23 @@ public class Order : AggregateRoot
 
 /// <summary>
 /// A single line item belonging to an <see cref="Order"/>.
+/// Stores an immutable snapshot of product data at the time of ordering so that
+/// price/name changes or product deletion never corrupt historical records.
 /// </summary>
 public class OrderItem
 {
     private OrderItem() { }
 
     /// <summary>
-    /// Create a new order item instance.
+    /// Create a new order item instance with a product snapshot.
     /// </summary>
-    public OrderItem(Guid id, Guid orderId, Guid productId, int qty, decimal unitPrice)
+    public OrderItem(Guid id, Guid orderId, Guid? productId, string productName, int qty, decimal unitPrice, string? unitName = null)
     {
         Id = id;
         OrderId = orderId;
         ProductId = productId;
+        ProductName = productName;
+        UnitName = unitName;
         Qty = qty;
         UnitPrice = unitPrice;
     }
@@ -108,9 +130,18 @@ public class OrderItem
     public Guid OrderId { get; private set; }
 
     /// <summary>
-    /// Identifier of the referenced product.
+    /// Optional soft-reference to the source product (for BI/analytics only).
+    /// Do NOT use this for display or pricing — read <see cref="ProductName"/> and <see cref="UnitPrice"/> instead.
     /// </summary>
-    public Guid ProductId { get; private set; }
+    public Guid? ProductId { get; private set; }
+
+    /// <summary>
+    /// Immutable snapshot of the product name at the time the order was placed.
+    /// </summary>
+    public string ProductName { get; private set; } = string.Empty;
+
+    /// <summary>Snapshot of the product's unit label at order time (e.g. "phần", "ly").</summary>
+    public string? UnitName { get; private set; }
 
     /// <summary>
     /// Quantity of the product for this line item.

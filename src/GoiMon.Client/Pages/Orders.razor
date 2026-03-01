@@ -1,0 +1,528 @@
+@page "/orders"
+@inject IGoiMonClient Client
+@inject ToastService ToastService
+@inject IStateReader<UiCacheState> UiStateReader
+@inject IStateWriter<UiCacheState> UiStateWriter
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@using EasyAppDev.Blazor.Store.Core
+@using GoiMon.Client.State
+@using GoiMon.Client.Features.Orders.Components
+
+<header class="flex h-14 shrink-0 items-center gap-2 border-b px-5">
+    <BbSidebarTrigger />
+    <BbSeparator Orientation="SeparatorOrientation.Vertical" Class="h-4" />
+    <h1 class="text-sm font-semibold">Quản lý đơn hàng</h1>
+    <span class="ml-2 flex items-center gap-1 text-xs text-emerald-600 font-medium">
+        <span class="h-2 w-2 rounded-full bg-emerald-500 inline-block"></span>
+        Trực tuyến
+    </span>
+    <div class="ml-auto flex items-center gap-2">
+        <BbButton Size="ButtonSize.Small" Variant="ButtonVariant.Outline" OnClick="RefreshOrdersAsync">
+            <LucideIcon Name="refresh-cw" Class="h-4 w-4 mr-1" />
+            Làm mới
+        </BbButton>
+    </div>
+</header>
+
+<div class="flex flex-1 overflow-hidden gap-4 p-4" style="height: calc(100vh - 3.5rem);">
+
+    <div class="flex flex-col rounded-lg border bg-background overflow-hidden" style="width: 55%; min-width: 320px;">
+        <div class="flex border-b bg-background">
+            <button class="@(TabCls("open"))" @onclick="SetOpenTab">
+                Đang xử lý
+                @if (_tabCounts.GetValueOrDefault("open", 0) > 0)
+                {
+                    <span class="ml-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-semibold">
+                        @(_tabCounts["open"])
+                    </span>
+                }
+            </button>
+            <button class="@(TabCls("completed"))" @onclick="SetCompletedTab">
+                Hoàn thành
+                @if (_tabCounts.GetValueOrDefault("completed", 0) > 0)
+                {
+                    <span class="ml-1.5 text-muted-foreground">(@(_tabCounts["completed"]))</span>
+                }
+            </button>
+            <button class="@(TabCls("cancelled"))" @onclick="SetCancelledTab">
+                Đã hủy
+                @if (_tabCounts.GetValueOrDefault("cancelled", 0) > 0)
+                {
+                    <span class="ml-1.5 text-muted-foreground">(@(_tabCounts["cancelled"]))</span>
+                }
+            </button>
+        </div>
+
+        @if (_loading)
+        {
+            <div class="p-5 space-y-2 flex-1 overflow-y-auto">
+                <BbSkeleton Height="52px" Class="w-full" />
+                <BbSkeleton Height="52px" Class="w-full" />
+                <BbSkeleton Height="52px" Class="w-full" />
+                <BbSkeleton Height="52px" Class="w-full" />
+                <BbSkeleton Height="52px" Class="w-full" />
+            </div>
+        }
+        else if (_error is not null)
+        {
+            <div class="p-5">
+                <BbAlert Variant="AlertVariant.Danger">
+                    <BbAlertDescription>@_error</BbAlertDescription>
+                </BbAlert>
+            </div>
+        }
+        else
+        {
+            <div class="flex-1 overflow-y-auto" @ref="_orderListRef" @onscroll="OnOrderListScrollAsync">
+                <table class="w-full text-sm">
+                    <thead class="border-b bg-muted/40 sticky top-0">
+                        <tr>
+                            <th class="h-9 px-4 text-left text-xs font-semibold text-muted-foreground tracking-wider uppercase">Mã đơn</th>
+                            <th class="h-9 px-4 text-left text-xs font-semibold text-muted-foreground tracking-wider uppercase">Thời gian</th>
+                            <th class="h-9 px-4 text-left text-xs font-semibold text-muted-foreground tracking-wider uppercase">Món ăn</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (_orders.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="3" class="py-12 text-center text-muted-foreground text-sm">
+                                    <LucideIcon Name="inbox" Class="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+                                    Không có đơn nào
+                                </td>
+                            </tr>
+                        }
+                        @foreach (var order in _orders)
+                        {
+                            <tr class="@RowCls(order.Id)" @onclick="() => SelectOrder(order)">
+                                <td class="px-4 py-3 font-semibold text-primary whitespace-nowrap">
+                                    #GM-@ShortId(order.Id)
+                                </td>
+                                <td class="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                                    @FormatTime(order.CreatedAt)
+                                </td>
+                                <td class="px-4 py-3 text-muted-foreground max-w-[180px] truncate">
+                                    @ItemsSummary(order)
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                @if (_loadingMore)
+                {
+                    <div class="p-4 space-y-2">
+                        <BbSkeleton Height="40px" Class="w-full" />
+                        <BbSkeleton Height="40px" Class="w-full" />
+                    </div>
+                }
+                else if (!_hasNextPage && _orders.Count > 0)
+                {
+                    <p class="py-3 text-center text-xs text-muted-foreground">Đã tải hết đơn hàng</p>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="flex flex-col flex-1 overflow-hidden rounded-lg border bg-background">
+        @if (_selectedOrder is null)
+        {
+            <div class="flex flex-col items-center justify-center flex-1 gap-3 px-6 text-muted-foreground">
+                <LucideIcon Name="clipboard-list" Class="h-12 w-12 text-muted-foreground/30" />
+                <p class="text-sm">Chọn đơn hàng để xem chi tiết</p>
+            </div>
+        }
+        else
+        {
+            <OrderDetailPanel
+                Order="_selectedOrder"
+                ActionLoading="_actionLoading"
+                ActionType="_actionType"
+                OnClose="CloseDetail"
+                OnComplete="CompleteOrderAsync"
+                OnCancel="CancelOrderAsync" />
+        }
+    </div>
+</div>
+
+@code {
+    private List<OrderListItem> _orders = new();
+    private string _activeTab = "open";
+    private Guid? _selectedId;
+    private OrderListItem? _selectedOrder;
+    private bool _loading;
+    private bool _loadingMore;
+    private bool _actionLoading;
+    private string? _actionType;
+    private string? _error;
+    private bool _hasNextPage = true;
+    private string? _endCursor;
+    private const int OrdersPageSize = 30;
+    private ElementReference _orderListRef;
+    private IDisposable? _orderChangedSubscription;
+    private DateTimeOffset _nextCountRefreshAt = DateTimeOffset.MinValue;
+
+    private readonly Dictionary<string, int> _tabCounts = new()
+    {
+        ["open"] = 0,
+        ["completed"] = 0,
+        ["cancelled"] = 0,
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        var cached = UiStateReader.GetState().Orders;
+        if (cached is not null)
+        {
+            _orders = cached.Items.ToList();
+            _activeTab = cached.ActiveTab;
+            _selectedId = cached.SelectedOrderId;
+            _selectedOrder = _orders.FirstOrDefault(o => o.Id == _selectedId);
+            _tabCounts[_activeTab] = _orders.Count;
+        }
+
+        StartRealtimeSubscription();
+
+        if (_orders.Count == 0)
+        {
+            await ReloadFromStartAsync();
+        }
+        else
+        {
+            _ = ReloadFromStartAsync(showLoading: false);
+        }
+    }
+
+    private async Task ReloadFromStartAsync(bool showLoading = true)
+    {
+        _loading = showLoading;
+        _error = null;
+        try
+        {
+            _orders.Clear();
+            _endCursor = null;
+            _hasNextPage = true;
+
+            await LoadNextPageAsync();
+            await RefreshTabCountsAsync();
+
+            if (_selectedId.HasValue)
+                _selectedOrder = _orders.FirstOrDefault(o => o.Id == _selectedId);
+
+            await PersistState();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private Task RefreshOrdersAsync() => ReloadFromStartAsync();
+
+    private async Task LoadNextPageAsync()
+    {
+        if (!_hasNextPage || _loadingMore)
+            return;
+
+        _loadingMore = true;
+        try
+        {
+            var result = await Client.GetOrders.ExecuteAsync(
+                first: OrdersPageSize,
+                after: _endCursor,
+                where: BuildFilterForTab(_activeTab));
+
+            if (result.Data?.Orders is { } data)
+            {
+                if (data.Nodes is { } nodes)
+                {
+                    _orders.AddRange(nodes.Select(n => new OrderListItem(
+                        n.Id,
+                        NormalizeStatus(n.Status.ToString()),
+                        (decimal)n.Total,
+                        n.CreatedAt,
+                        n.Items.Select(i => new OrderItemSnapshot(
+                            i.Id,
+                            i.ProductName,
+                            i.UnitName,
+                            i.Qty,
+                            (decimal)i.UnitPrice)).ToList())));
+                }
+
+                _hasNextPage = data.PageInfo?.HasNextPage == true;
+                _endCursor = data.PageInfo?.EndCursor;
+                _tabCounts[_activeTab] = data.TotalCount;
+                await PersistState();
+                return;
+            }
+
+            if (result.Errors.Count > 0)
+                throw new InvalidOperationException(result.Errors[0].Message);
+        }
+        finally
+        {
+            _loadingMore = false;
+        }
+    }
+
+    private async Task OnOrderListScrollAsync(EventArgs _)
+    {
+        if (_loading || _loadingMore || !_hasNextPage)
+            return;
+
+        var metrics = await JS.InvokeAsync<ScrollMetrics>("ordersScroll.getMetrics", _orderListRef);
+        if (metrics.ScrollTop + metrics.ClientHeight >= metrics.ScrollHeight - 80)
+        {
+            await LoadNextPageAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task RefreshTabCountsAsync()
+    {
+        _tabCounts["open"] = await GetTabTotalCountAsync("open");
+        _tabCounts["completed"] = await GetTabTotalCountAsync("completed");
+        _tabCounts["cancelled"] = await GetTabTotalCountAsync("cancelled");
+    }
+
+    private async Task<int> GetTabTotalCountAsync(string tab)
+    {
+        var result = await Client.GetOrders.ExecuteAsync(first: 1, after: null, where: BuildFilterForTab(tab));
+        if (result.Data?.Orders is { } data)
+            return data.TotalCount;
+        return 0;
+    }
+
+    private async Task SetTab(string tab)
+    {
+        if (_activeTab == tab)
+            return;
+
+        _activeTab = tab;
+        _selectedId = null;
+        _selectedOrder = null;
+        await ReloadFromStartAsync();
+    }
+
+    private Task SetOpenTab() => SetTab("open");
+    private Task SetCompletedTab() => SetTab("completed");
+    private Task SetCancelledTab() => SetTab("cancelled");
+
+    private async Task SelectOrder(OrderListItem order)
+    {
+        _selectedId = order.Id;
+        _selectedOrder = order;
+        await PersistState();
+    }
+
+    private async Task CloseDetail()
+    {
+        _selectedId = null;
+        _selectedOrder = null;
+        await PersistState();
+    }
+
+    private async Task CompleteOrderAsync()
+    {
+        if (_selectedOrder is null) return;
+
+        _actionLoading = true;
+        _actionType = "complete";
+        try
+        {
+            var result = await Client.CompleteOrder.ExecuteAsync(_selectedOrder.Id);
+            if (result.IsErrorResult())
+            {
+                ToastService.Error(result.Errors.FirstOrDefault()?.Message ?? "Không thể hoàn thành đơn hàng");
+                return;
+            }
+
+            ToastService.Success("Đơn hàng đã hoàn thành");
+            _selectedId = null;
+            _selectedOrder = null;
+            await ReloadFromStartAsync(showLoading: false);
+        }
+        finally
+        {
+            _actionLoading = false;
+            _actionType = null;
+        }
+    }
+
+    private async Task CancelOrderAsync()
+    {
+        if (_selectedOrder is null) return;
+
+        _actionLoading = true;
+        _actionType = "cancel";
+        try
+        {
+            var result = await Client.CancelOrder.ExecuteAsync(_selectedOrder.Id);
+            if (result.IsErrorResult())
+            {
+                ToastService.Error(result.Errors.FirstOrDefault()?.Message ?? "Không thể huỷ đơn hàng");
+                return;
+            }
+
+            ToastService.Success("Đơn hàng đã huỷ");
+            _selectedId = null;
+            _selectedOrder = null;
+            await ReloadFromStartAsync(showLoading: false);
+        }
+        finally
+        {
+            _actionLoading = false;
+            _actionType = null;
+        }
+    }
+
+    private async Task PersistState()
+    {
+        await UiStateWriter.UpdateAsync(s => s with
+        {
+            Orders = new OrderPageState(_activeTab, _selectedId, _orders)
+        }, "cache.orders");
+    }
+
+    private static OrderFilterInput BuildFilterForTab(string tab)
+        => tab switch
+        {
+            "open" => new OrderFilterInput
+            {
+                Status = new OrderStatusOperationFilterInput { Eq = OrderStatus.Open }
+            },
+            "completed" => new OrderFilterInput
+            {
+                Or =
+                [
+                    new OrderFilterInput { Status = new OrderStatusOperationFilterInput { Eq = OrderStatus.Completed } },
+                    new OrderFilterInput { Status = new OrderStatusOperationFilterInput { Eq = OrderStatus.Paid } }
+                ]
+            },
+            "cancelled" => new OrderFilterInput
+            {
+                Status = new OrderStatusOperationFilterInput { Eq = OrderStatus.Cancelled }
+            },
+            _ => new OrderFilterInput
+            {
+                Status = new OrderStatusOperationFilterInput { Eq = OrderStatus.Open }
+            }
+        };
+
+    private static string NormalizeStatus(string status)
+        => status.Trim().ToUpperInvariant();
+
+    private void StartRealtimeSubscription()
+    {
+        _orderChangedSubscription?.Dispose();
+        _orderChangedSubscription = Client.OnOrderChanged
+            .Watch()
+            .Subscribe(result =>
+            {
+                if (!result.IsErrorResult() && result.Data?.OnOrderChanged is { } changed)
+                {
+                    _ = InvokeAsync(() =>
+                    {
+                        MergeRealtimeOrder(changed);
+
+                        if (DateTimeOffset.UtcNow >= _nextCountRefreshAt)
+                        {
+                            _nextCountRefreshAt = DateTimeOffset.UtcNow.AddSeconds(10);
+                            _ = RefreshTabCountsAsync();
+                        }
+
+                        StateHasChanged();
+                        return Task.CompletedTask;
+                    });
+                }
+            });
+    }
+
+    private void MergeRealtimeOrder(IOnOrderChanged_OnOrderChanged changed)
+    {
+        var mapped = new OrderListItem(
+            changed.Id,
+            NormalizeStatus(changed.Status.ToString()),
+            changed.Total,
+            changed.CreatedAt,
+            changed.Items.Select(i => new OrderItemSnapshot(i.Id, i.ProductName, i.UnitName, i.Qty, i.UnitPrice)).ToList());
+
+        var existingIndex = _orders.FindIndex(o => o.Id == mapped.Id);
+        var shouldAppearInCurrentTab = OrderInCurrentTab(mapped.Status);
+
+        if (existingIndex >= 0)
+        {
+            if (shouldAppearInCurrentTab)
+                _orders[existingIndex] = mapped;
+            else
+                _orders.RemoveAt(existingIndex);
+        }
+        else if (shouldAppearInCurrentTab)
+        {
+            _orders.Insert(0, mapped);
+            if (_orders.Count > OrdersPageSize)
+                _orders.RemoveAt(_orders.Count - 1);
+        }
+
+        _selectedOrder = _selectedId.HasValue
+            ? _orders.FirstOrDefault(o => o.Id == _selectedId)
+            : null;
+
+        _tabCounts[_activeTab] = _orders.Count;
+        _ = PersistState();
+    }
+
+    private bool OrderInCurrentTab(string normalizedStatus)
+        => _activeTab switch
+        {
+            "open" => normalizedStatus == "OPEN",
+            "completed" => normalizedStatus is "COMPLETED" or "PAID",
+            "cancelled" => normalizedStatus == "CANCELLED",
+            _ => normalizedStatus == "OPEN"
+        };
+
+    private string TabCls(string tab)
+    {
+        var active = _activeTab == tab;
+        return active
+            ? "flex-1 px-4 py-3 text-sm font-medium transition-colors border-b-2 border-primary text-primary"
+            : "flex-1 px-4 py-3 text-sm font-medium transition-colors border-b-2 border-transparent text-muted-foreground hover:text-foreground";
+    }
+
+    private string RowCls(Guid id)
+    {
+        var selected = _selectedId == id;
+        return selected
+            ? "border-b last:border-0 cursor-pointer transition-colors bg-primary/5 border-l-2 border-l-primary"
+            : "border-b last:border-0 cursor-pointer transition-colors hover:bg-muted/40";
+    }
+
+    private static string ItemsSummary(OrderListItem order)
+    {
+        var parts = order.Items.Take(3).Select(i => i.ProductName + " x" + i.Qty);
+        var summary = string.Join(", ", parts);
+        if (order.Items.Count > 3) summary += "...";
+        return summary;
+    }
+
+    private static string FormatTime(DateTimeOffset dt)
+        => dt.ToLocalTime().ToString("HH:mm");
+
+    private static string ShortId(Guid id)
+        => id.ToString("N")[..4].ToUpper();
+
+    public ValueTask DisposeAsync()
+    {
+        _orderChangedSubscription?.Dispose();
+        _orderChangedSubscription = null;
+        return ValueTask.CompletedTask;
+    }
+
+    private sealed record ScrollMetrics(double ScrollTop, double ClientHeight, double ScrollHeight);
+}

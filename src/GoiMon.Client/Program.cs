@@ -21,6 +21,11 @@ var graphqlEndpoint = string.IsNullOrWhiteSpace(configuredGraphqlEndpoint)
     ? new Uri(appBaseUri, "graphql").ToString()
     : new Uri(appBaseUri, configuredGraphqlEndpoint).ToString();
 
+var configuredGraphqlWsEndpoint = builder.Configuration["GraphQL:WebSocketEndpoint"]?.Trim();
+var graphqlWebSocketEndpoint = string.IsNullOrWhiteSpace(configuredGraphqlWsEndpoint)
+    ? graphqlEndpoint.Replace("https://", "wss://").Replace("http://", "ws://")
+    : new Uri(appBaseUri, configuredGraphqlWsEndpoint).ToString();
+
 if (!builder.HostEnvironment.IsDevelopment()
     && Uri.TryCreate(graphqlEndpoint, UriKind.Absolute, out var endpointUri)
     && endpointUri.IsLoopback)
@@ -30,7 +35,8 @@ if (!builder.HostEnvironment.IsDevelopment()
 
 builder.Services
     .AddGoiMonClient()
-    .ConfigureHttpClient(client => client.BaseAddress = new Uri(graphqlEndpoint));
+    .ConfigureHttpClient(client => client.BaseAddress = new Uri(graphqlEndpoint))
+    .ConfigureWebSocketClient(client => client.Uri = new Uri(graphqlWebSocketEndpoint));
 
 // Register Blazor Blueprint services (primitives, toast, dialog)
 builder.Services.AddBlazorBlueprintComponents();

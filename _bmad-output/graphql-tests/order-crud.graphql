@@ -1,23 +1,198 @@
-# Create an order (requires product IDs)
-mutation CreateOrder($input: OrderInput!) {
-  createOrder(input: $input) {
+# ─────────────────────────────────────────────────────────────────────────────
+# Orders Feature — Full CRUD GraphQL Test Operations
+# Endpoint: http://localhost:5100/graphql
+#
+# Model notes:
+#   - OrderItem stores an immutable snapshot (productName, unitName, unitPrice)
+#     at order-time. productId is a soft BI reference only (nullable).
+#   - Status lifecycle: Open → Completed → Paid | Open → Cancelled
+#
+# Implementation status:
+#   ✅ createOrder          — active
+#   🔲 addOrderItem         — planned (Phase 1)
+#   🔲 updateOrderItem      — planned (Phase 1)
+#   🔲 removeOrderItem      — planned (Phase 1)
+#   🔲 completeOrder        — planned (Phase 1)
+#   🔲 cancelOrder          — planned (Phase 1)
+#   🔲 markOrderPaid        — planned (Phase 2)
+#   🔲 orders (query)       — planned (Phase 1)
+#   🔲 orderById (query)    — planned (Phase 1)
+#   🔲 ordersByStatus       — planned (Phase 2)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ════════════════════════════════════════════════════════════════════════════
+# QUERIES
+# ════════════════════════════════════════════════════════════════════════════
+
+# Q-01: List all orders — offset paging + filter by status + sort by id desc
+# 🔲 Requires OrderQueries to be activated
+query ListOrders($skip: Int, $take: Int, $status: OrderStatus) {
+  orders(
+    skip: $skip
+    take: $take
+    where: { status: { eq: $status } }
+    order: { id: DESC }
+  ) {
+    items {
+      id
+      status
+      total
+      items {
+        id
+        productId
+        productName
+        unitName
+        qty
+        unitPrice
+      }
+    }
+    totalCount
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+    }
+  }
+}
+
+# Q-02: Get single order by id
+# 🔲 Requires OrderQueries to be activated
+query GetOrderById($id: UUID!) {
+  orderById(id: $id) {
     id
+    status
+    total
     items {
       id
       productId
+      productName
+      unitName
       qty
       unitPrice
     }
   }
 }
 
-# Get order by id (includes items and product enrichment via resolver)
-query GetOrder($id: UUID!) {
-  orderById(id: $id) {
+# Q-03: List orders filtered by status (kitchen/cashier board)
+# 🔲 Requires OrderQueries to be activated
+query GetOrdersByStatus($status: OrderStatus!) {
+  orders(where: { status: { eq: $status } }) {
+    items {
+      id
+      status
+      total
+      items {
+        productName
+        unitName
+        qty
+        unitPrice
+      }
+    }
+    totalCount
+  }
+}
+
+# ════════════════════════════════════════════════════════════════════════════
+# MUTATIONS — CREATE
+# ════════════════════════════════════════════════════════════════════════════
+
+# M-01: Create order — full snapshot (productId + productName + unitName)
+# ✅ Active
+mutation CreateOrder_Full($input: OrderInput!) {
+  createOrder(input: $input) {
     id
+    status
+    total
     items {
       id
       productId
+      productName
+      unitName
+      qty
+      unitPrice
+    }
+  }
+}
+
+# M-02: Create order — no productId (walk-in / ad-hoc item)
+# ✅ Active
+mutation CreateOrder_NoProductId($input: OrderInput!) {
+  createOrder(input: $input) {
+    id
+    status
+    total
+    items {
+      id
+      productId
+      productName
+      unitName
+      qty
+      unitPrice
+    }
+  }
+}
+
+# M-03: Create order — multiple items (mixed productId presence)
+# ✅ Active
+mutation CreateOrder_MultiItem($input: OrderInput!) {
+  createOrder(input: $input) {
+    id
+    status
+    total
+    items {
+      id
+      productId
+      productName
+      unitName
+      qty
+      unitPrice
+    }
+  }
+}
+
+# M-04: Create order — zero-price item (free item / complimentary)
+# ✅ Active
+mutation CreateOrder_FreeItem($input: OrderInput!) {
+  createOrder(input: $input) {
+    id
+    total
+    items {
+      productName
+      unitName
+      qty
+      unitPrice
+    }
+  }
+}
+
+# ════════════════════════════════════════════════════════════════════════════
+# MUTATIONS — UPDATE ITEMS
+# ════════════════════════════════════════════════════════════════════════════
+
+# M-05: Add item to existing open order
+# 🔲 Planned — Phase 1
+mutation AddOrderItem($input: AddOrderItemInput!) {
+  addOrderItem(input: $input) {
+    id
+    status
+    total
+    items {
+      id
+      productName
+      unitName
+      qty
+      unitPrice
+    }
+  }
+}
+
+# M-06: Update qty / price of an existing order item
+# 🔲 Planned — Phase 2
+mutation UpdateOrderItem($input: UpdateOrderItemInput!) {
+  updateOrderItem(input: $input) {
+    id
+    total
+    items {
+      id
       productName
       qty
       unitPrice
@@ -25,19 +200,96 @@ query GetOrder($id: UUID!) {
   }
 }
 
-# List orders (paged)
-query ListOrders($first: Int, $after: String) {
-  orders(first: $first, after: $after) {
-    nodes {
+# M-07: Remove a single item from an open order
+# 🔲 Planned — Phase 1
+mutation RemoveOrderItem($orderId: UUID!, $orderItemId: UUID!) {
+  removeOrderItem(orderId: $orderId, orderItemId: $orderItemId) {
+    id
+    total
+    items {
       id
-      items {
-        id
-        productId
-        productName
-        qty
-        unitPrice
-      }
+      productName
+      qty
     }
-    totalCount
+  }
+}
+
+# ════════════════════════════════════════════════════════════════════════════
+# MUTATIONS — STATUS TRANSITIONS
+# ════════════════════════════════════════════════════════════════════════════
+
+# M-08: Complete order (Open → Completed)
+# 🔲 Planned — Phase 1
+mutation CompleteOrder($orderId: UUID!) {
+  completeOrder(orderId: $orderId) {
+    id
+    status
+    total
+  }
+}
+
+# M-09: Mark order as paid (Completed → Paid)
+# 🔲 Planned — Phase 2
+mutation MarkOrderPaid($orderId: UUID!) {
+  markOrderPaid(orderId: $orderId) {
+    id
+    status
+    total
+  }
+}
+
+# M-10: Cancel order (Open → Cancelled)
+# 🔲 Planned — Phase 1
+mutation CancelOrder($orderId: UUID!, $reason: String) {
+  cancelOrder(orderId: $orderId, reason: $reason) {
+    id
+    status
+    total
+  }
+}
+
+# ════════════════════════════════════════════════════════════════════════════
+# VALIDATION / ERROR CASES
+# ════════════════════════════════════════════════════════════════════════════
+
+# ERR-01: Empty items list → "Order must contain at least one item"
+mutation CreateOrder_EmptyItems($input: OrderInput!) {
+  createOrder(input: $input) {
+    id
+  }
+}
+
+# ERR-02: Missing productName → "Product name snapshot is required"
+mutation CreateOrder_NoProductName($input: OrderInput!) {
+  createOrder(input: $input) {
+    id
+  }
+}
+
+# ERR-03: Qty = 0 → qty must be > 0
+mutation CreateOrder_ZeroQty($input: OrderInput!) {
+  createOrder(input: $input) {
+    id
+  }
+}
+
+# ERR-04: Negative unitPrice → unitPrice must be >= 0
+mutation CreateOrder_NegativePrice($input: OrderInput!) {
+  createOrder(input: $input) {
+    id
+  }
+}
+
+# ERR-05: productName exceeds 255 chars
+mutation CreateOrder_LongName($input: OrderInput!) {
+  createOrder(input: $input) {
+    id
+  }
+}
+
+# ERR-06: unitName exceeds 50 chars
+mutation CreateOrder_LongUnitName($input: OrderInput!) {
+  createOrder(input: $input) {
+    id
   }
 }

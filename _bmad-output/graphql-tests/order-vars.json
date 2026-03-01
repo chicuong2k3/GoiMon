@@ -1,14 +1,249 @@
 {
-  "query": "mutation CreateOrder($input: OrderInput!) { createOrder(input: $input) { id items { id productId qty unitPrice } } }",
-  "variables": {
-    "input": {
-      "items": [
-        {
-          "productId": "REPLACE_WITH_PRODUCT_ID",
-          "qty": 2,
-          "unitPrice": 1.5
-        }
-      ]
+  "_readme": "Variables for order-crud.graphql. Replace REPLACE_WITH_* placeholders with real IDs from prior create calls.",
+  "_endpoint": "http://localhost:5100/graphql",
+  "_status_values": ["Open", "Completed", "Paid", "Cancelled"],
+
+  "Q-01_ListOrders": {
+    "operationName": "ListOrders",
+    "variables": {
+      "skip": 0,
+      "take": 20,
+      "status": "Open"
+    }
+  },
+
+  "Q-02_GetOrderById": {
+    "operationName": "GetOrderById",
+    "variables": {
+      "id": "REPLACE_WITH_ORDER_ID"
+    }
+  },
+
+  "Q-03_GetOrdersByStatus_Open": {
+    "operationName": "GetOrdersByStatus",
+    "variables": {
+      "status": "Open"
+    }
+  },
+
+  "Q-03_GetOrdersByStatus_Completed": {
+    "operationName": "GetOrdersByStatus",
+    "variables": {
+      "status": "Completed"
+    }
+  },
+
+  "M-01_CreateOrder_Full": {
+    "operationName": "CreateOrder_Full",
+    "variables": {
+      "input": {
+        "items": [
+          {
+            "productId": "REPLACE_WITH_PRODUCT_ID",
+            "productName": "Cà phê sữa đá",
+            "unitName": "ly",
+            "qty": 2,
+            "unitPrice": 35000
+          }
+        ]
+      }
+    }
+  },
+
+  "M-02_CreateOrder_NoProductId": {
+    "operationName": "CreateOrder_NoProductId",
+    "variables": {
+      "input": {
+        "items": [
+          {
+            "productId": null,
+            "productName": "Món đặc biệt hôm nay",
+            "unitName": "phần",
+            "qty": 1,
+            "unitPrice": 75000
+          }
+        ]
+      }
+    }
+  },
+
+  "M-03_CreateOrder_MultiItem": {
+    "operationName": "CreateOrder_MultiItem",
+    "variables": {
+      "input": {
+        "items": [
+          {
+            "productId": "REPLACE_WITH_PRODUCT_ID",
+            "productName": "Bún bò Huế",
+            "unitName": "tô",
+            "qty": 1,
+            "unitPrice": 55000
+          },
+          {
+            "productId": null,
+            "productName": "Nước suối",
+            "unitName": "chai",
+            "qty": 2,
+            "unitPrice": 10000
+          }
+        ]
+      }
+    }
+  },
+
+  "M-04_CreateOrder_FreeItem": {
+    "operationName": "CreateOrder_FreeItem",
+    "variables": {
+      "input": {
+        "items": [
+          {
+            "productName": "Khăn lạnh miễn phí",
+            "qty": 1,
+            "unitPrice": 0
+          }
+        ]
+      }
+    }
+  },
+
+  "M-05_AddOrderItem": {
+    "operationName": "AddOrderItem",
+    "variables": {
+      "input": {
+        "orderId": "REPLACE_WITH_ORDER_ID",
+        "productId": "REPLACE_WITH_PRODUCT_ID",
+        "productName": "Chè đậu xanh",
+        "unitName": "ly",
+        "qty": 1,
+        "unitPrice": 20000
+      }
+    }
+  },
+
+  "M-06_UpdateOrderItem": {
+    "operationName": "UpdateOrderItem",
+    "variables": {
+      "input": {
+        "orderId": "REPLACE_WITH_ORDER_ID",
+        "orderItemId": "REPLACE_WITH_ORDER_ITEM_ID",
+        "qty": 3,
+        "unitPrice": 35000
+      }
+    }
+  },
+
+  "M-07_RemoveOrderItem": {
+    "operationName": "RemoveOrderItem",
+    "variables": {
+      "orderId": "REPLACE_WITH_ORDER_ID",
+      "orderItemId": "REPLACE_WITH_ORDER_ITEM_ID"
+    }
+  },
+
+  "M-08_CompleteOrder": {
+    "operationName": "CompleteOrder",
+    "variables": {
+      "orderId": "REPLACE_WITH_ORDER_ID"
+    }
+  },
+
+  "M-09_MarkOrderPaid": {
+    "operationName": "MarkOrderPaid",
+    "variables": {
+      "orderId": "REPLACE_WITH_ORDER_ID"
+    }
+  },
+
+  "M-10_CancelOrder": {
+    "operationName": "CancelOrder",
+    "variables": {
+      "orderId": "REPLACE_WITH_ORDER_ID",
+      "reason": "Khách huỷ"
+    }
+  },
+
+  "ERR-01_EmptyItems_EXPECT_ERROR": {
+    "operationName": "CreateOrder_EmptyItems",
+    "variables": {
+      "input": {
+        "items": []
+      }
+    }
+  },
+
+  "ERR-02_NoProductName_EXPECT_ERROR": {
+    "operationName": "CreateOrder_NoProductName",
+    "variables": {
+      "input": {
+        "items": [
+          {
+            "productName": "",
+            "qty": 1,
+            "unitPrice": 50000
+          }
+        ]
+      }
+    }
+  },
+
+  "ERR-03_ZeroQty_EXPECT_ERROR": {
+    "operationName": "CreateOrder_ZeroQty",
+    "variables": {
+      "input": {
+        "items": [
+          {
+            "productName": "Bánh mì",
+            "qty": 0,
+            "unitPrice": 20000
+          }
+        ]
+      }
+    }
+  },
+
+  "ERR-04_NegativePrice_EXPECT_ERROR": {
+    "operationName": "CreateOrder_NegativePrice",
+    "variables": {
+      "input": {
+        "items": [
+          {
+            "productName": "Cà phê đen",
+            "qty": 1,
+            "unitPrice": -500
+          }
+        ]
+      }
+    }
+  },
+
+  "ERR-05_LongName_EXPECT_ERROR": {
+    "operationName": "CreateOrder_LongName",
+    "variables": {
+      "input": {
+        "items": [
+          {
+            "productName": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "qty": 1,
+            "unitPrice": 10000
+          }
+        ]
+      }
+    }
+  },
+
+  "ERR-06_LongUnitName_EXPECT_ERROR": {
+    "operationName": "CreateOrder_LongUnitName",
+    "variables": {
+      "input": {
+        "items": [
+          {
+            "productName": "Nước chanh",
+            "unitName": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "qty": 1,
+            "unitPrice": 25000
+          }
+        ]
+      }
     }
   }
 }

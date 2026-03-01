@@ -1,63 +1,109 @@
-
 @inherits LayoutComponentBase
 @using BlazorBlueprint.Primitives.Services
+@inject NavigationManager Navigation
+@implements IDisposable
 
 <BbSidebarProvider>
     <BbSidebar>
         <BbSidebarHeader>
-            <div class="flex items-center gap-2 px-2 h-10">
+            <div
+                class="flex items-center gap-2 px-2 h-10 overflow-hidden group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0">
                 <div class="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
                     <LucideIcon Name="utensils" Class="h-4 w-4" />
                 </div>
-                <span class="text-sm font-semibold">GoiMon</span>
+                <span class="text-sm font-semibold truncate group-data-[collapsible=icon]:hidden">GoiMon</span>
             </div>
         </BbSidebarHeader>
         <BbSidebarContent>
             <BbSidebarGroup>
-                <BbSidebarGroupLabel>Quản lý</BbSidebarGroupLabel>
+                <BbSidebarGroupLabel Class="group-data-[collapsible=icon]:hidden">Quản lý</BbSidebarGroupLabel>
                 <BbSidebarMenu>
                     <BbSidebarMenuItem>
-                        <BbSidebarMenuButton Href="/categories">
+                        <BbSidebarMenuButton Href="/categories" IsActive="@IsActiveRoute("/categories", false)"
+                                             Tooltip="Danh mục">
                             <LucideIcon Name="tag" Class="h-4 w-4" />
-                            <span>Danh mục</span>
+                            <span class="truncate group-data-[collapsible=icon]:hidden">Danh mục</span>
                         </BbSidebarMenuButton>
                     </BbSidebarMenuItem>
                     <BbSidebarMenuItem>
-                        <BbSidebarMenuButton Href="/products">
+                        <BbSidebarMenuButton Href="/products" IsActive="@IsActiveRoute("/products", false)"
+                                             Tooltip="Sản phẩm">
                             <LucideIcon Name="package" Class="h-4 w-4" />
-                            <span>Sản phẩm</span>
+                            <span class="truncate group-data-[collapsible=icon]:hidden">Sản phẩm</span>
                         </BbSidebarMenuButton>
                     </BbSidebarMenuItem>
                     <BbSidebarMenuItem>
-                        <BbSidebarMenuButton Href="/combos">
+                        <BbSidebarMenuButton Href="/orders" IsActive="@IsActiveRoute("/orders", false)"
+                                             Tooltip="Đơn hàng">
+                            <LucideIcon Name="clipboard-list" Class="h-4 w-4" />
+                            <span class="truncate group-data-[collapsible=icon]:hidden">Đơn hàng</span>
+                        </BbSidebarMenuButton>
+                    </BbSidebarMenuItem>
+                    <BbSidebarMenuItem>
+                        <BbSidebarMenuButton Href="/combos" IsActive="@IsActiveRoute("/combos", false)" Tooltip="Combo">
                             <LucideIcon Name="layers" Class="h-4 w-4" />
-                            <span>Combo</span>
+                            <span class="truncate group-data-[collapsible=icon]:hidden">Combo</span>
                         </BbSidebarMenuButton>
                     </BbSidebarMenuItem>
                 </BbSidebarMenu>
             </BbSidebarGroup>
         </BbSidebarContent>
         <BbSidebarFooter>
-            <div class="flex items-center gap-3 px-2 py-2">
+            <div
+                class="flex items-center gap-3 px-2 py-2 overflow-hidden group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0">
                 <BbAvatar Size="AvatarSize.Small">
                     <BbAvatarFallback>GM</BbAvatarFallback>
                 </BbAvatar>
-                <div class="flex flex-col flex-1 min-w-0">
+                <div class="flex flex-col flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
                     <span class="text-sm font-medium truncate">Nhà hàng Deli</span>
                     <span class="text-xs text-muted-foreground truncate">Admin</span>
                 </div>
             </div>
-            <BbSeparator />
-            <p class="px-2 py-2 text-[10px] text-muted-foreground text-center uppercase tracking-wider">
+            <BbSeparator Class="group-data-[collapsible=icon]:hidden" />
+            <p
+                class="px-2 py-2 text-[10px] text-muted-foreground text-center uppercase tracking-wider group-data-[collapsible=icon]:hidden">
                 © 2025 GoiMon • Vendor Management
             </p>
         </BbSidebarFooter>
     </BbSidebar>
     <BbSidebarInset>
-        @Body
+        <div class="h-full p-4 md:p-5">
+            @Body
+        </div>
     </BbSidebarInset>
 </BbSidebarProvider>
 
 <BbToastProvider Position="ToastPosition.BottomRight" />
 <BbDialogProvider />
 <BbPortalHost />
+
+@code {
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private bool IsActiveRoute(string basePath, bool exact)
+    {
+        var currentPath = Navigation.ToBaseRelativePath(Navigation.Uri).Trim('/');
+        var routePath = basePath.Trim('/');
+
+        if (exact)
+        {
+            return string.Equals(currentPath, routePath, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return string.Equals(currentPath, routePath, StringComparison.OrdinalIgnoreCase)
+            || currentPath.StartsWith(routePath + "/", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+}
