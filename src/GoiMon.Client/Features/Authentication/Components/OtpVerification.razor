@@ -1,0 +1,148 @@
+@implements IAsyncDisposable
+
+<div class="space-y-4">
+    <div class="space-y-1">
+        <BbTypographyH4>Enter Verification Code</BbTypographyH4>
+        <BbTypographyMuted>
+            We've sent a 6-digit code to your @DeliveryMethod.
+            @if (TimeRemaining > 0)
+            {
+                <span class="text-amber-500 font-medium"> Expires in @TimeRemaining s</span>
+            }
+            else
+            {
+                <span class="text-destructive font-medium"> Code expired</span>
+            }
+        </BbTypographyMuted>
+    </div>
+
+    @if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <BbAlert Variant="AlertVariant.Danger">
+            <BbAlertTitle>Error</BbAlertTitle>
+            <BbAlertDescription>@ErrorMessage</BbAlertDescription>
+        </BbAlert>
+    }
+
+    @if (!string.IsNullOrEmpty(SuccessMessage))
+    {
+        <BbAlert>
+            <BbAlertTitle>Success</BbAlertTitle>
+            <BbAlertDescription>@SuccessMessage</BbAlertDescription>
+        </BbAlert>
+    }
+
+    <!-- OTP Input -->
+    <div class="flex justify-center">
+        <BbInputOTP MaxLength="6" @bind-Value="OtpCode" Disabled="@(IsLoading || TimeRemaining <= 0)" />
+    </div>
+
+    <!-- Verify Button -->
+    <BbButton OnClick="VerifyOtp" Disabled="@(IsLoading || OtpCode?.Length != 6)" Class="w-full">
+        @if (IsLoading)
+        {
+            <BbSpinner Class="mr-2 h-4 w-4" />
+        }
+        Verify Code
+    </BbButton>
+
+    <!-- Resend -->
+    <div class="text-center">
+        @if (CanResend)
+        {
+            <BbButton Variant="ButtonVariant.Link" OnClick="ResendOtp" Disabled="@IsLoading">
+                Didn't receive the code? Resend
+            </BbButton>
+        }
+        else
+        {
+            <BbTypographySmall>Resend code in <strong>@ResendCooldown</strong>s</BbTypographySmall>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string DeliveryMethod { get; set; } = "email";
+    [Parameter] public Guid UserId { get; set; }
+    [Parameter] public EventCallback<string> OnVerificationSuccess { get; set; }
+    [Parameter] public EventCallback<string> OnError { get; set; }
+
+    private string? OtpCode;
+    private string? ErrorMessage;
+    private string? SuccessMessage;
+    private bool IsLoading;
+    private int TimeRemaining = 600;
+    private int ResendCooldown;
+    private bool CanResend => ResendCooldown <= 0;
+    private System.Threading.Timer? TimerExpiry;
+    private System.Threading.Timer? TimerResendCooldown;
+
+    protected override void OnInitialized()
+    {
+        TimerExpiry = new System.Threading.Timer(
+            _ => UpdateExpiryCountdown(), null,
+            TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+
+        TimerResendCooldown = new System.Threading.Timer(
+            _ => UpdateResendCooldown(), null,
+            TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+    }
+
+    private void UpdateExpiryCountdown() =>
+        InvokeAsync(() =>
+        {
+            TimeRemaining--;
+            StateHasChanged();
+            if (TimeRemaining <= 0)
+            {
+                TimerExpiry?.Dispose();
+                ErrorMessage = "OTP code has expired. Please request a new one.";
+            }
+        });
+
+    private void UpdateResendCooldown() =>
+        InvokeAsync(() =>
+        {
+            if (ResendCooldown > 0)
+            {
+                ResendCooldown--;
+                StateHasChanged();
+            }
+        });
+
+    private async Task VerifyOtp()
+    {
+        if (string.IsNullOrEmpty(OtpCode) || OtpCode.Length != 6 || TimeRemaining <= 0) return;
+
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = null;
+            await OnVerificationSuccess.InvokeAsync(OtpCode);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = "Verification failed. Please try again.";
+            await OnError.InvokeAsync(ex.Message);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task ResendOtp()
+    {
+        OtpCode = null;
+        ResendCooldown = 60;
+        TimeRemaining = 600;
+        ErrorMessage = null;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    async ValueTask IAsyncDisposable.DisposeAsync()
+    {
+        TimerExpiry?.Dispose();
+        TimerResendCooldown?.Dispose();
+    }
+}

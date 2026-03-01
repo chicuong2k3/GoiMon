@@ -20,6 +20,7 @@ public class Product : AggregateRoot
     public decimal Price { get; private set; }
     public Guid? CategoryId { get; private set; }
     public string? Description { get; private set; }
+    public string? ImageUrl { get; private set; }
 
     // Domain behaviors
     public void Rename(string newName)
@@ -47,5 +48,17 @@ public class Product : AggregateRoot
     {
         Description = description?.Trim();
         AddDomainEvent(new Events.ProductDescriptionUpdatedEvent(Id, Description));
+    }
+
+    public void UpdateImage(string? imageUrl)
+    {
+        var old = ImageUrl;
+        ImageUrl = imageUrl?.Trim();
+        AddDomainEvent(new Events.ProductImageUpdatedEvent(Id, old, ImageUrl));
+    }
+
+    public void MarkDeleted()
+    {
+        AddDomainEvent(new Events.ProductDeletedEvent(Id, ImageUrl));
     }
 }

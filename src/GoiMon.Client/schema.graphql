@@ -218,6 +218,7 @@ type Product {
   price: Decimal!
   categoryId: UUID
   description: String
+  imageUrl: String
   id: UUID!
   category: Category
 }
@@ -286,6 +287,7 @@ input ListFilterInputTypeOfProductComboItemFilterInput {
 type ProductCombo {
   name: String
   price: Decimal!
+  imageUrl: String
   items: [ProductComboItem!]!
   id: UUID!
 }
@@ -355,6 +357,7 @@ input UpdateProductInput {
   price: Decimal!
   categoryId: UUID
   description: String
+  imageUrl: String
 }
 
 input ProductInput {
@@ -362,6 +365,7 @@ input ProductInput {
   price: Decimal!
   categoryId: UUID
   description: String
+  imageUrl: String
 }
 
 type OrderItem {
@@ -392,12 +396,14 @@ input CreateComboInput {
   name: String!
   price: Decimal!
   items: [ComboItemInput!]
+  imageUrl: String
 }
 
 input UpdateComboInput {
   id: UUID!
   name: String
   price: Decimal
+  imageUrl: String
 }
 
 input AddComboItemInput {

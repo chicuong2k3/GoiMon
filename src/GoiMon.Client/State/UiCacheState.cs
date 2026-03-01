@@ -13,7 +13,8 @@ public record CategoryPageCache(
     int Skip,
     int Take,
     int Total,
-    IReadOnlyList<CategoryListItem> Items);
+    IReadOnlyList<CategoryListItem> Items,
+    IReadOnlyList<Guid> SelectedIds);
 
 public record CategoryListItem(Guid Id, string Name);
 
@@ -24,7 +25,8 @@ public record ProductPageCache(
     int Take,
     int Total,
     IReadOnlyList<ProductListItem> Items,
-    IReadOnlyList<CategoryLookupItem> Categories);
+    IReadOnlyList<CategoryLookupItem> Categories,
+    IReadOnlyList<Guid> SelectedIds);
 
 public record ProductListItem(
     Guid Id,
@@ -32,7 +34,8 @@ public record ProductListItem(
     decimal Price,
     string? Description,
     Guid? CategoryId,
-    string? CategoryName);
+    string? CategoryName,
+    string? ImageUrl = null);
 
 public record CategoryLookupItem(Guid Id, string Name);
 
@@ -42,13 +45,15 @@ public record ComboPageCache(
     int Take,
     int Total,
     IReadOnlyList<ComboListItem> Items,
-    IReadOnlyList<ProductLookupItem> Products);
+    IReadOnlyList<ProductLookupItem> Products,
+    IReadOnlyList<Guid> SelectedIds);
 
 public record ComboListItem(
     Guid Id,
     string? Name,
     decimal Price,
-    IReadOnlyList<ComboItemListItem> Items);
+    IReadOnlyList<ComboItemListItem> Items,
+    string? ImageUrl = null);
 
 public record ComboItemListItem(Guid Id, Guid ProductId, string? ProductName, int Qty);
 

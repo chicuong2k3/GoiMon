@@ -23,7 +23,7 @@ public class OutboxService
         using var db = _factory.CreateDbContext();
 
         var pending = await db.Set<OutboxEvent>()
-            .Where(o => !o.Processed)
+            .Where(o => !o.Processed && o.AttemptCount < 10)
             .OrderBy(o => o.OccurredOn)
             .Take(50)
             .ToListAsync(cancellationToken)
@@ -33,11 +33,14 @@ public class OutboxService
         {
             try
             {
-                var type = Type.GetType(outbox.TypeName!);
+                // Try standard resolution first, then fall back to scanning the current assembly
+                // (handles cases where TypeName is FullName without assembly qualification)
+                var type = Type.GetType(outbox.TypeName!)
+                    ?? typeof(OutboxService).Assembly.GetType(outbox.TypeName!);
                 if (type is null)
                 {
                     outbox.AttemptCount++;
-                    outbox.LastError = "Type resolution failed";
+                    outbox.LastError = $"Type resolution failed for '{outbox.TypeName}'";
                     await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
                     continue;
                 }

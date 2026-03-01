@@ -1,7 +1,8 @@
-
 using Hangfire;
 using Hangfire.PostgreSql;
 using GoiMon.Api.Infrastructure.Outbox;
+using GoiMon.Api.Infrastructure.Services;
+using GoiMon.Api.Features.Authentication.Mutations;
 using Microsoft.Extensions.ObjectPool;
 using Serilog;
 using Serilog.Sinks.SystemConsole.Themes;
@@ -10,6 +11,8 @@ using GoiMon.Api.Features.Products;
 using GoiMon.Api.Features.Categories;
 using GoiMon.Api.Features.Orders;
 using GoiMon.Api.Features.Combos;
+using CloudinaryDotNet;
+using GoiMon.Api.Features.ImageUpload.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,7 +40,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowNitro", policy =>
     {
         policy
-            .WithOrigins("https://nitro.chillicream.com", "http://localhost:5002", "http://localhost:5003", "http://localhost:5000")
+            .WithOrigins("https://nitro.chillicream.com", "http://localhost:5001", "http://localhost:5002", "http://localhost:5003", "http://localhost:5000")
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
@@ -46,8 +49,21 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowLocalDev", p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
 });
 
-// FluentValidation: register validators from this assembly
+// FluentValidation: register validators from this assemblyl
 builder.Services.AddValidatorsFromAssemblyContaining<GoiMon.Api.Features.Categories.Validators.CreateCategoryInputValidator>();
+
+// Authentication Services
+builder.Services.AddHttpClient<IOAuthExchangeService, OAuthExchangeService>();
+builder.Services.AddScoped<IOtpService, OtpService>();
+builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
+
+// Cloudinary Image Upload
+var cloudinaryAccount = new Account(
+    builder.Configuration["Cloudinary:CloudName"],
+    builder.Configuration["Cloudinary:ApiKey"],
+    builder.Configuration["Cloudinary:ApiSecret"]);
+builder.Services.AddSingleton(new Cloudinary(cloudinaryAccount));
+builder.Services.AddScoped<IImageUploadService, CloudinaryImageUploadService>();
 
 // MediatR removed — validation is handled via FluentValidation middleware and error filter
 
@@ -70,12 +86,17 @@ builder.Services.AddHangfireServer();
 // Domain event dispatcher and handlers
 builder.Services.AddScoped<GoiMon.Api.Domain.Events.IDomainEventDispatcher, GoiMon.Api.Infrastructure.DomainEvents.DomainEventDispatcher>();
 builder.Services.AddScoped(typeof(GoiMon.Api.Domain.Events.IDomainEventHandler<>), typeof(GoiMon.Api.Infrastructure.DomainEvents.LoggingDomainEventHandler<>));
+builder.Services.AddScoped<GoiMon.Api.Domain.Events.IDomainEventHandler<GoiMon.Api.Domain.Events.ProductImageUpdatedEvent>, GoiMon.Api.Infrastructure.DomainEvents.ImageCleanupHandler>();
+builder.Services.AddScoped<GoiMon.Api.Domain.Events.IDomainEventHandler<GoiMon.Api.Domain.Events.ProductDeletedEvent>, GoiMon.Api.Infrastructure.DomainEvents.ImageCleanupHandler>();
+builder.Services.AddScoped<GoiMon.Api.Domain.Events.IDomainEventHandler<GoiMon.Api.Domain.Events.ComboImageUpdatedEvent>, GoiMon.Api.Infrastructure.DomainEvents.ImageCleanupHandler>();
+builder.Services.AddScoped<GoiMon.Api.Domain.Events.IDomainEventHandler<GoiMon.Api.Domain.Events.ComboDeletedEvent>, GoiMon.Api.Infrastructure.DomainEvents.ImageCleanupHandler>();
 
 // GraphQL (HotChocolate)
 builder.Services
     .AddGraphQLServer()
     .AddQueryType(d => d.Name("Query"))
     .AddMutationType(d => d.Name("Mutation"))
+    .AddType<UploadType>()
     .AddProjections()
     .AddFiltering()
     .AddSorting()
@@ -90,6 +111,7 @@ builder.Services
     .AddTypeExtension<ComboQueries>()
     .AddTypeExtension<ComboMutations>()
     .AddTypeExtension<ProductComboItemResolvers>()
+    .AddTypeExtension<AuthenticationMutations>()
     .AddErrorFilter<GoiMon.Api.Infrastructure.Validation.FluentValidationErrorFilter>()
     // Validate input objects via FluentValidation middleware
     .UseField<GoiMon.Api.Infrastructure.Validation.FluentValidationMiddleware>();
@@ -129,11 +151,19 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
     Authorization = Array.Empty<Hangfire.Dashboard.IDashboardAuthorizationFilter>()
 });
 
-RecurringJob.AddOrUpdate<OutboxService>(
-    "outbox-poll",
-    s => s.ProcessPendingAsync(CancellationToken.None),
-    Cron.Minutely);
+try
+{
+    RecurringJob.AddOrUpdate<OutboxService>(
+        "outbox-poll",
+        s => s.ProcessPendingAsync(CancellationToken.None),
+        Cron.Minutely);
+}
+catch (Exception ex)
+{
+    Log.Warning(ex, "Failed to register recurring outbox job (lock timeout). Job may already exist.");
+}
 
+app.MapImageUploadEndpoints();
 app.MapGraphQL();
 
 try

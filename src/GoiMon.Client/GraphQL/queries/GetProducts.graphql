@@ -6,6 +6,7 @@ query GetProducts($skip: Int, $take: Int, $where: ProductFilterInput, $order: [P
       price
       description
       categoryId
+      imageUrl
       category {
         id
         name
