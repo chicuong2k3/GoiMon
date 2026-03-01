@@ -11,6 +11,9 @@ using GoiMon.Api.Features.Products;
 using GoiMon.Api.Features.Categories;
 using GoiMon.Api.Features.Orders;
 using GoiMon.Api.Features.Combos;
+using CloudinaryDotNet;
+using GoiMon.Api.Features.ImageUpload.Services;
+using GoiMon.Api.Features.ImageUpload.Mutations;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -55,6 +58,14 @@ builder.Services.AddHttpClient<IOAuthExchangeService, OAuthExchangeService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 
+// Cloudinary Image Upload
+var cloudinaryAccount = new Account(
+    builder.Configuration["Cloudinary:CloudName"],
+    builder.Configuration["Cloudinary:ApiKey"],
+    builder.Configuration["Cloudinary:ApiSecret"]);
+builder.Services.AddSingleton(new Cloudinary(cloudinaryAccount));
+builder.Services.AddScoped<IImageUploadService, CloudinaryImageUploadService>();
+
 // MediatR removed — validation is handled via FluentValidation middleware and error filter
 
 // Bridge: HC's ServiceKind.Pooled resolves ObjectPool<T> from DI at request time.
@@ -97,6 +108,7 @@ builder.Services
     .AddTypeExtension<ComboMutations>()
     .AddTypeExtension<ProductComboItemResolvers>()
     .AddTypeExtension<AuthenticationMutations>()
+    .AddTypeExtension<ImageUploadMutations>()
     .AddErrorFilter<GoiMon.Api.Infrastructure.Validation.FluentValidationErrorFilter>()
     // Validate input objects via FluentValidation middleware
     .UseField<GoiMon.Api.Infrastructure.Validation.FluentValidationMiddleware>();

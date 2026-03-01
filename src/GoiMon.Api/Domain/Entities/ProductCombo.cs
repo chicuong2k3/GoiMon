@@ -20,6 +20,7 @@ public class ProductCombo : AggregateRoot
 
     public string? Name { get; private set; }
     public decimal Price { get; private set; }
+    public string? ImageUrl { get; private set; }
     public List<ProductComboItem> Items { get; private set; }
 
     public void AddItem(Guid productId, int qty)
@@ -73,6 +74,12 @@ public class ProductCombo : AggregateRoot
     {
         var item = Items.FirstOrDefault(i => i.Id == itemId);
         item?.UpdateQty(qty);
+    }
+
+    public void UpdateImage(string? imageUrl)
+    {
+        ImageUrl = imageUrl?.Trim();
+        AddDomainEvent(new Events.ComboImageUpdatedEvent(Id, ImageUrl));
     }
 }
 
