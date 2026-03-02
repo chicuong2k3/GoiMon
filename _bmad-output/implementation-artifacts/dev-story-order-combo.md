@@ -1,6 +1,6 @@
 # 🍱 Dev Story: Order Combo Support
 
-**Status:** 🆕 ready-for-dev  
+**Status:** ✅ implemented (2026-03-03)  
 **Date Created:** 2026-03-03  
 **Owner:** Amelia (Developer Agent)  
 **User:** Chicuong  
@@ -34,19 +34,19 @@ Extend the order creation flow (API + Client) to support ordering combos alongsi
 
 ## Acceptance Criteria
 
-- [ ] **AC1**: `CreateOrderInput` accepts a new `ComboLines` list alongside existing `Lines` list  
-- [ ] **AC2**: `ProductComboItem` supports `variantId` (nullable); same product can be represented in different combos by different variants  
-- [ ] **AC3**: API validation for combo config: if product has active variants and combo item has no `variantId`, return config error (`COMBO_ITEM_VARIANT_REQUIRED`)  
-- [ ] **AC4**: API validates `variantId` belongs to the same product and is active (`COMBO_ITEM_INVALID_VARIANT`)  
-- [ ] **AC5**: `OrderItem` entity stores `ComboId` (nullable soft-ref) + `ComboName` snapshot  
-- [ ] **AC6**: GraphQL schema exposes `comboId` and `comboName` on `OrderItem` type  
-- [ ] **AC7**: Validation errors returned for order create: combo not found, combo has no items, invalid quantity  
-- [ ] **AC8**: Checkout page has a "Combo" tab/toggle to browse and order combos  
-- [ ] **AC9**: Checkout combo detail clearly shows each combo item and its fixed variant label (e.g. "Trà sữa - Size L")  
-- [ ] **AC10**: Checkout page allows setting quantity for a combo and submitting combo orders  
-- [ ] **AC11**: Orders page displays combo badge and combo name on combo-sourced lines  
-- [ ] **AC12**: Client GraphQL operations updated for combo ordering and combo item variant display  
-- [ ] **AC13**: Build succeeds with zero errors on both API and Client  
+- [x] **AC1**: `CreateOrderInput` accepts a new `ComboLines` list alongside existing `Lines` list  
+- [x] **AC2**: `ProductComboItem` supports `variantId` (nullable); same product can be represented in different combos by different variants  
+- [x] **AC3**: API validation for combo config: if product has active variants and combo item has no `variantId`, return config error (`COMBO_ITEM_VARIANT_REQUIRED`)  
+- [x] **AC4**: API validates `variantId` belongs to the same product and is active (`COMBO_ITEM_INVALID_VARIANT`)  
+- [x] **AC5**: `OrderItem` entity stores `ComboId` (nullable soft-ref) + `ComboName` snapshot  
+- [x] **AC6**: GraphQL schema exposes `comboId` and `comboName` on `OrderItem` type  
+- [x] **AC7**: Validation errors returned for order create: combo not found, combo has no items, invalid quantity  
+- [x] **AC8**: Checkout page has a "Combo" tab/toggle to browse and order combos  
+- [x] **AC9**: Checkout combo detail clearly shows each combo item and its fixed variant label (e.g. "Trà sữa - Size L")  
+- [x] **AC10**: Checkout page allows setting quantity for a combo and submitting combo orders  
+- [x] **AC11**: Orders page displays combo badge and combo name on combo-sourced lines  
+- [x] **AC12**: Client GraphQL operations updated for combo ordering and combo item variant display  
+- [x] **AC13**: Build succeeds with zero errors on both API and Client  
 
 ---
 
@@ -278,8 +278,31 @@ _(to be filled during implementation)_
 
 ### Completion Notes List
 
-_(to be filled during implementation)_
+- Implemented combo-order flow end-to-end: API supports `comboLines`, combo item variant validation, and combo snapshot fields on order items.
+- Updated client GraphQL documents/schema and regenerated StrawberryShake via build.
+- Added checkout combo mode (Product/Combo switch), combo cart lines, mixed order submission (`lines` + `comboLines`).
+- Updated Orders UI/detail to display combo markers and combo names from snapshots.
+- Build verification passed for both API and Client.
 
 ### File List
 
-_(to be filled during implementation)_
+- `src/GoiMon.Api/Domain/Entities/Order.cs`
+- `src/GoiMon.Api/Domain/Entities/ProductCombo.cs`
+- `src/GoiMon.Api/Features/Combos/ComboMutations.cs`
+- `src/GoiMon.Api/Features/Combos/ProductComboItemResolvers.cs`
+- `src/GoiMon.Api/Features/Orders/OrderMutations.cs`
+- `src/GoiMon.Api/Features/Orders/Validators/CreateOrderInputValidator.cs`
+- `src/GoiMon.Api/Infrastructure/Data/Configurations/OrderItemConfiguration.cs`
+- `src/GoiMon.Api/Infrastructure/Data/Configurations/ProductComboItemConfiguration.cs`
+- `src/GoiMon.Api/Infrastructure/Data/Migrations/20260303113000_AddComboOrderAndVariantReferences.cs`
+- `src/GoiMon.Client/State/UiCacheState.cs`
+- `src/GoiMon.Client/GraphQL/mutations/OrderMutations.graphql`
+- `src/GoiMon.Client/GraphQL/mutations/ComboMutations.graphql`
+- `src/GoiMon.Client/GraphQL/queries/GetCombos.graphql`
+- `src/GoiMon.Client/GraphQL/queries/GetOrders.graphql`
+- `src/GoiMon.Client/GraphQL/subscriptions/OrderSubscriptions.graphql`
+- `src/GoiMon.Client/schema.graphql`
+- `src/GoiMon.Client/Pages/Checkout.razor`
+- `src/GoiMon.Client/Pages/Combos.razor`
+- `src/GoiMon.Client/Pages/Orders.razor`
+- `src/GoiMon.Client/Features/Orders/Components/OrderDetailPanel.razor`

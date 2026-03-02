@@ -146,7 +146,7 @@
                                     @foreach (var ci in item.Items)
                                     {
                                         <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs">
-                                            @ci.Qty× @(ci.ProductName ?? ci.ProductId.ToString()[..8])
+                                            @ci.Qty× @(ci.ProductName ?? ci.ProductId.ToString()[..8])@(string.IsNullOrWhiteSpace(ci.VariantName) ? "" : $" ({ci.VariantName})")
                                         </span>
                                     }
                                 </div>
@@ -313,12 +313,12 @@
 
 <!-- Manage Items Dialog -->
 <BbDialog Open="@_showManageItems" OpenChanged="@(v => _showManageItems = v)">
-    <BbDialogContent Class="max-w-lg">
+    <BbDialogContent Class="max-w-sm max-h-[90dvh] overflow-y-auto">
         <BbDialogHeader>
             <BbDialogTitle>Quản lý món — @(_currentCombo?.Name ?? "")</BbDialogTitle>
             <BbDialogDescription>Thêm hoặc xóa món trong combo.</BbDialogDescription>
         </BbDialogHeader>
-        <div class="overflow-y-auto max-h-[60vh] space-y-4 py-4 pr-1">
+        <div class="space-y-4 py-4 pr-1" style="max-height: 60vh; overflow-y: auto;">
             @if (_currentCombo?.Items.Any() == true)
             {
                 <div class="space-y-1">
@@ -327,7 +327,13 @@
                         @foreach (var ci in _currentCombo.Items)
                         {
                             <div class="flex items-center justify-between px-3 py-2 text-sm">
-                                <span>@(ci.ProductName ?? ci.ProductId.ToString()[..8])</span>
+                                <div class="min-w-0 flex-1 pr-2">
+                                    <div class="truncate">@(ci.ProductName ?? ci.ProductId.ToString()[..8])</div>
+                                    @if (!string.IsNullOrWhiteSpace(ci.VariantName))
+                                    {
+                                        <div class="text-xs text-muted-foreground break-words">@ci.VariantName</div>
+                                    }
+                                </div>
                                 <div class="flex items-center gap-2">
                                     <span class="text-muted-foreground">×@ci.Qty</span>
                                     <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall"
@@ -346,22 +352,36 @@
 
             <div class="space-y-2">
                 <p class="text-sm font-medium">Thêm món</p>
-                <div class="flex gap-2">
-                    <div class="flex-1">
+                <div class="flex flex-wrap items-start gap-2">
+                    <div class="w-24">
                         <BbCombobox TValue="Guid?"
-                                    @bind-Value="_addProductId"
+                                    Value="@_addProductId"
+                                    ValueChanged="OnAddProductChanged"
                                     Options="ProductOptions"
                                     Placeholder="Chọn sản phẩm..."
                                     SearchPlaceholder="Tìm sản phẩm..."
                                     EmptyMessage="Không tìm thấy sản phẩm."
                                     MatchTriggerWidth="true" />
                     </div>
-                    <div class="w-20">
+                    @if (SelectedProductHasVariants)
+                    {
+                        <div class="w-24">
+                            <BbCombobox TValue="Guid?"
+                                        Value="@_addVariantId"
+                                        ValueChanged="(v => _addVariantId = v)"
+                                        Options="VariantOptions"
+                                        Placeholder="Chọn size/biến thể..."
+                                        SearchPlaceholder="Tìm size..."
+                                        EmptyMessage="Không có biến thể."
+                                        MatchTriggerWidth="true" />
+                        </div>
+                    }
+                    <div class="w-24">
                         <BbInput @bind-Value="_addQtyStr" Type="InputType.Number" Placeholder="SL" />
                     </div>
                     <BbButton OnClick="HandleAddItem"
                               Loading="@_savingItem"
-                              Disabled="@(!_addProductId.HasValue || !int.TryParse(_addQtyStr, out var q) || q <= 0)">
+                              Disabled="@(!_addProductId.HasValue || !int.TryParse(_addQtyStr, out var q) || q <= 0 || (SelectedProductHasVariants && !_addVariantId.HasValue))">
                         Thêm
                     </BbButton>
                 </div>
@@ -443,10 +463,20 @@
 
     private ComboDto? _currentCombo;
     private Guid? _addProductId;
+    private Guid? _addVariantId;
     private string _addQtyStr = "1";
 
     private List<SelectOption<Guid?>> ProductOptions =>
         _allProducts.Select(p => new SelectOption<Guid?>(p.Id, p.Name)).ToList();
+
+    private ProductItem? SelectedProductForAdd => _allProducts.FirstOrDefault(p => p.Id == _addProductId);
+    private bool SelectedProductHasVariants => SelectedProductForAdd?.Variants.Count > 0;
+    private List<SelectOption<Guid?>> VariantOptions =>
+        SelectedProductForAdd?.Variants
+            .OrderBy(v => v.SortOrder)
+            .Select(v => new SelectOption<Guid?>(v.Id, $"{v.Name} ({v.Price:#,##0}đ)"))
+            .ToList()
+        ?? [];
 
     private static readonly List<SelectOption<string>> HasItemsOptions =
     [
@@ -485,10 +515,10 @@
         _total = cached.Total;
         _items = cached.Items
             .Select(c => new ComboDto(c.Id, c.Name, c.Price,
-                c.Items.Select(ci => new ComboItemDto(ci.Id, ci.ProductId, ci.ProductName, ci.Qty)).ToList(),
+                c.Items.Select(ci => new ComboItemDto(ci.Id, ci.ProductId, ci.ProductName, ci.VariantId, ci.VariantName, ci.Qty)).ToList(),
                 c.ImageUrl))
             .ToList();
-        _allProducts = cached.Products.Select(p => new ProductItem(p.Id, p.Name)).ToList();
+        _allProducts = cached.Products.Select(p => new ProductItem(p.Id, p.Name, [])).ToList();
         _selectedIds = cached.SelectedIds.ToHashSet();
         return true;
     }
@@ -504,7 +534,7 @@
                 c.Id,
                 c.Name,
                 c.Price,
-                c.Items.Select(ci => new ComboItemListItem(ci.Id, ci.ProductId, ci.ProductName, ci.Qty)).ToList(),
+                c.Items.Select(ci => new ComboItemListItem(ci.Id, ci.ProductId, ci.ProductName, ci.VariantId, ci.VariantName, ci.Qty)).ToList(),
                 c.ImageUrl))
                 .ToList(),
             _allProducts.Select(p => new ProductLookupItem(p.Id, p.Name)).ToList(),
@@ -546,7 +576,13 @@
             if (result.Data?.Products is { } data)
             {
                 if (data.Items is { } items)
-                    all.AddRange(items.Select(p => new ProductItem(p.Id, p.Name)));
+                    all.AddRange(items.Select(p => new ProductItem(
+                        p.Id,
+                        p.Name,
+                        p.Variants
+                            .Where(v => v.IsActive)
+                            .Select(v => new ProductVariantItem(v.Id, v.Name, v.Price, v.SortOrder))
+                            .ToList())));
 
                 if (data.PageInfo?.HasNextPage != true)
                     break;
@@ -614,7 +650,7 @@
                 {
                     _items = data.Items?.Select(c => new ComboDto(
                         c.Id, c.Name, c.Price,
-                        c.Items.Select(ci => new ComboItemDto(ci.Id, ci.ProductId, ci.Product?.Name, ci.Qty)).ToList(),
+                        c.Items.Select(ci => new ComboItemDto(ci.Id, ci.ProductId, ci.Product?.Name, ci.VariantId, ci.Variant?.Name, ci.Qty)).ToList(),
                         c.ImageUrl
                     )).ToList() ?? [];
                     _total = data.TotalCount;
@@ -681,7 +717,7 @@
                         c.Id,
                         c.Name,
                         c.Price,
-                        c.Items.Select(ci => new ComboItemDto(ci.Id, ci.ProductId, ci.Product?.Name, ci.Qty)).ToList(),
+                        c.Items.Select(ci => new ComboItemDto(ci.Id, ci.ProductId, ci.Product?.Name, ci.VariantId, ci.Variant?.Name, ci.Qty)).ToList(),
                         c.ImageUrl)));
                 }
 
@@ -791,8 +827,16 @@
 
         _currentCombo = item;
         _addProductId = null;
+        _addVariantId = null;
         _addQtyStr = "1";
         _showManageItems = true;
+    }
+
+    private Task OnAddProductChanged(Guid? productId)
+    {
+        _addProductId = productId;
+        _addVariantId = null;
+        return Task.CompletedTask;
     }
 
 
@@ -961,16 +1005,17 @@
         if (!int.TryParse(_addQtyStr, out var qty) || qty <= 0) return;
 
         _savingItem = true;
-        var result = await Client.AddComboItem.ExecuteAsync(_currentCombo.Id, _addProductId.Value, qty);
+        var result = await Client.AddComboItem.ExecuteAsync(_currentCombo.Id, _addProductId.Value, qty, _addVariantId);
         _savingItem = false;
 
         if (result.Data?.AddComboItem is { } updated)
         {
             ToastService.Success("Đã thêm món vào combo.");
             _addProductId = null;
+            _addVariantId = null;
             _addQtyStr = "1";
             var updatedItems = updated.Items.Select(ci => new ComboItemDto(
-                ci.Id, ci.ProductId, ci.Product?.Name, ci.Qty)).ToList();
+                ci.Id, ci.ProductId, ci.Product?.Name, ci.VariantId, ci.Variant?.Name, ci.Qty)).ToList();
             _currentCombo = _currentCombo with { Items = updatedItems };
 
             var listIndex = _items.FindIndex(c => c.Id == _currentCombo.Id);
@@ -1006,7 +1051,8 @@
         }
     }
 
-    private record ProductItem(Guid Id, string Name);
-    private record ComboItemDto(Guid Id, Guid ProductId, string? ProductName, int Qty);
+    private record ProductVariantItem(Guid Id, string Name, decimal Price, int SortOrder);
+    private record ProductItem(Guid Id, string Name, IReadOnlyList<ProductVariantItem> Variants);
+    private record ComboItemDto(Guid Id, Guid ProductId, string? ProductName, Guid? VariantId, string? VariantName, int Qty);
     private record ComboDto(Guid Id, string? Name, decimal Price, List<ComboItemDto> Items, string? ImageUrl = null);
 }

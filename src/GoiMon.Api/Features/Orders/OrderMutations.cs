@@ -26,6 +26,7 @@ public class OrderMutations
         var errors = new List<CreateOrderValidationError>();
         var order = new Order(Guid.NewGuid());
         var selectedModifierCount = 0;
+        var comboLines = input.ComboLines ?? [];
 
         for (var index = 0; index < input.Lines.Count; index++)
         {
@@ -198,15 +199,51 @@ public class OrderMutations
             }
         }
 
+        for (var comboIndex = 0; comboIndex < comboLines.Count; comboIndex++)
+        {
+            var comboLine = comboLines[comboIndex];
+
+            if (comboLine.Quantity <= 0)
+            {
+                errors.Add(new CreateOrderValidationError("INVALID_QTY", "Quantity must be greater than zero", input.Lines.Count + comboIndex));
+                continue;
+            }
+
+            var combo = await db.ProductCombos
+                .Include(c => c.Items)
+                .FirstOrDefaultAsync(c => c.Id == comboLine.ComboId);
+
+            if (combo is null)
+            {
+                errors.Add(new CreateOrderValidationError("COMBO_NOT_FOUND", "Combo does not exist", input.Lines.Count + comboIndex));
+                continue;
+            }
+
+            if (combo.Items.Count == 0)
+            {
+                errors.Add(new CreateOrderValidationError("COMBO_EMPTY", "Combo has no items", input.Lines.Count + comboIndex));
+                continue;
+            }
+
+            order.AddItem(
+                productId: null,
+                productName: combo.Name ?? "Combo",
+                qty: comboLine.Quantity,
+                unitPrice: combo.Price,
+                unitName: null,
+                comboId: combo.Id,
+                comboName: combo.Name);
+        }
+
         if (errors.Count > 0)
         {
-            _telemetry.TrackValidationFailed(errors.Count, input.Lines.Count);
+            _telemetry.TrackValidationFailed(errors.Count, input.Lines.Count + comboLines.Count);
             return new CreateOrderPayload(null, errors);
         }
 
         db.Orders.Add(order);
         await db.SaveChangesAsync();
-        _telemetry.TrackOrderCreated(input.Lines.Count, selectedModifierCount, order.Total);
+        _telemetry.TrackOrderCreated(input.Lines.Count + comboLines.Count, selectedModifierCount, order.Total);
         await eventSender.SendAsync(OrderSubscriptionTopics.OrderChanged, order);
         return new CreateOrderPayload(order, new List<CreateOrderValidationError>());
     }
@@ -240,13 +277,15 @@ public class OrderMutations
     }
 }
 
-public record CreateOrderInput(List<CreateOrderLineInput> Lines);
+public record CreateOrderInput(List<CreateOrderLineInput> Lines, List<CreateOrderComboLineInput>? ComboLines = null);
 
 public record CreateOrderLineInput(
     Guid ProductId,
     Guid? VariantId,
     int Quantity,
     List<CreateOrderLineModifierInput>? Modifiers = null);
+
+public record CreateOrderComboLineInput(Guid ComboId, int Quantity);
 
 public record CreateOrderLineModifierInput(Guid OptionId, int Quantity);
 

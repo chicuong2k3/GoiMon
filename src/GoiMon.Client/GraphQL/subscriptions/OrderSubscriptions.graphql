@@ -8,6 +8,8 @@ subscription OnOrderChanged {
       id
       productName
       unitName
+      comboId
+      comboName
       qty
       unitPrice
       modifiers {

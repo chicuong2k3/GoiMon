@@ -41,7 +41,18 @@
                     <LucideIcon Name="utensils" Class="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div class="flex-1 min-w-0">
-                    <p class="font-medium text-sm truncate">@item.ProductName</p>
+                    <p class="font-medium text-sm truncate">
+                        @item.ProductName
+                        @if (!string.IsNullOrWhiteSpace(item.ComboName))
+                        {
+                            <span
+                            class="ml-1 inline-flex items-center rounded-full border px-1.5 py-0 text-[10px] font-semibold">Combo</span>
+                        }
+                    </p>
+                    @if (!string.IsNullOrWhiteSpace(item.ComboName))
+                    {
+                        <p class="text-[11px] text-muted-foreground truncate">@item.ComboName</p>
+                    }
                     <p class="text-xs text-muted-foreground">@ItemUnit(item) • x@item.Qty</p>
                     @if (item.SafeModifiers.Count > 0)
                     {
@@ -124,19 +135,19 @@
     };
 
     private string CreatedLabel =>
-        Order.CreatedAt.ToLocalTime().ToString("HH:mm, dd/MM/yyyy");
+    Order.CreatedAt.ToLocalTime().ToString("HH:mm, dd/MM/yyyy");
 
     private string TotalLabel =>
-        Order.Total.ToString("#,##0") + "đ";
+    Order.Total.ToString("#,##0") + "đ";
 
     private static string ItemUnit(OrderItemSnapshot item) =>
-        item.UnitName ?? "đvt";
+    item.UnitName ?? "đvt";
 
     private static string ItemTotal(OrderItemSnapshot item) =>
-        (item.Qty * item.UnitPrice).ToString("#,##0");
+    (item.Qty * item.UnitPrice).ToString("#,##0");
 
     private static string UnitPriceLabel(OrderItemSnapshot item) =>
-        item.UnitPrice.ToString("#,##0");
+    item.UnitPrice.ToString("#,##0");
 
     private static string ModifierSummary(OrderItemSnapshot item)
     {
@@ -145,5 +156,5 @@
     }
 
     private static string ShortId(Guid id) =>
-        id.ToString("N")[..4].ToUpper();
+    id.ToString("N")[..4].ToUpper();
 }

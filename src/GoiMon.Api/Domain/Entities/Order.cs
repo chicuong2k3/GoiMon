@@ -46,13 +46,22 @@ public class Order : AggregateRoot
     /// <param name="qty">Quantity to add; must be greater than zero.</param>
     /// <param name="unitPrice">Unit price at order time; must be non-negative.</param>
     /// <param name="unitName">Snapshot of the product's unit label at order time (e.g. "phần", "ly").</param>
-    public void AddItem(Guid? productId, string productName, int qty, decimal unitPrice, string? unitName = null)
+    /// <param name="comboId">Optional soft-reference to source combo (for analytics/BI only).</param>
+    /// <param name="comboName">Snapshot of the combo name at order time.</param>
+    public void AddItem(
+        Guid? productId,
+        string productName,
+        int qty,
+        decimal unitPrice,
+        string? unitName = null,
+        Guid? comboId = null,
+        string? comboName = null)
     {
         if (string.IsNullOrWhiteSpace(productName)) throw new ArgumentException("Product name snapshot is required.", nameof(productName));
         if (qty <= 0) throw new ArgumentOutOfRangeException(nameof(qty));
         if (unitPrice < 0) throw new ArgumentOutOfRangeException(nameof(unitPrice));
 
-        var item = new OrderItem(Guid.NewGuid(), Id, productId, productName, qty, unitPrice, unitName);
+        var item = new OrderItem(Guid.NewGuid(), Id, productId, productName, qty, unitPrice, unitName, comboId, comboName);
         Items.Add(item);
         RecalculateTotal();
         AddDomainEvent(new Events.OrderItemAddedEvent(Id, item.Id, productId, qty));
@@ -108,13 +117,24 @@ public class OrderItem
     /// <summary>
     /// Create a new order item instance with a product snapshot.
     /// </summary>
-    public OrderItem(Guid id, Guid orderId, Guid? productId, string productName, int qty, decimal unitPrice, string? unitName = null)
+    public OrderItem(
+        Guid id,
+        Guid orderId,
+        Guid? productId,
+        string productName,
+        int qty,
+        decimal unitPrice,
+        string? unitName = null,
+        Guid? comboId = null,
+        string? comboName = null)
     {
         Id = id;
         OrderId = orderId;
         ProductId = productId;
         ProductName = productName;
         UnitName = unitName;
+        ComboId = comboId;
+        ComboName = comboName;
         Qty = qty;
         UnitPrice = unitPrice;
     }
@@ -142,6 +162,16 @@ public class OrderItem
 
     /// <summary>Snapshot of the product's unit label at order time (e.g. "phần", "ly").</summary>
     public string? UnitName { get; private set; }
+
+    /// <summary>
+    /// Optional soft-reference to source combo (for BI/analytics only).
+    /// </summary>
+    public Guid? ComboId { get; private set; }
+
+    /// <summary>
+    /// Immutable snapshot of combo name at order time.
+    /// </summary>
+    public string? ComboName { get; private set; }
 
     /// <summary>
     /// Quantity of the product for this line item.

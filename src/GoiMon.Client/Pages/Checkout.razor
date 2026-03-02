@@ -26,29 +26,45 @@
                 </BbCardDescription>
             </BbCardHeader>
             <BbCardContent Class="space-y-3">
+                <div class="flex items-center gap-2">
+                    <BbButton Variant="@(_mode == ProductMode ? ButtonVariant.Default : ButtonVariant.Outline)"
+                              Size="ButtonSize.Small"
+                              OnClick="SwitchToProductModeAsync">
+                        Sản phẩm
+                    </BbButton>
+                    <BbButton Variant="@(_mode == ComboMode ? ButtonVariant.Default : ButtonVariant.Outline)"
+                              Size="ButtonSize.Small"
+                              OnClick="SwitchToComboModeAsync">
+                        Combo
+                    </BbButton>
+                </div>
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <BbInput Value="@_search"
                              ValueChanged="OnSearchChangedAsync"
                              UpdateTiming="UpdateTiming.Debounced"
                              DebounceInterval="300"
-                             Placeholder="Tìm món theo tên..." />
-                    <div class="flex items-center gap-2 overflow-x-auto pb-1">
-                        <BbButton
-                            Variant="@(_selectedCategory == AllCategoriesValue ? ButtonVariant.Default : ButtonVariant.Outline)"
-                            Size="ButtonSize.Small" OnClick="() => SelectCategoryAsync(AllCategoriesValue)">
-                            Tất cả
-                        </BbButton>
-                        @foreach (var category in CategoryNames)
-                        {
-                            <BbButton Variant="@(_selectedCategory == category ? ButtonVariant.Default : ButtonVariant.Outline)"
-                                      Size="ButtonSize.Small" OnClick="() => SelectCategoryAsync(category)">
-                                @category
+                             Placeholder="@(_mode == ProductMode ? "Tìm món theo tên..." : "Tìm combo theo tên...")" />
+                    @if (_mode == ProductMode)
+                    {
+                        <div class="flex items-center gap-2 overflow-x-auto pb-1">
+                            <BbButton
+                                Variant="@(_selectedCategory == AllCategoriesValue ? ButtonVariant.Default : ButtonVariant.Outline)"
+                                Size="ButtonSize.Small" OnClick="() => SelectCategoryAsync(AllCategoriesValue)">
+                                Tất cả
                             </BbButton>
-                        }
-                    </div>
+                            @foreach (var category in CategoryNames)
+                            {
+                                <BbButton Variant="@(_selectedCategory == category ? ButtonVariant.Default : ButtonVariant.Outline)"
+                                          Size="ButtonSize.Small" OnClick="() => SelectCategoryAsync(category)">
+                                    @category
+                                </BbButton>
+                            }
+                        </div>
+                    }
                 </div>
 
-                @if (_loadingProducts)
+                @if ((_mode == ProductMode && _loadingProducts) || (_mode == ComboMode && _loadingCombos))
                 {
                     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                         <BbSkeleton Height="180px" Class="w-full" />
@@ -61,72 +77,106 @@
                 }
                 else
                 {
-                    @if (VisibleCategoryGroups.Count == 0)
+                    @if (_mode == ProductMode && VisibleCategoryGroups.Count == 0)
                     {
                         <BbAlert Variant="AlertVariant.Info">
                             <BbAlertDescription>Không tìm thấy món phù hợp với bộ lọc hiện tại.</BbAlertDescription>
                         </BbAlert>
                     }
+                    else if (_mode == ComboMode && FilteredCombos.Count == 0)
+                    {
+                        <BbAlert Variant="AlertVariant.Info">
+                            <BbAlertDescription>Không tìm thấy combo phù hợp với bộ lọc hiện tại.</BbAlertDescription>
+                        </BbAlert>
+                    }
                     else
                     {
                         <div class="max-h-[72vh] overflow-y-auto space-y-4 pr-1">
-                            @foreach (var group in VisibleCategoryGroups)
+                            @if (_mode == ProductMode)
                             {
-                                <div class="space-y-3">
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center gap-2">
-                                            <h3 class="text-sm font-semibold">@group.CategoryName</h3>
-                                            <BbBadge Variant="BadgeVariant.Outline">@group.Products.Count món</BbBadge>
+                                @foreach (var group in VisibleCategoryGroups)
+                                {
+                                    <div class="space-y-3">
+                                        <div class="flex items-center justify-between">
+                                            <div class="flex items-center gap-2">
+                                                <h3 class="text-sm font-semibold">@group.CategoryName</h3>
+                                                <BbBadge Variant="BadgeVariant.Outline">@group.Products.Count món</BbBadge>
+                                            </div>
                                         </div>
-                                    </div>
 
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                        @foreach (var product in group.Products)
-                                        {
-                                            var isSelected = _selectedProductId == product.Id;
-                                            <div class="flex items-center gap-3 rounded-lg border p-2.5 cursor-pointer transition-colors @(isSelected ? "border-primary bg-primary/10 ring-1 ring-primary/40" : "hover:bg-muted/40")"
-                                                 @onclick="() => SelectProductAsync(product.Id)">
-                                                @if (!string.IsNullOrWhiteSpace(product.ImageUrl))
-                                                {
-                                                    <img src="@product.ImageUrl" alt="@product.Name"
-                                                         class="h-14 w-14 rounded-md object-cover shrink-0" />
-                                                }
-                                                else
-                                                {
-                                                    <div class="h-14 w-14 rounded-md bg-muted flex items-center justify-center shrink-0">
-                                                        <LucideIcon Name="image" Class="h-5 w-5 text-muted-foreground/40" />
-                                                    </div>
-                                                }
-                                                <div class="flex-1 min-w-0 space-y-0.5">
-                                                    <div class="flex items-start justify-between gap-1">
-                                                        <span class="text-sm font-semibold leading-snug truncate">@product.Name</span>
-                                                        <span class="text-sm font-semibold whitespace-nowrap text-primary shrink-0">@product.Price.ToString("#,##0")đ</span>
-                                                    </div>
-                                                    @if (!string.IsNullOrWhiteSpace(product.UnitName))
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                            @foreach (var product in group.Products)
+                                            {
+                                                var isSelected = _selectedProductId == product.Id;
+                                                <div class="flex items-center gap-3 rounded-lg border p-2.5 cursor-pointer transition-colors @(isSelected ? "border-primary bg-primary/10 ring-1 ring-primary/40" : "hover:bg-muted/40")"
+                                                     @onclick="() => SelectProductAsync(product.Id)">
+                                                    @if (!string.IsNullOrWhiteSpace(product.ImageUrl))
                                                     {
-                                                        <div class="text-xs text-muted-foreground">@product.UnitName</div>
+                                                        <img src="@product.ImageUrl" alt="@product.Name"
+                                                             class="h-14 w-14 rounded-md object-cover shrink-0" />
                                                     }
-                                                    <div class="flex flex-wrap gap-1 pt-0.5">
-                                                        @if (product.ActiveVariantCount > 0)
+                                                    else
+                                                    {
+                                                        <div class="h-14 w-14 rounded-md bg-muted flex items-center justify-center shrink-0">
+                                                            <LucideIcon Name="image" Class="h-5 w-5 text-muted-foreground/40" />
+                                                        </div>
+                                                    }
+                                                    <div class="flex-1 min-w-0 space-y-0.5">
+                                                        <div class="flex items-start justify-between gap-1">
+                                                            <span class="text-sm font-semibold leading-snug truncate">@product.Name</span>
+                                                            <span class="text-sm font-semibold whitespace-nowrap text-primary shrink-0">@product.Price.ToString("#,##0")đ</span>
+                                                        </div>
+                                                        @if (!string.IsNullOrWhiteSpace(product.UnitName))
                                                         {
-                                                            <BbBadge Variant="BadgeVariant.Secondary" Class="text-[10px] px-1.5 py-0">@product.ActiveVariantCount size</BbBadge>
+                                                            <div class="text-xs text-muted-foreground">@product.UnitName</div>
                                                         }
-                                                        @if (product.ActiveModifierGroupCount > 0)
-                                                        {
-                                                            <BbBadge Variant="BadgeVariant.Secondary" Class="text-[10px] px-1.5 py-0">@product.ActiveModifierGroupCount topping</BbBadge>
-                                                        }
-                                                        @if (product.ActiveVariantCount == 0 && product.ActiveModifierGroupCount == 0)
-                                                        {
-                                                            <BbBadge Variant="BadgeVariant.Outline" Class="text-[10px] px-1.5 py-0">Cơ bản</BbBadge>
-                                                        }
+                                                        <div class="flex flex-wrap gap-1 pt-0.5">
+                                                            @if (product.ActiveVariantCount > 0)
+                                                            {
+                                                                <BbBadge Variant="BadgeVariant.Secondary" Class="text-[10px] px-1.5 py-0">@product.ActiveVariantCount size</BbBadge>
+                                                            }
+                                                            @if (product.ActiveModifierGroupCount > 0)
+                                                            {
+                                                                <BbBadge Variant="BadgeVariant.Secondary" Class="text-[10px] px-1.5 py-0">@product.ActiveModifierGroupCount topping</BbBadge>
+                                                            }
+                                                            @if (product.ActiveVariantCount == 0 && product.ActiveModifierGroupCount == 0)
+                                                            {
+                                                                <BbBadge Variant="BadgeVariant.Outline" Class="text-[10px] px-1.5 py-0">Cơ bản</BbBadge>
+                                                            }
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        }
+                                            }
                                         </div>
                                     </div>
                                 }
-                            </div>
+                            }
+                            else
+                            {
+                                <div class="space-y-2">
+                                    @foreach (var combo in FilteredCombos)
+                                    {
+                                        var isSelectedCombo = _selectedComboId == combo.Id;
+                                        <div class="rounded-lg border p-3 cursor-pointer transition-colors @(isSelectedCombo ? "border-primary bg-primary/10 ring-1 ring-primary/40" : "hover:bg-muted/40")"
+                                             @onclick="() => SelectCombo(combo.Id)">
+                                            <div class="flex items-start justify-between gap-2">
+                                                <div class="min-w-0">
+                                                    <div class="text-sm font-semibold truncate">@combo.Name</div>
+                                                    <div class="text-xs text-muted-foreground">@combo.Items.Count món trong combo</div>
+                                                </div>
+                                                <div class="text-sm font-semibold text-primary whitespace-nowrap">@combo.Price.ToString("#,##0")đ</div>
+                                            </div>
+                                            @if (combo.Items.Count > 0)
+                                            {
+                                                <div class="mt-2 text-xs text-muted-foreground line-clamp-2">
+                                                    @string.Join(", ", combo.Items.Select(item => $"{item.Qty}× {item.ProductName}{(string.IsNullOrWhiteSpace(item.VariantName) ? string.Empty : $" ({item.VariantName})")}"))
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
                         }
                     }
                 </BbCardContent>
@@ -146,11 +196,11 @@
                     <div class="flex-1 overflow-y-auto divide-y">
 
                         <div class="p-4 space-y-3">
-                            @if (_selectedProduct is null && !_loadingConfigurator)
+                            @if (_mode == ProductMode && _selectedProduct is null && !_loadingConfigurator)
                             {
                                 <p class="text-sm text-muted-foreground py-1">Chọn một món trong menu để thêm vào đơn.</p>
                             }
-                            else if (_loadingConfigurator)
+                            else if (_mode == ProductMode && _loadingConfigurator)
                             {
                                 <div class="space-y-2">
                                     <BbSkeleton Height="20px" Class="w-40" />
@@ -158,7 +208,7 @@
                                     <BbSkeleton Height="44px" Class="w-full" />
                                 </div>
                             }
-                            else
+                            else if (_mode == ProductMode)
                             {
                                 <div class="flex items-center justify-between text-sm">
                                     <span class="font-medium">@_selectedProduct!.Name</span>
@@ -253,6 +303,49 @@
                                     Thêm vào đơn
                                 </BbButton>
                             }
+                            else
+                            {
+                                @if (_selectedCombo is null)
+                                {
+                                    <p class="text-sm text-muted-foreground py-1">Chọn một combo trong menu để thêm vào đơn.</p>
+                                }
+                                else
+                                {
+                                    <div class="space-y-2">
+                                        <div class="flex items-center justify-between text-sm">
+                                            <span class="font-medium">@(_selectedCombo.Name ?? "Combo")</span>
+                                            <span class="text-muted-foreground">@_selectedCombo.Price.ToString("#,##0")đ</span>
+                                        </div>
+                                        @if (_selectedCombo.Items.Count > 0)
+                                        {
+                                            <div class="rounded-md border p-2 text-xs text-muted-foreground space-y-1">
+                                                @foreach (var item in _selectedCombo.Items)
+                                                {
+                                                    <div>@item.Qty× @item.ProductName@(string.IsNullOrWhiteSpace(item.VariantName) ? string.Empty : $" ({item.VariantName})")</div>
+                                                }
+                                            </div>
+                                        }
+                                        <div class="flex items-center justify-between pt-1">
+                                            <div class="flex items-center gap-2">
+                                                <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.IconSmall"
+                                                          Disabled="@(_comboQty <= 1)" OnClick="DecreaseComboQty">
+                                                    <LucideIcon Name="minus" Class="h-4 w-4" />
+                                                </BbButton>
+                                                <span class="w-10 text-center text-sm">@_comboQty</span>
+                                                <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.IconSmall" OnClick="IncreaseComboQty">
+                                                    <LucideIcon Name="plus" Class="h-4 w-4" />
+                                                </BbButton>
+                                            </div>
+                                            <span class="text-sm">Tạm tính: <strong>@(_selectedCombo.Price * _comboQty).ToString("#,##0")đ</strong></span>
+                                        </div>
+
+                                        <BbButton OnClick="AddComboToCartAsync" Class="w-full" Size="ButtonSize.Small">
+                                            <LucideIcon Name="plus" Class="mr-2 h-4 w-4" />
+                                            Thêm combo vào đơn
+                                        </BbButton>
+                                    </div>
+                                }
+                            }
                         </div>
 
                         @if (_cart.Count == 0)
@@ -267,7 +360,11 @@
                                     <div class="flex items-start justify-between gap-2 text-sm">
                                         <div class="flex-1 min-w-0 space-y-0.5">
                                             <div class="font-medium truncate">
-                                                @item.ProductName @(item.VariantName is not null ? $"({item.VariantName})" : "")
+                                                @item.DisplayName @(item.VariantName is not null ? $"({item.VariantName})" : "")
+                                                @if (item.ComboId.HasValue)
+                                                {
+                                                    <span class="ml-1 inline-flex items-center rounded-full border px-1.5 py-0 text-[10px] font-semibold">Combo</span>
+                                                }
                                             </div>
                                             @if (item.Modifiers.Count > 0)
                                             {
@@ -317,8 +414,12 @@
 
 @code {
     private bool _loadingProducts;
+    private bool _loadingCombos;
     private bool _loadingConfigurator;
     private bool _placingOrder;
+    private const string ProductMode = "product";
+    private const string ComboMode = "combo";
+    private string _mode = ProductMode;
     private string _search = string.Empty;
     private const string AllCategoriesValue = "__ALL__";
     private string _selectedCategory = AllCategoriesValue;
@@ -330,6 +431,10 @@
     private int _lineQty = 1;
     private readonly Dictionary<Guid, int> _selectedOptionQuantities = new();
     private List<ProductListItem> _products = [];
+    private List<ComboMenuItemDto> _combos = [];
+    private Guid? _selectedComboId;
+    private ComboMenuItemDto? _selectedCombo;
+    private int _comboQty = 1;
 
     private IReadOnlyList<string> CategoryNames => _products
     .Select(product => product.CategoryName)
@@ -342,6 +447,12 @@
     .OrderBy(group => group.Key)
     .Select(group => new CategoryGroupDto(group.Key, group.OrderBy(product => product.Name).ToList()))
     .ToList();
+
+    private IReadOnlyList<ComboMenuItemDto> FilteredCombos => _combos
+        .Where(combo => string.IsNullOrWhiteSpace(_search)
+            || (combo.Name?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false))
+        .OrderBy(combo => combo.Name)
+        .ToList();
 
     private IEnumerable<ProductListItem> FilteredProducts =>
     _products.Where(product =>
@@ -382,15 +493,15 @@
     {
         if (TryRestoreState())
         {
-            if (_products.Count == 0)
+            if (_products.Count == 0 || _combos.Count == 0)
             {
-                await LoadProductsAsync();
+                await Task.WhenAll(LoadProductsAsync(), LoadCombosAsync());
             }
 
             return;
         }
 
-        await LoadProductsAsync();
+        await Task.WhenAll(LoadProductsAsync(), LoadCombosAsync());
     }
 
     private bool TryRestoreState()
@@ -401,6 +512,7 @@
             return false;
         }
 
+        _mode = cached.Mode is ComboMode ? ComboMode : ProductMode;
         _search = cached.Search;
         _selectedCategory = string.IsNullOrWhiteSpace(cached.SelectedCategory) ? AllCategoriesValue : cached.SelectedCategory;
 
@@ -420,7 +532,9 @@
         _cart = cached.Cart
             .Select(item => new CartLineItemDto(
                 item.ProductId,
-                item.ProductName,
+                item.DisplayName,
+                item.ComboId,
+                item.ComboName,
                 item.VariantId,
                 item.VariantName,
                 item.UnitName,
@@ -433,12 +547,28 @@
                 item.UnitPrice))
             .ToList();
 
+        _combos = cached.Combos
+            .Select(combo => new ComboMenuItemDto(
+                combo.Id,
+                combo.Name,
+                combo.Price,
+                combo.ImageUrl,
+                combo.Items.Select(item => new ComboMenuItemLineDto(
+                    item.Id,
+                    item.ProductId,
+                    item.ProductName,
+                    item.VariantId,
+                    item.VariantName,
+                    item.Qty)).ToList()))
+            .ToList();
+
         return true;
     }
 
     private Task PersistStateAsync()
     {
         var snapshot = new CheckoutPageState(
+            _mode,
             _search,
             _selectedCategory,
             _products.Select(product => new CheckoutProductListItem(
@@ -451,9 +581,23 @@
                 product.CategoryName,
                 product.ActiveVariantCount,
                 product.ActiveModifierGroupCount)).ToList(),
+            _combos.Select(combo => new CheckoutComboListItem(
+                combo.Id,
+                combo.Name,
+                combo.Price,
+                combo.ImageUrl,
+                combo.Items.Select(item => new CheckoutComboItemListItem(
+                    item.Id,
+                    item.ProductId,
+                    item.ProductName,
+                    item.VariantId,
+                    item.VariantName,
+                    item.Qty)).ToList())).ToList(),
             _cart.Select(item => new CheckoutCartLineItem(
                 item.ProductId,
-                item.ProductName,
+                item.DisplayName,
+                item.ComboId,
+                item.ComboName,
                 item.VariantId,
                 item.VariantName,
                 item.UnitName,
@@ -474,6 +618,30 @@
         await PersistStateAsync();
     }
 
+    private async Task SwitchToProductModeAsync()
+    {
+        if (_mode == ProductMode)
+        {
+            return;
+        }
+
+        _mode = ProductMode;
+        _search = string.Empty;
+        await PersistStateAsync();
+    }
+
+    private async Task SwitchToComboModeAsync()
+    {
+        if (_mode == ComboMode)
+        {
+            return;
+        }
+
+        _mode = ComboMode;
+        _search = string.Empty;
+        await PersistStateAsync();
+    }
+
     private async Task SelectCategoryAsync(string category)
     {
         _selectedCategory = category;
@@ -485,38 +653,170 @@
         _loadingProducts = true;
         try
         {
-            var result = await Client.GetProducts.ExecuteAsync(
-            skip: 0,
-            take: 200,
-            where: null,
-            order: [new ProductSortInput { Name = SortEnumType.Asc }]);
+            var pageSize = 100;
+            const int minPageSize = 1;
+            var skip = 0;
+            var all = new List<ProductListItem>();
 
-            if (result.Data?.Products?.Items is { } items)
+            while (true)
             {
-                _products = items
-                .Select(p => new ProductListItem(
-                p.Id,
-                p.Name,
-                p.Price,
-                p.UnitName,
-                p.Description,
-                p.ImageUrl,
-                p.Category?.Name ?? "Khác",
-                p.Variants.Count(v => v.IsActive),
-                p.ModifierGroups.Count(group => group.IsActive)))
+                var result = await Client.GetProducts.ExecuteAsync(
+                    skip: skip,
+                    take: pageSize,
+                    where: null,
+                    order: [new ProductSortInput { Name = SortEnumType.Asc }]);
+
+                if (result.Data?.Products is { } data)
+                {
+                    if (data.Items is { } items)
+                    {
+                        all.AddRange(items.Select(p => new ProductListItem(
+                            p.Id,
+                            p.Name,
+                            p.Price,
+                            p.UnitName,
+                            p.Description,
+                            p.ImageUrl,
+                            p.Category?.Name ?? "Khác",
+                            p.Variants.Count(v => v.IsActive),
+                            p.ModifierGroups.Count(group => group.IsActive))));
+                    }
+
+                    if (data.PageInfo?.HasNextPage != true)
+                    {
+                        break;
+                    }
+
+                    skip += pageSize;
+                    continue;
+                }
+
+                if (result.Errors.Count > 0)
+                {
+                    var message = result.Errors[0].Message;
+                    if (IsPageSizeExceededError(message) && pageSize > minPageSize)
+                    {
+                        pageSize = Math.Max(minPageSize, pageSize / 2);
+                        skip = 0;
+                        all.Clear();
+                        continue;
+                    }
+
+                    ToastService.Error(message);
+                    return;
+                }
+
+                break;
+            }
+
+            _products = all
+                .GroupBy(p => p.Id)
+                .Select(g => g.First())
                 .ToList();
 
-                await PersistStateAsync();
-            }
-            else if (result.Errors.Count > 0)
-            {
-                ToastService.Error(result.Errors[0].Message);
-            }
+            await PersistStateAsync();
         }
         finally
         {
             _loadingProducts = false;
         }
+    }
+
+    private async Task LoadCombosAsync()
+    {
+        _loadingCombos = true;
+        try
+        {
+            var pageSize = 100;
+            const int minPageSize = 1;
+            var skip = 0;
+            var all = new List<ComboMenuItemDto>();
+
+            while (true)
+            {
+                var result = await Client.GetCombos.ExecuteAsync(
+                    skip: skip,
+                    take: pageSize,
+                    where: null,
+                    order: [new ProductComboSortInput { Name = SortEnumType.Asc }]);
+
+                if (result.Data?.Combos is { } data)
+                {
+                    if (data.Items is { } items)
+                    {
+                        all.AddRange(items.Select(combo => new ComboMenuItemDto(
+                            combo.Id,
+                            combo.Name,
+                            combo.Price,
+                            combo.ImageUrl,
+                            combo.Items.Select(item => new ComboMenuItemLineDto(
+                                item.Id,
+                                item.ProductId,
+                                item.Product?.Name,
+                                item.VariantId,
+                                item.Variant?.Name,
+                                item.Qty)).ToList())));
+                    }
+
+                    if (data.PageInfo?.HasNextPage != true)
+                    {
+                        break;
+                    }
+
+                    skip += pageSize;
+                    continue;
+                }
+
+                if (result.Errors.Count > 0)
+                {
+                    var message = result.Errors[0].Message;
+                    if (IsPageSizeExceededError(message) && pageSize > minPageSize)
+                    {
+                        pageSize = Math.Max(minPageSize, pageSize / 2);
+                        skip = 0;
+                        all.Clear();
+                        continue;
+                    }
+
+                    ToastService.Error(message);
+                    return;
+                }
+
+                break;
+            }
+
+            _combos = all
+                .GroupBy(c => c.Id)
+                .Select(g => g.First())
+                .ToList();
+
+            await PersistStateAsync();
+        }
+        finally
+        {
+            _loadingCombos = false;
+        }
+    }
+
+    private static bool IsPageSizeExceededError(string message)
+        => message.Contains("maximum allowed items per page", StringComparison.OrdinalIgnoreCase)
+           || message.Contains("items per page", StringComparison.OrdinalIgnoreCase)
+           || message.Contains("page size", StringComparison.OrdinalIgnoreCase)
+           || message.Contains("take", StringComparison.OrdinalIgnoreCase);
+
+    private void SelectCombo(Guid comboId)
+    {
+        if (_selectedComboId == comboId)
+        {
+            _selectedComboId = null;
+            _selectedCombo = null;
+            _comboQty = 1;
+            return;
+        }
+
+        _selectedComboId = comboId;
+        _selectedCombo = _combos.FirstOrDefault(c => c.Id == comboId);
+        _comboQty = 1;
     }
 
     private async Task SelectProductAsync(Guid productId)
@@ -647,6 +947,16 @@
         if (_lineQty > 1) _lineQty--;
     }
 
+    private void IncreaseComboQty() => _comboQty++;
+
+    private void DecreaseComboQty()
+    {
+        if (_comboQty > 1)
+        {
+            _comboQty--;
+        }
+    }
+
     private async Task AddToCartAsync()
     {
         if (_selectedProduct is null) return;
@@ -668,6 +978,8 @@
         var newLine = new CartLineItemDto(
             _selectedProduct.Id,
             _selectedProduct.Name,
+            null,
+            null,
             _selectedVariantId,
             variantName,
             _selectedProduct.UnitName,
@@ -704,9 +1016,44 @@
         await PersistStateAsync();
     }
 
+    private async Task AddComboToCartAsync()
+    {
+        if (_selectedCombo is null || _comboQty <= 0)
+        {
+            return;
+        }
+
+        var comboLine = new CartLineItemDto(
+            null,
+            _selectedCombo.Name ?? "Combo",
+            _selectedCombo.Id,
+            _selectedCombo.Name,
+            null,
+            null,
+            null,
+            [],
+            _comboQty,
+            _selectedCombo.Price);
+
+        var existingIndex = _cart.FindIndex(item => IsSameCartConfiguration(item, comboLine));
+        if (existingIndex >= 0)
+        {
+            var existing = _cart[existingIndex];
+            _cart[existingIndex] = existing with { Quantity = existing.Quantity + comboLine.Quantity };
+        }
+        else
+        {
+            _cart.Add(comboLine);
+        }
+
+        _comboQty = 1;
+        await PersistStateAsync();
+    }
+
     private static bool IsSameCartConfiguration(CartLineItemDto left, CartLineItemDto right)
     {
         if (left.ProductId != right.ProductId) return false;
+        if (left.ComboId != right.ComboId) return false;
         if (left.VariantId != right.VariantId) return false;
         if (left.UnitPrice != right.UnitPrice) return false;
         return BuildModifierSignature(left.Modifiers) == BuildModifierSignature(right.Modifiers);
@@ -748,17 +1095,26 @@
         {
             var input = new CreateOrderInput
             {
-                Lines = _cart.Select(item => new CreateOrderLineInput
-                {
-                    ProductId = item.ProductId,
-                    VariantId = item.VariantId,
-                    Quantity = item.Quantity,
-                    Modifiers = item.Modifiers.Select(m => new CreateOrderLineModifierInput
+                Lines = _cart
+                    .Where(item => item.ProductId.HasValue)
+                    .Select(item => new CreateOrderLineInput
                     {
-                        OptionId = m.OptionId,
-                        Quantity = m.Qty
+                        ProductId = item.ProductId!.Value,
+                        VariantId = item.VariantId,
+                        Quantity = item.Quantity,
+                        Modifiers = item.Modifiers.Select(m => new CreateOrderLineModifierInput
+                        {
+                            OptionId = m.OptionId,
+                            Quantity = m.Qty
+                        }).ToList()
+                    }).ToList(),
+                ComboLines = _cart
+                    .Where(item => item.ComboId.HasValue)
+                    .Select(item => new CreateOrderComboLineInput
+                    {
+                        ComboId = item.ComboId!.Value,
+                        Quantity = item.Quantity
                     }).ToList()
-                }).ToList()
             };
 
             var result = await Client.CreateOrder.ExecuteAsync(input);
@@ -843,14 +1199,31 @@
     bool IsActive);
 
     private sealed record CartLineItemDto(
-    Guid ProductId,
-    string ProductName,
+    Guid? ProductId,
+    string DisplayName,
+    Guid? ComboId,
+    string? ComboName,
     Guid? VariantId,
     string? VariantName,
     string? UnitName,
     IReadOnlyList<CartModifierDto> Modifiers,
     int Quantity,
     decimal UnitPrice);
+
+    private sealed record ComboMenuItemDto(
+        Guid Id,
+        string? Name,
+        decimal Price,
+        string? ImageUrl,
+        IReadOnlyList<ComboMenuItemLineDto> Items);
+
+    private sealed record ComboMenuItemLineDto(
+        Guid Id,
+        Guid ProductId,
+        string? ProductName,
+        Guid? VariantId,
+        string? VariantName,
+        int Qty);
 
     private sealed record CartModifierDto(Guid OptionId, string OptionName, int Qty, decimal PriceDelta);
 }

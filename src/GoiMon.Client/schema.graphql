@@ -440,6 +440,8 @@ type OrderItem {
   productId: UUID
   productName: String!
   unitName: String
+  comboId: UUID
+  comboName: String
   qty: Int!
   unitPrice: Decimal!
   modifiers: [OrderItemModifier!]!
@@ -447,6 +449,7 @@ type OrderItem {
 
 input CreateOrderInput {
   lines: [CreateOrderLineInput!]!
+  comboLines: [CreateOrderComboLineInput!]
 }
 
 type CreateOrderPayload {
@@ -477,8 +480,10 @@ type ProductComboItem {
   id: UUID!
   comboId: UUID!
   productId: UUID!
+  variantId: UUID
   qty: Int!
   product: Product
+  variant: ProductVariant
 }
 
 input CreateComboInput {
@@ -499,6 +504,7 @@ input AddComboItemInput {
   comboId: UUID!
   productId: UUID!
   qty: Int!
+  variantId: UUID
 }
 
 input UpdateComboItemInput {
@@ -561,6 +567,7 @@ type UserDto {
 input ComboItemInput {
   productId: UUID!
   qty: Int!
+  variantId: UUID
 }
 
 type CreateOrderValidationError {
@@ -574,6 +581,11 @@ input CreateOrderLineInput {
   variantId: UUID
   quantity: Int!
   modifiers: [CreateOrderLineModifierInput!]
+}
+
+input CreateOrderComboLineInput {
+  comboId: UUID!
+  quantity: Int!
 }
 
 type ModifierOption {

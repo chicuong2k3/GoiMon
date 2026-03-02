@@ -23,10 +23,10 @@ public class ProductCombo : AggregateRoot
     public string? ImageUrl { get; private set; }
     public List<ProductComboItem> Items { get; private set; }
 
-    public void AddItem(Guid productId, int qty)
+    public void AddItem(Guid productId, int qty, Guid? variantId = null)
     {
         if (qty <= 0) throw new ArgumentOutOfRangeException(nameof(qty));
-        var item = new ProductComboItem(Guid.NewGuid(), Id, productId, qty);
+        var item = new ProductComboItem(Guid.NewGuid(), Id, productId, qty, variantId);
         Items.Add(item);
         AddDomainEvent(new Events.ComboItemAddedEvent(Id, item.Id, productId, qty));
     }
@@ -93,17 +93,19 @@ public class ProductComboItem
 {
     private ProductComboItem() { }
 
-    public ProductComboItem(Guid id, Guid comboId, Guid productId, int qty)
+    public ProductComboItem(Guid id, Guid comboId, Guid productId, int qty, Guid? variantId = null)
     {
         Id = id;
         ComboId = comboId;
         ProductId = productId;
+        VariantId = variantId;
         Qty = qty;
     }
 
     public Guid Id { get; private set; }
     public Guid ComboId { get; private set; }
     public Guid ProductId { get; private set; }
+    public Guid? VariantId { get; private set; }
     public int Qty { get; private set; }
 
     public void UpdateQty(int qty)

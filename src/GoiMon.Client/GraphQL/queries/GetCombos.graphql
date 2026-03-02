@@ -9,10 +9,17 @@ query GetCombos($skip: Int, $take: Int, $where: ProductComboFilterInput, $order:
         id
         qty
         productId
+        variantId
         product {
           id
           name
           price
+        }
+        variant {
+          id
+          name
+          price
+          isActive
         }
       }
     }

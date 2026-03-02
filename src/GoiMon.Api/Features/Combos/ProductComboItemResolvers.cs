@@ -10,4 +10,18 @@ public class ProductComboItemResolvers
         ProductByIdDataLoader loader,
         CancellationToken ct)
         => await loader.LoadAsync(item.ProductId, ct);
+
+    [UseDbContext(typeof(AppDbContext))]
+    public async Task<ProductVariant?> GetVariantAsync(
+        [Parent] ProductComboItem item,
+        [Service(ServiceKind.Pooled)] AppDbContext db,
+        CancellationToken ct)
+    {
+        if (!item.VariantId.HasValue)
+        {
+            return null;
+        }
+
+        return await db.ProductVariants.FirstOrDefaultAsync(v => v.Id == item.VariantId.Value, ct);
+    }
 }

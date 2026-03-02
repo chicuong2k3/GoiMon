@@ -14,6 +14,8 @@ query GetOrders($first: Int, $after: String, $where: OrderFilterInput) {
         id
         productName
         unitName
+        comboId
+        comboName
         qty
         unitPrice
         modifiers {
@@ -43,6 +45,8 @@ query GetOrderById($id: UUID!) {
       id
       productName
       unitName
+      comboId
+      comboName
       qty
       unitPrice
       modifiers {

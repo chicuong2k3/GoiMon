@@ -251,6 +251,8 @@
                             i.Id,
                             i.ProductName,
                             i.UnitName,
+                            i.ComboId,
+                            i.ComboName,
                             i.Qty,
                             (decimal)i.UnitPrice,
                             i.Modifiers.Select(m => new OrderItemModifierSnapshot(
@@ -461,6 +463,8 @@
                 i.Id,
                 i.ProductName,
                 i.UnitName,
+                i.ComboId,
+                i.ComboName,
                 i.Qty,
                 i.UnitPrice,
                 i.Modifiers.Select(m => new OrderItemModifierSnapshot(

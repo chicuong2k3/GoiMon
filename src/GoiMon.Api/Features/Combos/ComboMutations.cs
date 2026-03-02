@@ -16,7 +16,10 @@ public class ComboMutations
         if (input.Items is not null)
         {
             foreach (var item in input.Items)
-                combo.AddItem(item.ProductId, item.Qty);
+            {
+                await ValidateComboItemInputAsync(item.ProductId, item.VariantId, db);
+                combo.AddItem(item.ProductId, item.Qty, item.VariantId);
+            }
         }
 
         if (image is not null)
@@ -82,7 +85,9 @@ public class ComboMutations
     {
         var combo = await db.ProductCombos.Include(c => c.Items).FirstOrDefaultAsync(c => c.Id == input.ComboId);
         if (combo is null) return null;
-        combo.AddItem(input.ProductId, input.Qty);
+
+        await ValidateComboItemInputAsync(input.ProductId, input.VariantId, db);
+        combo.AddItem(input.ProductId, input.Qty, input.VariantId);
         db.ProductComboItems.Add(combo.Items.Last());
         await db.SaveChangesAsync();
         return combo;
@@ -110,11 +115,42 @@ public class ComboMutations
         await db.SaveChangesAsync();
         return combo;
     }
+
+    private static async Task ValidateComboItemInputAsync(Guid productId, Guid? variantId, AppDbContext db)
+    {
+        var activeVariants = await db.ProductVariants
+            .Where(v => v.ProductId == productId && v.IsActive)
+            .Select(v => v.Id)
+            .ToListAsync();
+
+        if (activeVariants.Count > 0 && variantId is null)
+        {
+            throw new GraphQLException(
+                ErrorBuilder.New()
+                    .SetCode("COMBO_ITEM_VARIANT_REQUIRED")
+                    .SetMessage("Variant is required because product has active variants")
+                    .Build());
+        }
+
+        if (variantId is null)
+        {
+            return;
+        }
+
+        if (!activeVariants.Contains(variantId.Value))
+        {
+            throw new GraphQLException(
+                ErrorBuilder.New()
+                    .SetCode("COMBO_ITEM_INVALID_VARIANT")
+                    .SetMessage("Variant is invalid, inactive, or does not belong to the selected product")
+                    .Build());
+        }
+    }
 }
 
 public record CreateComboInput(string Name, decimal Price, List<ComboItemInput>? Items, string? ImageUrl = null);
 public record UpdateComboInput(Guid Id, string? Name, decimal? Price, string? ImageUrl = null);
-public record ComboItemInput(Guid ProductId, int Qty);
-public record AddComboItemInput(Guid ComboId, Guid ProductId, int Qty);
+public record ComboItemInput(Guid ProductId, int Qty, Guid? VariantId = null);
+public record AddComboItemInput(Guid ComboId, Guid ProductId, int Qty, Guid? VariantId = null);
 public record UpdateComboItemInput(Guid ComboId, Guid ItemId, int Qty);
 public record RemoveComboItemInput(Guid ComboId, Guid ItemId);

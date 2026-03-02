@@ -9,6 +9,8 @@ mutation CreateOrder($input: CreateOrderInput!) {
         id
         productName
         unitName
+        comboId
+        comboName
         qty
         unitPrice
         modifiers {

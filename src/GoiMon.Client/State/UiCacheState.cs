@@ -58,7 +58,7 @@ public record ComboListItem(
     IReadOnlyList<ComboItemListItem> Items,
     string? ImageUrl = null);
 
-public record ComboItemListItem(Guid Id, Guid ProductId, string? ProductName, int Qty);
+public record ComboItemListItem(Guid Id, Guid ProductId, string? ProductName, Guid? VariantId, string? VariantName, int Qty);
 
 public record ProductLookupItem(Guid Id, string Name);
 
@@ -78,6 +78,8 @@ public record OrderItemSnapshot(
     Guid Id,
     string ProductName,
     string? UnitName,
+    Guid? ComboId,
+    string? ComboName,
     int Qty,
     decimal UnitPrice,
     IReadOnlyList<OrderItemModifierSnapshot>? Modifiers = null)
@@ -99,9 +101,11 @@ public record ProductConfiguratorState(
     decimal EstimatedUnitPrice);
 
 public record CheckoutPageState(
+    string Mode,
     string Search,
     string SelectedCategory,
     IReadOnlyList<CheckoutProductListItem> Products,
+    IReadOnlyList<CheckoutComboListItem> Combos,
     IReadOnlyList<CheckoutCartLineItem> Cart);
 
 public record CheckoutProductListItem(
@@ -116,8 +120,10 @@ public record CheckoutProductListItem(
     int ActiveModifierGroupCount);
 
 public record CheckoutCartLineItem(
-    Guid ProductId,
-    string ProductName,
+    Guid? ProductId,
+    string DisplayName,
+    Guid? ComboId,
+    string? ComboName,
     Guid? VariantId,
     string? VariantName,
     string? UnitName,
@@ -126,3 +132,18 @@ public record CheckoutCartLineItem(
     IReadOnlyList<CheckoutCartModifierItem> Modifiers);
 
 public record CheckoutCartModifierItem(Guid OptionId, string OptionName, int Qty, decimal PriceDelta);
+
+public record CheckoutComboListItem(
+    Guid Id,
+    string? Name,
+    decimal Price,
+    string? ImageUrl,
+    IReadOnlyList<CheckoutComboItemListItem> Items);
+
+public record CheckoutComboItemListItem(
+    Guid Id,
+    Guid ProductId,
+    string? ProductName,
+    Guid? VariantId,
+    string? VariantName,
+    int Qty);

@@ -20,17 +20,24 @@ mutation DeleteCombo($id: UUID!) {
   deleteCombo(id: $id)
 }
 
-mutation AddComboItem($comboId: UUID!, $productId: UUID!, $qty: Int!) {
-  addComboItem(input: { comboId: $comboId, productId: $productId, qty: $qty }) {
+mutation AddComboItem($comboId: UUID!, $productId: UUID!, $qty: Int!, $variantId: UUID) {
+  addComboItem(input: { comboId: $comboId, productId: $productId, qty: $qty, variantId: $variantId }) {
     id
     items {
       id
       qty
       productId
+      variantId
       product {
         id
         name
         price
+      }
+      variant {
+        id
+        name
+        price
+        isActive
       }
     }
   }

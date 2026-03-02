@@ -17,6 +17,8 @@ public class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
         // Immutable snapshots captured at order-time
         builder.Property(oi => oi.ProductName).IsRequired().HasMaxLength(255);
         builder.Property(oi => oi.UnitName).IsRequired(false).HasMaxLength(50);
+        builder.Property(oi => oi.ComboId).IsRequired(false);
+        builder.Property(oi => oi.ComboName).IsRequired(false).HasMaxLength(255);
 
         builder.Property(oi => oi.Qty).IsRequired();
         builder.Property(oi => oi.UnitPrice).IsRequired().HasPrecision(18, 2);
