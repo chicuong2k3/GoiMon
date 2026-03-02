@@ -4,9 +4,37 @@ query GetProducts($skip: Int, $take: Int, $where: ProductFilterInput, $order: [P
       id
       name
       price
+      unitName
       description
       categoryId
       imageUrl
+      variants {
+        id
+        code
+        name
+        price
+        sortOrder
+        isActive
+      }
+      modifierGroups {
+        id
+        name
+        selectionMode
+        minSelect
+        maxSelect
+        sortOrder
+        isRequired
+        isActive
+        options {
+          id
+          name
+          priceDelta
+          maxQty
+          sortOrder
+          isDefault
+          isActive
+        }
+      }
       category {
         id
         name

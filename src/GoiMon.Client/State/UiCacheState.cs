@@ -4,9 +4,10 @@ public record UiCacheState(
     CategoryPageCache? Categories,
     ProductPageCache? Products,
     ComboPageCache? Combos,
-    OrderPageState? Orders)
+    OrderPageState? Orders,
+    CheckoutPageState? Checkout)
 {
-    public static UiCacheState Initial => new(null, null, null, null);
+    public static UiCacheState Initial => new(null, null, null, null, null);
 }
 
 public record CategoryPageCache(
@@ -33,6 +34,7 @@ public record ProductListItem(
     Guid Id,
     string Name,
     decimal Price,
+    string? UnitName,
     string? Description,
     Guid? CategoryId,
     string? CategoryName,
@@ -77,4 +79,50 @@ public record OrderItemSnapshot(
     string ProductName,
     string? UnitName,
     int Qty,
-    decimal UnitPrice);
+    decimal UnitPrice,
+    IReadOnlyList<OrderItemModifierSnapshot>? Modifiers = null)
+{
+    public IReadOnlyList<OrderItemModifierSnapshot> SafeModifiers => Modifiers ?? [];
+}
+
+public record OrderItemModifierSnapshot(
+    Guid Id,
+    string GroupName,
+    string OptionName,
+    int Qty,
+    decimal UnitDeltaPrice);
+
+public record ProductConfiguratorState(
+    Guid ProductId,
+    Guid? SelectedVariantId,
+    IReadOnlyDictionary<Guid, int> SelectedOptionQuantities,
+    decimal EstimatedUnitPrice);
+
+public record CheckoutPageState(
+    string Search,
+    string SelectedCategory,
+    IReadOnlyList<CheckoutProductListItem> Products,
+    IReadOnlyList<CheckoutCartLineItem> Cart);
+
+public record CheckoutProductListItem(
+    Guid Id,
+    string Name,
+    decimal Price,
+    string? UnitName,
+    string? Description,
+    string? ImageUrl,
+    string CategoryName,
+    int ActiveVariantCount,
+    int ActiveModifierGroupCount);
+
+public record CheckoutCartLineItem(
+    Guid ProductId,
+    string ProductName,
+    Guid? VariantId,
+    string? VariantName,
+    string? UnitName,
+    int Quantity,
+    decimal UnitPrice,
+    IReadOnlyList<CheckoutCartModifierItem> Modifiers);
+
+public record CheckoutCartModifierItem(Guid OptionId, string OptionName, int Qty, decimal PriceDelta);

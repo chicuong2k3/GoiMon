@@ -252,7 +252,13 @@
                             i.ProductName,
                             i.UnitName,
                             i.Qty,
-                            (decimal)i.UnitPrice)).ToList())));
+                            (decimal)i.UnitPrice,
+                            i.Modifiers.Select(m => new OrderItemModifierSnapshot(
+                                m.Id,
+                                m.GroupName,
+                                m.OptionName,
+                                m.Qty,
+                                (decimal)m.UnitDeltaPrice)).ToList())).ToList())));
                 }
 
                 _hasNextPage = data.PageInfo?.HasNextPage == true;
@@ -451,7 +457,18 @@
             NormalizeStatus(changed.Status.ToString()),
             changed.Total,
             changed.CreatedAt,
-            changed.Items.Select(i => new OrderItemSnapshot(i.Id, i.ProductName, i.UnitName, i.Qty, i.UnitPrice)).ToList());
+            changed.Items.Select(i => new OrderItemSnapshot(
+                i.Id,
+                i.ProductName,
+                i.UnitName,
+                i.Qty,
+                i.UnitPrice,
+                i.Modifiers.Select(m => new OrderItemModifierSnapshot(
+                    m.Id,
+                    m.GroupName,
+                    m.OptionName,
+                    m.Qty,
+                    m.UnitDeltaPrice)).ToList())).ToList());
 
         var existingIndex = _orders.FindIndex(o => o.Id == mapped.Id);
         var shouldAppearInCurrentTab = OrderInCurrentTab(mapped.Status);

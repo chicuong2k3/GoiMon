@@ -1,19 +1,21 @@
-mutation CreateProduct($name: String!, $price: Decimal!, $categoryId: UUID, $description: String, $imageUrl: String) {
-  createProduct(input: { name: $name, price: $price, categoryId: $categoryId, description: $description, imageUrl: $imageUrl }) {
+mutation CreateProduct($name: String!, $price: Decimal!, $categoryId: UUID, $description: String, $imageUrl: String, $unitName: String) {
+  createProduct(input: { name: $name, price: $price, categoryId: $categoryId, description: $description, imageUrl: $imageUrl, unitName: $unitName }) {
     id
     name
     price
+    unitName
     description
     categoryId
     imageUrl
   }
 }
 
-mutation UpdateProduct($id: UUID!, $name: String!, $price: Decimal!, $categoryId: UUID, $description: String, $imageUrl: String) {
-  updateProduct(input: { id: $id, name: $name, price: $price, categoryId: $categoryId, description: $description, imageUrl: $imageUrl }) {
+mutation UpdateProduct($id: UUID!, $name: String!, $price: Decimal!, $categoryId: UUID, $description: String, $imageUrl: String, $unitName: String) {
+  updateProduct(input: { id: $id, name: $name, price: $price, categoryId: $categoryId, description: $description, imageUrl: $imageUrl, unitName: $unitName }) {
     id
     name
     price
+    unitName
     description
     categoryId
     imageUrl
@@ -22,4 +24,94 @@ mutation UpdateProduct($id: UUID!, $name: String!, $price: Decimal!, $categoryId
 
 mutation DeleteProduct($id: UUID!) {
   deleteProduct(id: $id)
+}
+
+mutation CreateProductVariant($productId: UUID!, $input: ProductVariantInput!) {
+  createProductVariant(productId: $productId, input: $input) {
+    id
+    productId
+    code
+    name
+    price
+    sortOrder
+    isActive
+  }
+}
+
+mutation UpdateProductVariant($id: UUID!, $input: ProductVariantInput!) {
+  updateProductVariant(id: $id, input: $input) {
+    id
+    productId
+    code
+    name
+    price
+    sortOrder
+    isActive
+  }
+}
+
+mutation DeleteProductVariant($id: UUID!) {
+  deleteProductVariant(id: $id)
+}
+
+mutation CreateModifierGroup($productId: UUID!, $input: ModifierGroupInput!) {
+  createModifierGroup(productId: $productId, input: $input) {
+    id
+    productId
+    name
+    selectionMode
+    minSelect
+    maxSelect
+    sortOrder
+    isRequired
+    isActive
+  }
+}
+
+mutation UpdateModifierGroup($id: UUID!, $input: ModifierGroupInput!) {
+  updateModifierGroup(id: $id, input: $input) {
+    id
+    productId
+    name
+    selectionMode
+    minSelect
+    maxSelect
+    sortOrder
+    isRequired
+    isActive
+  }
+}
+
+mutation DeleteModifierGroup($id: UUID!) {
+  deleteModifierGroup(id: $id)
+}
+
+mutation CreateModifierOption($groupId: UUID!, $input: ModifierOptionInput!) {
+  createModifierOption(groupId: $groupId, input: $input) {
+    id
+    modifierGroupId
+    name
+    priceDelta
+    maxQty
+    sortOrder
+    isDefault
+    isActive
+  }
+}
+
+mutation UpdateModifierOption($id: UUID!, $input: ModifierOptionInput!) {
+  updateModifierOption(id: $id, input: $input) {
+    id
+    modifierGroupId
+    name
+    priceDelta
+    maxQty
+    sortOrder
+    isDefault
+    isActive
+  }
+}
+
+mutation DeleteModifierOption($id: UUID!) {
+  deleteModifierOption(id: $id)
 }

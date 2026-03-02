@@ -1,15 +1,29 @@
-mutation CreateOrder($input: OrderInput!) {
+mutation CreateOrder($input: CreateOrderInput!) {
   createOrder(input: $input) {
-    id
-    status
-    total
-    createdAt
-    items {
+    order {
       id
-      productName
-      unitName
-      qty
-      unitPrice
+      status
+      total
+      createdAt
+      items {
+        id
+        productName
+        unitName
+        qty
+        unitPrice
+        modifiers {
+          id
+          groupName
+          optionName
+          qty
+          unitDeltaPrice
+        }
+      }
+    }
+    errors {
+      code
+      message
+      lineIndex
     }
   }
 }

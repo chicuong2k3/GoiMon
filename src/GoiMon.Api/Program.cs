@@ -71,6 +71,7 @@ var cloudinaryAccount = new Account(
     builder.Configuration["Cloudinary:ApiSecret"]);
 builder.Services.AddSingleton(new Cloudinary(cloudinaryAccount));
 builder.Services.AddScoped<IImageUploadService, CloudinaryImageUploadService>();
+builder.Services.AddSingleton<GoiMon.Api.Features.Orders.Services.IOrderTelemetry, GoiMon.Api.Features.Orders.Services.OrderTelemetry>();
 
 // MediatR removed — validation is handled via FluentValidation middleware and error filter
 
@@ -112,9 +113,11 @@ builder.Services
     // Register aggregate-specific extensions
     .AddTypeExtension<ProductQueries>()
     .AddTypeExtension<ProductMutations>()
+    .AddTypeExtension<ProductVariantMutations>()
     .AddTypeExtension<OrderMutations>()
     .AddTypeExtension<OrderQueries>()
     .AddTypeExtension<OrderSubscriptions>()
+    .AddTypeExtension<OrderItemResolvers>()
     .AddTypeExtension<ProductResolvers>()
     .AddTypeExtension<CategoryQueries>()
     .AddTypeExtension<CategoryMutations>()

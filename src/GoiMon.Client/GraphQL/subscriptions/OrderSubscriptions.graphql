@@ -10,6 +10,13 @@ subscription OnOrderChanged {
       unitName
       qty
       unitPrice
+      modifiers {
+        id
+        groupName
+        optionName
+        qty
+        unitDeltaPrice
+      }
     }
   }
 }

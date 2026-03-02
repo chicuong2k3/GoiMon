@@ -1,0 +1,35 @@
+query GetProductConfigurator($id: UUID!) {
+  productById(id: $id) {
+    id
+    name
+    unitName
+    price
+    variants {
+      id
+      code
+      name
+      price
+      sortOrder
+      isActive
+    }
+    modifierGroups {
+      id
+      name
+      selectionMode
+      minSelect
+      maxSelect
+      sortOrder
+      isRequired
+      isActive
+      options {
+        id
+        name
+        priceDelta
+        maxQty
+        sortOrder
+        isDefault
+        isActive
+      }
+    }
+  }
+}

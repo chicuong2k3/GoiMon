@@ -33,6 +33,13 @@
                         </BbSidebarMenuButton>
                     </BbSidebarMenuItem>
                     <BbSidebarMenuItem>
+                        <BbSidebarMenuButton Href="/checkout" IsActive="@IsActiveRoute("/checkout", false)"
+                                             Tooltip="Đặt món">
+                            <LucideIcon Name="shopping-cart" Class="h-4 w-4" />
+                            <span class="truncate group-data-[collapsible=icon]:hidden">Đặt món</span>
+                        </BbSidebarMenuButton>
+                    </BbSidebarMenuItem>
+                    <BbSidebarMenuItem>
                         <BbSidebarMenuButton Href="/orders" IsActive="@IsActiveRoute("/orders", false)"
                                              Tooltip="Đơn hàng">
                             <LucideIcon Name="clipboard-list" Class="h-4 w-4" />

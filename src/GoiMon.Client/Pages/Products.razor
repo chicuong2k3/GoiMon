@@ -104,6 +104,7 @@
                         <th class="h-10 px-4 text-left font-medium text-muted-foreground">Tên sản phẩm</th>
                         <th class="h-10 px-4 text-left font-medium text-muted-foreground">Danh mục</th>
                         <th class="h-10 px-4 text-right font-medium text-muted-foreground">Giá</th>
+                        <th class="h-10 px-4 text-left font-medium text-muted-foreground">Đơn vị</th>
                         <th class="h-10 px-4 text-left font-medium text-muted-foreground hidden md:table-cell">Mô tả</th>
                         <th class="h-10 px-4 text-right font-medium text-muted-foreground w-28">Thao tác</th>
                     </tr>
@@ -112,7 +113,7 @@
                     @if (_items.Count == 0)
                     {
                         <tr>
-                            <td colspan="6" class="p-8 text-center text-muted-foreground">
+                            <td colspan="7" class="p-8 text-center text-muted-foreground">
                                 Không tìm thấy sản phẩm nào.
                             </td>
                         </tr>
@@ -154,11 +155,31 @@
                             <td class="px-4 py-3 text-right font-medium tabular-nums">
                                 @item.Price.ToString("#,##0") đ
                             </td>
+                            <td class="px-4 py-3">
+                                @(string.IsNullOrWhiteSpace(item.UnitName) ? "—" : item.UnitName)
+                            </td>
                             <td class="px-4 py-3 text-muted-foreground hidden md:table-cell max-w-[200px] truncate">
                                 @(item.Description ?? "—")
+                                @if (item.ActiveVariantCount > 0 || item.ActiveModifierGroupCount > 0)
+                                {
+                                    <div class="mt-1 flex flex-wrap items-center gap-1.5">
+                                        @if (item.ActiveVariantCount > 0)
+                                        {
+                                            <BbBadge Variant="BadgeVariant.Outline" Class="text-[10px]">@item.ActiveVariantCount size</BbBadge>
+                                        }
+                                        @if (item.ActiveModifierGroupCount > 0)
+                                        {
+                                            <BbBadge Variant="BadgeVariant.Outline" Class="text-[10px]">@item.ActiveModifierGroupCount nhóm</BbBadge>
+                                        }
+                                    </div>
+                                }
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex justify-end gap-1">
+                                    <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall"
+                                              AriaLabel="Cấu hình" OnClick="() => OpenConfigureAsync(item)">
+                                        <LucideIcon Name="settings-2" Class="h-4 w-4" />
+                                    </BbButton>
                                     <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall"
                                               AriaLabel="Sửa" OnClick="async () => await OpenEditAsync(item)">
                                         <LucideIcon Name="pencil" Class="h-4 w-4" />
@@ -210,6 +231,10 @@
             <div class="space-y-1">
                 <label class="text-sm font-medium">Giá (đ) <span class="text-destructive">*</span></label>
                 <BbInput @bind-Value="_formPriceStr" Type="InputType.Number" Placeholder="0" />
+            </div>
+            <div class="space-y-1">
+                <label class="text-sm font-medium">Đơn vị tính</label>
+                <BbInput @bind-Value="_formUnitName" Placeholder="Ví dụ: ly, phần, chai" />
             </div>
             <div class="space-y-1">
                 <label class="text-sm font-medium">Danh mục</label>
@@ -290,6 +315,333 @@
     </BbDialogContent>
 </BbDialog>
 
+<!-- Configure Dialog (Variants + Modifier Groups) -->
+<BbDialog Open="@_showConfigure" OpenChanged="@(v => { _showConfigure = v; if (!v) { _showVariantForm = false; _showGroupForm = false; _optionFormGroupId = null; } })">
+    <BbDialogContent Class="max-w-2xl max-h-[90dvh] overflow-y-auto">
+        <BbDialogHeader>
+            <BbDialogTitle>Cấu hình: @_configuringProductName</BbDialogTitle>
+            <BbDialogDescription>Quản lý biến thể (size) và nhóm tùy chọn (topping...)</BbDialogDescription>
+        </BbDialogHeader>
+
+        @if (_loadingConfig)
+        {
+            <div class="space-y-2 py-4">
+                <BbSkeleton Height="20px" Class="w-40" />
+                <BbSkeleton Height="44px" Class="w-full" />
+                <BbSkeleton Height="44px" Class="w-full" />
+            </div>
+        }
+        else
+        {
+            <BbTabs DefaultValue="variants" Class="mt-2">
+                <BbTabsList>
+                    <BbTabsTrigger Value="variants">Biến thể (@_variants.Count)</BbTabsTrigger>
+                    <BbTabsTrigger Value="modifiers">Nhóm tùy chọn (@_modifierGroups.Count)</BbTabsTrigger>
+                </BbTabsList>
+
+                <!-- Variants Tab -->
+                <BbTabsContent Value="variants" Class="mt-3">
+                    <div class="space-y-3">
+                        @if (_variants.Count > 0)
+                        {
+                            <div class="rounded-md border text-sm">
+                                <table class="w-full">
+                                    <thead class="border-b bg-muted/50">
+                                        <tr>
+                                            <th class="h-9 px-3 text-left font-medium text-muted-foreground">Mã</th>
+                                            <th class="h-9 px-3 text-left font-medium text-muted-foreground">Tên</th>
+                                            <th class="h-9 px-3 text-right font-medium text-muted-foreground">Giá</th>
+                                            <th class="h-9 px-3 text-center font-medium text-muted-foreground">Thứ tự</th>
+                                            <th class="h-9 px-3 text-center font-medium text-muted-foreground">Hiện</th>
+                                            <th class="h-9 px-3 w-20"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var v in _variants.OrderBy(x => x.SortOrder))
+                                        {
+                                            <tr class="border-b last:border-0 hover:bg-muted/40">
+                                                <td class="px-3 py-2 font-mono text-xs">@v.Code</td>
+                                                <td class="px-3 py-2">@v.Name</td>
+                                                <td class="px-3 py-2 text-right tabular-nums">@v.Price.ToString("#,##0")đ</td>
+                                                <td class="px-3 py-2 text-center">@v.SortOrder</td>
+                                                <td class="px-3 py-2 text-center">
+                                                    <BbBadge Variant="@(v.IsActive ? BadgeVariant.Default : BadgeVariant.Outline)" Class="text-[10px]">
+                                                        @(v.IsActive ? "Có" : "Không")
+                                                    </BbBadge>
+                                                </td>
+                                                <td class="px-3 py-2 text-right">
+                                                    <div class="flex justify-end gap-1">
+                                                        <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall"
+                                                                  OnClick="() => OpenEditVariant(v)">
+                                                            <LucideIcon Name="pencil" Class="h-3.5 w-3.5" />
+                                                        </BbButton>
+                                                        <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall"
+                                                                  Class="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                                  OnClick="async () => await DeleteVariantAsync(v.Id)">
+                                                            <LucideIcon Name="trash-2" Class="h-3.5 w-3.5" />
+                                                        </BbButton>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else if (!_showVariantForm)
+                        {
+                            <div class="flex flex-col items-center gap-2 rounded-md border border-dashed py-8 text-center">
+                                <LucideIcon Name="layers" Class="h-8 w-8 text-muted-foreground/40" />
+                                <p class="text-sm font-medium">Chưa có biến thể</p>
+                                <p class="text-xs text-muted-foreground">Thêm biến thể để khách chọn size, loại...</p>
+                                <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small" Class="mt-1" OnClick="OpenAddVariant">
+                                    <LucideIcon Name="plus" Class="h-4 w-4 mr-1" />
+                                    Thêm biến thể đầu tiên
+                                </BbButton>
+                            </div>
+                        }
+
+                        @if (_showVariantForm)
+                        {
+                            <div class="rounded-md border p-3 space-y-2 bg-muted/20">
+                                <p class="text-sm font-medium">@(_editVariantId.HasValue ? "Sửa biến thể" : "Thêm biến thể")</p>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div class="space-y-1">
+                                        <label class="text-xs font-medium">Mã <span class="text-destructive">*</span></label>
+                                        <BbInput @bind-Value="_vCode" Placeholder="Ví dụ: m" />
+                                    </div>
+                                    <div class="space-y-1">
+                                        <label class="text-xs font-medium">Tên <span class="text-destructive">*</span></label>
+                                        <BbInput @bind-Value="_vName" Placeholder="Ví dụ: Size M" />
+                                    </div>
+                                    <div class="space-y-1">
+                                        <label class="text-xs font-medium">Giá (đ) <span class="text-destructive">*</span></label>
+                                        <BbInput @bind-Value="_vPriceStr" Type="InputType.Number" Placeholder="0" />
+                                    </div>
+                                    <div class="space-y-1">
+                                        <label class="text-xs font-medium">Thứ tự</label>
+                                        <BbInput @bind-Value="_vSortStr" Type="InputType.Number" Placeholder="0" />
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <BbCheckbox @bind-Checked="_vActive" />
+                                    <label class="text-xs">Hiển thị</label>
+                                </div>
+                                <div class="flex justify-end gap-2">
+                                    <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small" OnClick="CancelVariantForm">Hủy</BbButton>
+                                    <BbButton Size="ButtonSize.Small" OnClick="SaveVariantAsync"
+                                              Loading="@_savingVariant" LoadingText="Đang lưu..."
+                                              Disabled="@(string.IsNullOrWhiteSpace(_vCode) || string.IsNullOrWhiteSpace(_vName) || !decimal.TryParse(_vPriceStr, out _))">
+                                        Lưu
+                                    </BbButton>
+                                </div>
+                            </div>
+                        }
+                        else if (_variants.Count > 0)
+                        {
+                            <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small" OnClick="OpenAddVariant">
+                                <LucideIcon Name="plus" Class="h-4 w-4 mr-1" />
+                                Thêm biến thể
+                            </BbButton>
+                        }
+                    </div>
+                </BbTabsContent>
+
+                <!-- Modifier Groups Tab -->
+                <BbTabsContent Value="modifiers" Class="mt-3">
+                    <div class="space-y-3">
+                        @foreach (var group in _modifierGroups.OrderBy(g => g.SortOrder))
+                        {
+                            <div class="rounded-md border">
+                                <div class="flex items-center justify-between px-3 py-2 bg-muted/30 rounded-t-md">
+                                    <div>
+                                        <span class="font-medium text-sm">@group.Name</span>
+                                        <span class="ml-2 text-xs text-muted-foreground">
+                                            @(group.SelectionMode == ModifierSelectionMode.Single ? "Chọn 1" : "Chọn nhiều")
+                                            • @group.MinSelect–@group.MaxSelect
+                                            @(group.IsRequired ? " • Bắt buộc" : "")
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center gap-1">
+                                        <BbBadge Variant="@(group.IsActive ? BadgeVariant.Default : BadgeVariant.Outline)" Class="text-[10px]">
+                                            @(group.IsActive ? "Hiện" : "Ẩn")
+                                        </BbBadge>
+                                        <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall"
+                                                  OnClick="() => OpenEditGroup(group)">
+                                            <LucideIcon Name="pencil" Class="h-3.5 w-3.5" />
+                                        </BbButton>
+                                        <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall"
+                                                  Class="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                  OnClick="async () => await DeleteGroupAsync(group.Id)">
+                                            <LucideIcon Name="trash-2" Class="h-3.5 w-3.5" />
+                                        </BbButton>
+                                    </div>
+                                </div>
+                                <div class="divide-y px-3 pb-2">
+                                    @foreach (var opt in group.Options.OrderBy(o => o.SortOrder))
+                                    {
+                                        <div class="flex items-center justify-between py-1.5">
+                                            <div>
+                                                <span class="text-sm">@opt.Name</span>
+                                                <span class="ml-2 text-xs text-muted-foreground">+@opt.PriceDelta.ToString("#,##0")đ</span>
+                                                @if (opt.IsDefault)
+                                                {
+                                                    <span class="ml-1 text-xs text-muted-foreground">(mặc định)</span>
+                                                }
+                                            </div>
+                                            <div class="flex items-center gap-1">
+                                                <BbBadge Variant="@(opt.IsActive ? BadgeVariant.Default : BadgeVariant.Outline)" Class="text-[10px]">
+                                                    @(opt.IsActive ? "Hiện" : "Ẩn")
+                                                </BbBadge>
+                                                <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall"
+                                                          OnClick="() => OpenEditOption(group.Id, opt)">
+                                                    <LucideIcon Name="pencil" Class="h-3.5 w-3.5" />
+                                                </BbButton>
+                                                <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall"
+                                                          Class="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                          OnClick="async () => await DeleteOptionAsync(opt.Id)">
+                                                    <LucideIcon Name="trash-2" Class="h-3.5 w-3.5" />
+                                                </BbButton>
+                                            </div>
+                                        </div>
+                                    }
+                                    @if (_optionFormGroupId == group.Id)
+                                    {
+                                        <div class="pt-2 pb-1 space-y-2">
+                                            <div class="grid grid-cols-2 gap-2">
+                                                <div class="space-y-1">
+                                                    <label class="text-xs font-medium">Tên <span class="text-destructive">*</span></label>
+                                                    <BbInput @bind-Value="_oName" Placeholder="Ví dụ: Trân châu" />
+                                                </div>
+                                                <div class="space-y-1">
+                                                    <label class="text-xs font-medium">Giá thêm (đ)</label>
+                                                    <BbInput @bind-Value="_oPriceStr" Type="InputType.Number" Placeholder="0" />
+                                                </div>
+                                                <div class="space-y-1">
+                                                    <label class="text-xs font-medium">Max số lượng</label>
+                                                    <BbInput @bind-Value="_oMaxQtyStr" Type="InputType.Number" />
+                                                </div>
+                                                <div class="space-y-1">
+                                                    <label class="text-xs font-medium">Thứ tự</label>
+                                                    <BbInput @bind-Value="_oSortStr" Type="InputType.Number" />
+                                                </div>
+                                            </div>
+                                            <div class="flex items-center gap-4">
+                                                <div class="flex items-center gap-2">
+                                                    <BbCheckbox @bind-Checked="_oDefault" />
+                                                    <label class="text-xs">Mặc định</label>
+                                                </div>
+                                                <div class="flex items-center gap-2">
+                                                    <BbCheckbox @bind-Checked="_oActive" />
+                                                    <label class="text-xs">Hiển thị</label>
+                                                </div>
+                                            </div>
+                                            <div class="flex justify-end gap-2">
+                                                <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small" OnClick="CancelOptionForm">Hủy</BbButton>
+                                                <BbButton Size="ButtonSize.Small" OnClick="SaveOptionAsync"
+                                                          Loading="@_savingOption" LoadingText="Đang lưu..."
+                                                          Disabled="@(string.IsNullOrWhiteSpace(_oName))">
+                                                    Lưu
+                                                </BbButton>
+                                            </div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="pt-2">
+                                            <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.Small"
+                                                      OnClick="() => OpenAddOption(group.Id)">
+                                                <LucideIcon Name="plus" Class="h-3.5 w-3.5 mr-1" />
+                                                Thêm tùy chọn
+                                            </BbButton>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+
+                        @if (_modifierGroups.Count == 0 && !_showGroupForm)
+                        {
+                            <div class="flex flex-col items-center gap-2 rounded-md border border-dashed py-8 text-center">
+                                <LucideIcon Name="sliders-horizontal" Class="h-8 w-8 text-muted-foreground/40" />
+                                <p class="text-sm font-medium">Chưa có nhóm tùy chọn</p>
+                                <p class="text-xs text-muted-foreground">Thêm topping, sauce, mức đường...</p>
+                                <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small" Class="mt-1" OnClick="OpenAddGroup">
+                                    <LucideIcon Name="plus" Class="h-4 w-4 mr-1" />
+                                    Thêm nhóm đầu tiên
+                                </BbButton>
+                            </div>
+                        }
+
+                        @if (_showGroupForm)
+                        {
+                            <div class="rounded-md border p-3 space-y-2 bg-muted/20">
+                                <p class="text-sm font-medium">@(_editGroupId.HasValue ? "Sửa nhóm" : "Thêm nhóm tùy chọn")</p>
+                                <div class="space-y-1">
+                                    <label class="text-xs font-medium">Tên nhóm <span class="text-destructive">*</span></label>
+                                    <BbInput @bind-Value="_gName" Placeholder="Ví dụ: Topping" />
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div class="space-y-1">
+                                        <label class="text-xs font-medium">Kiểu chọn</label>
+                                        <BbCombobox TValue="ModifierSelectionMode"
+                                                    @bind-Value="_gMode"
+                                                    Options="SelectionModeOptions"
+                                                    MatchTriggerWidth="true" />
+                                    </div>
+                                    <div class="space-y-1">
+                                        <label class="text-xs font-medium">Thứ tự</label>
+                                        <BbInput @bind-Value="_gSortStr" Type="InputType.Number" />
+                                    </div>
+                                    <div class="space-y-1">
+                                        <label class="text-xs font-medium">Chọn tối thiểu</label>
+                                        <BbInput @bind-Value="_gMinStr" Type="InputType.Number" />
+                                    </div>
+                                    <div class="space-y-1">
+                                        <label class="text-xs font-medium">Chọn tối đa</label>
+                                        <BbInput @bind-Value="_gMaxStr" Type="InputType.Number" />
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-4">
+                                    <div class="flex items-center gap-2">
+                                        <BbCheckbox @bind-Checked="_gRequired" />
+                                        <label class="text-xs">Bắt buộc chọn</label>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <BbCheckbox @bind-Checked="_gActive" />
+                                        <label class="text-xs">Hiển thị</label>
+                                    </div>
+                                </div>
+                                <div class="flex justify-end gap-2">
+                                    <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small" OnClick="CancelGroupForm">Hủy</BbButton>
+                                    <BbButton Size="ButtonSize.Small" OnClick="SaveGroupAsync"
+                                              Loading="@_savingGroup" LoadingText="Đang lưu..."
+                                              Disabled="@(string.IsNullOrWhiteSpace(_gName) || !int.TryParse(_gMaxStr, out var gMaxParsed) || !int.TryParse(_gMinStr, out var gMinParsed) || gMaxParsed < gMinParsed)">
+                                        Lưu
+                                    </BbButton>
+                                </div>
+                            </div>
+                        }
+                        else if (_modifierGroups.Count > 0)
+                        {
+                            <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small" OnClick="OpenAddGroup">
+                                <LucideIcon Name="plus" Class="h-4 w-4 mr-1" />
+                                Thêm nhóm tùy chọn
+                            </BbButton>
+                        }
+                    </div>
+                </BbTabsContent>
+            </BbTabs>
+        }
+
+        <BbDialogFooter Class="mt-4">
+            <BbDialogClose>
+                <BbButton Variant="ButtonVariant.Outline">Đóng</BbButton>
+            </BbDialogClose>
+        </BbDialogFooter>
+    </BbDialogContent>
+</BbDialog>
+
 <!-- Edit Dialog -->
 <BbDialog Open="@_showEdit" OpenChanged="@(v => _showEdit = v)">
     <BbDialogContent Class="max-w-md max-h-[90dvh] overflow-y-auto">
@@ -305,6 +657,10 @@
             <div class="space-y-1">
                 <label class="text-sm font-medium">Giá (đ) <span class="text-destructive">*</span></label>
                 <BbInput @bind-Value="_formPriceStr" Type="InputType.Number" Placeholder="0" />
+            </div>
+            <div class="space-y-1">
+                <label class="text-sm font-medium">Đơn vị tính</label>
+                <BbInput @bind-Value="_formUnitName" Placeholder="Ví dụ: ly, phần, chai" />
             </div>
             <div class="space-y-1">
                 <label class="text-sm font-medium">Danh mục</label>
@@ -368,6 +724,7 @@
     private Guid? _editId;
     private string _formName = "";
     private string _formPriceStr = "";
+    private string _formUnitName = "";
     private Guid? _formCategoryId;
     private string _formDescription = "";
     private string _formImageUrl = "";
@@ -455,7 +812,7 @@
         _skip = cached.Skip;
         _take = cached.Take;
         _total = cached.Total;
-        _items = cached.Items.Select(i => new ProductDto(i.Id, i.Name, i.Price, i.Description, i.CategoryId, i.CategoryName, i.ImageUrl)).ToList();
+        _items = cached.Items.Select(i => new ProductDto(i.Id, i.Name, i.Price, i.UnitName, i.Description, i.CategoryId, i.CategoryName, i.ImageUrl)).ToList();
         _allCategories = cached.Categories.Select(c => new CategoryItem(c.Id, c.Name)).ToList();
         _selectedIds = cached.SelectedIds.ToHashSet();
         return true;
@@ -469,7 +826,7 @@
             _skip,
             _take,
             _total,
-            _items.Select(i => new ProductListItem(i.Id, i.Name, i.Price, i.Description, i.CategoryId, i.CategoryName, i.ImageUrl)).ToList(),
+            _items.Select(i => new ProductListItem(i.Id, i.Name, i.Price, i.UnitName, i.Description, i.CategoryId, i.CategoryName, i.ImageUrl)).ToList(),
             _allCategories.Select(c => new CategoryLookupItem(c.Id, c.Name)).ToList(),
             _selectedIds.ToList());
 
@@ -574,7 +931,16 @@
                 if (result.Data?.Products is { } data)
                 {
                     _items = data.Items?.Select(i => new ProductDto(
-                        i.Id, i.Name, i.Price, i.Description, i.CategoryId, i.Category?.Name, i.ImageUrl
+                        i.Id,
+                        i.Name,
+                        i.Price,
+                        i.UnitName,
+                        i.Description,
+                        i.CategoryId,
+                        i.Category?.Name,
+                        i.ImageUrl,
+                        i.Variants.Count(v => v.IsActive),
+                        i.ModifierGroups.Count(g => g.IsActive)
                     )).ToList() ?? [];
                     _total = data.TotalCount;
                     await PersistStateAsync();
@@ -640,10 +1006,13 @@
                         i.Id,
                         i.Name,
                         i.Price,
+                        i.UnitName,
                         i.Description,
                         i.CategoryId,
                         i.Category?.Name,
-                        i.ImageUrl)));
+                        i.ImageUrl,
+                        i.Variants.Count(v => v.IsActive),
+                        i.ModifierGroups.Count(g => g.IsActive))));
                 }
 
                 if (data.PageInfo?.HasNextPage != true)
@@ -739,6 +1108,7 @@
         _editId = null;
         _formName = "";
         _formPriceStr = "";
+        _formUnitName = "";
         _formCategoryId = null;
         _formDescription = "";
         ResetImageForm();
@@ -756,6 +1126,7 @@
         _editId = item.Id;
         _formName = item.Name;
         _formPriceStr = item.Price.ToString();
+        _formUnitName = item.UnitName ?? "";
         _formCategoryId = item.CategoryId;
         _formDescription = item.Description ?? "";
         _pendingImage = null;
@@ -816,7 +1187,8 @@
         var imageUrl = uploadedUrl ?? (string.IsNullOrEmpty(_formImageUrl) ? null : _formImageUrl);
 
         var desc = string.IsNullOrWhiteSpace(_formDescription) ? null : _formDescription;
-        var result = await Client.CreateProduct.ExecuteAsync(_formName, price, _formCategoryId, desc, imageUrl);
+        var unitName = string.IsNullOrWhiteSpace(_formUnitName) ? null : _formUnitName;
+        var result = await Client.CreateProduct.ExecuteAsync(_formName, price, _formCategoryId, desc, imageUrl, unitName);
         _saving = false;
         if (result.Data?.CreateProduct is { } created)
         {
@@ -826,14 +1198,19 @@
             if (MatchesCurrentFilter(created.Id, created.Name, created.Price, created.Description, created.CategoryId))
             {
                 _total++;
+                var activeVariantCount = _items.FirstOrDefault(x => x.Id == created.Id)?.ActiveVariantCount ?? 0;
+                var activeModifierGroupCount = _items.FirstOrDefault(x => x.Id == created.Id)?.ActiveModifierGroupCount ?? 0;
                 _items.Insert(0, new ProductDto(
                     created.Id,
                     created.Name,
                     created.Price,
+                    created.UnitName,
                     created.Description,
                     created.CategoryId,
                     GetCategoryName(created.CategoryId),
-                    created.ImageUrl));
+                    created.ImageUrl,
+                    activeVariantCount,
+                    activeModifierGroupCount));
                 if (_items.Count > _take)
                     _items.RemoveAt(_items.Count - 1);
             }
@@ -855,7 +1232,8 @@
         var imageUrl = uploadedUrl ?? (string.IsNullOrEmpty(_formImageUrl) ? null : _formImageUrl);
 
         var desc = string.IsNullOrWhiteSpace(_formDescription) ? null : _formDescription;
-        var result = await Client.UpdateProduct.ExecuteAsync(_editId!.Value, _formName, price, _formCategoryId, desc, imageUrl);
+        var unitName = string.IsNullOrWhiteSpace(_formUnitName) ? null : _formUnitName;
+        var result = await Client.UpdateProduct.ExecuteAsync(_editId!.Value, _formName, price, _formCategoryId, desc, imageUrl, unitName);
         _saving = false;
         if (result.Data?.UpdateProduct is { } updated)
         {
@@ -871,10 +1249,13 @@
                         updated.Id,
                         updated.Name,
                         updated.Price,
+                        updated.UnitName,
                         updated.Description,
                         updated.CategoryId,
                         GetCategoryName(updated.CategoryId),
-                        updated.ImageUrl);
+                        updated.ImageUrl,
+                        _items[index].ActiveVariantCount,
+                        _items[index].ActiveModifierGroupCount);
                     await PersistStateAsync();
                 }
                 else
@@ -948,6 +1329,216 @@
         }
     }
 
+    // ── Configure dialog state ──────────────────────────────────────────────
+    private bool _showConfigure;
+    private Guid? _configuringProductId;
+    private string _configuringProductName = "";
+    private bool _loadingConfig;
+
+    // Variants
+    private List<VariantRowDto> _variants = [];
+    private bool _showVariantForm;
+    private Guid? _editVariantId;
+    private string _vCode = "", _vName = "", _vPriceStr = "", _vSortStr = "0";
+    private bool _vActive = true;
+    private bool _savingVariant;
+
+    // Modifier Groups
+    private List<ModifierGroupRowDto> _modifierGroups = [];
+    private bool _showGroupForm;
+    private Guid? _editGroupId;
+    private string _gName = "", _gMinStr = "0", _gMaxStr = "1", _gSortStr = "0";
+    private ModifierSelectionMode _gMode = ModifierSelectionMode.Multiple;
+    private bool _gRequired, _gActive = true;
+    private bool _savingGroup;
+
+    // Modifier Options
+    private Guid? _optionFormGroupId;
+    private Guid? _editOptionId;
+    private string _oName = "", _oPriceStr = "0", _oMaxQtyStr = "1", _oSortStr = "0";
+    private bool _oDefault, _oActive = true;
+    private bool _savingOption;
+
+    private static readonly List<SelectOption<ModifierSelectionMode>> SelectionModeOptions =
+    [
+        new(ModifierSelectionMode.Single, "Chọn 1"),
+        new(ModifierSelectionMode.Multiple, "Chọn nhiều")
+    ];
+
+    private void OpenConfigureAsync(ProductDto item)
+    {
+        _configuringProductId = item.Id;
+        _configuringProductName = item.Name;
+        _showVariantForm = false;
+        _showGroupForm = false;
+        _optionFormGroupId = null;
+        _showConfigure = true;
+        _ = LoadConfigAsync();
+    }
+
+    private async Task LoadConfigAsync()
+    {
+        if (_configuringProductId is null) return;
+        _loadingConfig = true;
+        try
+        {
+            var result = await Client.GetProductConfigurator.ExecuteAsync(_configuringProductId.Value);
+            var product = result.Data?.ProductById;
+            if (product is null) return;
+
+            _variants = product.Variants
+                .Select(v => new VariantRowDto(v.Id, v.Code, v.Name, v.Price, v.SortOrder, v.IsActive))
+                .ToList();
+
+            _modifierGroups = product.ModifierGroups
+                .Select(g => new ModifierGroupRowDto(
+                    g.Id, g.Name, g.SelectionMode, g.MinSelect, g.MaxSelect,
+                    g.SortOrder, g.IsRequired, g.IsActive,
+                    g.Options.Select(o => new ModifierOptionRowDto(
+                        o.Id, o.Name, o.PriceDelta, o.MaxQty, o.SortOrder, o.IsDefault, o.IsActive)).ToList()))
+                .ToList();
+        }
+        finally
+        {
+            _loadingConfig = false;
+            StateHasChanged();
+        }
+    }
+
+    // Variant CRUD
+    private void OpenAddVariant() { _editVariantId = null; _vCode = ""; _vName = ""; _vPriceStr = ""; _vSortStr = "0"; _vActive = true; _showVariantForm = true; }
+    private void OpenEditVariant(VariantRowDto v) { _editVariantId = v.Id; _vCode = v.Code; _vName = v.Name; _vPriceStr = v.Price.ToString(); _vSortStr = v.SortOrder.ToString(); _vActive = v.IsActive; _showVariantForm = true; }
+    private void CancelVariantForm() { _showVariantForm = false; _editVariantId = null; }
+
+    private async Task SaveVariantAsync()
+    {
+        if (!decimal.TryParse(_vPriceStr, out var price)) return;
+        _savingVariant = true;
+        var input = new ProductVariantInput { Code = _vCode, Name = _vName, Price = price, SortOrder = int.TryParse(_vSortStr, out var vSort) ? vSort : 0, IsActive = _vActive };
+        try
+        {
+            if (_editVariantId.HasValue)
+            {
+                var r = await Client.UpdateProductVariant.ExecuteAsync(_editVariantId.Value, input);
+                if (r.Data?.UpdateProductVariant is null) { ToastService.Error(GraphQLErrorFormatter.Format(r.Errors)); return; }
+            }
+            else
+            {
+                var r = await Client.CreateProductVariant.ExecuteAsync(_configuringProductId!.Value, input);
+                if (r.Data?.CreateProductVariant is null) { ToastService.Error(GraphQLErrorFormatter.Format(r.Errors)); return; }
+            }
+            CancelVariantForm();
+            await LoadConfigAsync();
+            await RefreshProductRowAsync();
+        }
+        finally { _savingVariant = false; }
+    }
+
+    private async Task DeleteVariantAsync(Guid id)
+    {
+        var r = await Client.DeleteProductVariant.ExecuteAsync(id);
+        if (r.Data?.DeleteProductVariant == true) { await LoadConfigAsync(); await RefreshProductRowAsync(); }
+        else ToastService.Error(GraphQLErrorFormatter.Format(r.Errors));
+    }
+
+    // Modifier Group CRUD
+    private void OpenAddGroup() { _editGroupId = null; _gName = ""; _gMode = ModifierSelectionMode.Multiple; _gMinStr = "0"; _gMaxStr = "1"; _gSortStr = "0"; _gRequired = false; _gActive = true; _showGroupForm = true; }
+    private void OpenEditGroup(ModifierGroupRowDto g) { _editGroupId = g.Id; _gName = g.Name; _gMode = g.SelectionMode; _gMinStr = g.MinSelect.ToString(); _gMaxStr = g.MaxSelect.ToString(); _gSortStr = g.SortOrder.ToString(); _gRequired = g.IsRequired; _gActive = g.IsActive; _showGroupForm = true; }
+    private void CancelGroupForm() { _showGroupForm = false; _editGroupId = null; }
+
+    private async Task SaveGroupAsync()
+    {
+        _savingGroup = true;
+        var input = new ModifierGroupInput { Name = _gName, SelectionMode = _gMode, MinSelect = int.TryParse(_gMinStr, out var gMin) ? gMin : 0, MaxSelect = int.TryParse(_gMaxStr, out var gMax) ? gMax : 1, SortOrder = int.TryParse(_gSortStr, out var gSort) ? gSort : 0, IsRequired = _gRequired, IsActive = _gActive };
+        try
+        {
+            if (_editGroupId.HasValue)
+            {
+                var r = await Client.UpdateModifierGroup.ExecuteAsync(_editGroupId.Value, input);
+                if (r.Data?.UpdateModifierGroup is null) { ToastService.Error(GraphQLErrorFormatter.Format(r.Errors)); return; }
+            }
+            else
+            {
+                var r = await Client.CreateModifierGroup.ExecuteAsync(_configuringProductId!.Value, input);
+                if (r.Data?.CreateModifierGroup is null) { ToastService.Error(GraphQLErrorFormatter.Format(r.Errors)); return; }
+            }
+            CancelGroupForm();
+            await LoadConfigAsync();
+            await RefreshProductRowAsync();
+        }
+        finally { _savingGroup = false; }
+    }
+
+    private async Task DeleteGroupAsync(Guid id)
+    {
+        var r = await Client.DeleteModifierGroup.ExecuteAsync(id);
+        if (r.Data?.DeleteModifierGroup == true) { await LoadConfigAsync(); await RefreshProductRowAsync(); }
+        else ToastService.Error(GraphQLErrorFormatter.Format(r.Errors));
+    }
+
+    // Modifier Option CRUD
+    private void OpenAddOption(Guid groupId) { _editOptionId = null; _oName = ""; _oPriceStr = "0"; _oMaxQtyStr = "1"; _oSortStr = "0"; _oDefault = false; _oActive = true; _optionFormGroupId = groupId; }
+    private void OpenEditOption(Guid groupId, ModifierOptionRowDto o) { _editOptionId = o.Id; _oName = o.Name; _oPriceStr = o.PriceDelta.ToString(); _oMaxQtyStr = o.MaxQty.ToString(); _oSortStr = o.SortOrder.ToString(); _oDefault = o.IsDefault; _oActive = o.IsActive; _optionFormGroupId = groupId; }
+    private void CancelOptionForm() { _optionFormGroupId = null; _editOptionId = null; }
+
+    private async Task SaveOptionAsync()
+    {
+        if (!decimal.TryParse(_oPriceStr, out var priceDelta)) return;
+        _savingOption = true;
+        var input = new ModifierOptionInput { Name = _oName, PriceDelta = priceDelta, MaxQty = int.TryParse(_oMaxQtyStr, out var oMaxQty) ? oMaxQty : 1, SortOrder = int.TryParse(_oSortStr, out var oSort) ? oSort : 0, IsDefault = _oDefault, IsActive = _oActive };
+        try
+        {
+            if (_editOptionId.HasValue)
+            {
+                var r = await Client.UpdateModifierOption.ExecuteAsync(_editOptionId.Value, input);
+                if (r.Data?.UpdateModifierOption is null) { ToastService.Error(GraphQLErrorFormatter.Format(r.Errors)); return; }
+            }
+            else
+            {
+                var r = await Client.CreateModifierOption.ExecuteAsync(_optionFormGroupId!.Value, input);
+                if (r.Data?.CreateModifierOption is null) { ToastService.Error(GraphQLErrorFormatter.Format(r.Errors)); return; }
+            }
+            CancelOptionForm();
+            await LoadConfigAsync();
+        }
+        finally { _savingOption = false; }
+    }
+
+    private async Task DeleteOptionAsync(Guid id)
+    {
+        var r = await Client.DeleteModifierOption.ExecuteAsync(id);
+        if (r.Data?.DeleteModifierOption == true) await LoadConfigAsync();
+        else ToastService.Error(GraphQLErrorFormatter.Format(r.Errors));
+    }
+
+    private async Task RefreshProductRowAsync()
+    {
+        if (_configuringProductId is null) return;
+        var idx = _items.FindIndex(x => x.Id == _configuringProductId.Value);
+        if (idx < 0) return;
+        _items[idx] = _items[idx] with
+        {
+            ActiveVariantCount = _variants.Count(v => v.IsActive),
+            ActiveModifierGroupCount = _modifierGroups.Count(g => g.IsActive)
+        };
+        await PersistStateAsync();
+    }
+
+    // Configure dialog DTOs
+    private record VariantRowDto(Guid Id, string Code, string Name, decimal Price, int SortOrder, bool IsActive);
+    private record ModifierGroupRowDto(Guid Id, string Name, ModifierSelectionMode SelectionMode, int MinSelect, int MaxSelect, int SortOrder, bool IsRequired, bool IsActive, List<ModifierOptionRowDto> Options);
+    private record ModifierOptionRowDto(Guid Id, string Name, decimal PriceDelta, int MaxQty, int SortOrder, bool IsDefault, bool IsActive);
+
     private record CategoryItem(Guid Id, string Name);
-    private record ProductDto(Guid Id, string Name, decimal Price, string? Description, Guid? CategoryId, string? CategoryName, string? ImageUrl = null);
+    private record ProductDto(
+        Guid Id,
+        string Name,
+        decimal Price,
+        string? UnitName,
+        string? Description,
+        Guid? CategoryId,
+        string? CategoryName,
+        string? ImageUrl = null,
+        int ActiveVariantCount = 0,
+        int ActiveModifierGroupCount = 0);
 }

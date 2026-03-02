@@ -4,7 +4,7 @@ namespace GoiMon.Api.Features.Orders;
 public class OrderQueries
 {
     [UseDbContext(typeof(AppDbContext))]
-    [UsePaging(IncludeTotalCount = true)]
+    [UsePaging(IncludeTotalCount = true, MaxPageSize = 50)]
     [UseProjection]
     [UseFiltering]
     [UseSorting]

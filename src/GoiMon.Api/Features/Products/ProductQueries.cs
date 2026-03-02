@@ -4,7 +4,7 @@ namespace GoiMon.Api.Features.Products;
 public class ProductQueries
 {
     [UseDbContext(typeof(AppDbContext))]
-    [UseOffsetPaging(IncludeTotalCount = true)]
+    [UseOffsetPaging(IncludeTotalCount = true, MaxPageSize = 500)]
     [UseProjection]
     [UseFiltering]
     [UseSorting]

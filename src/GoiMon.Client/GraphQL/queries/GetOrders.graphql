@@ -16,6 +16,13 @@ query GetOrders($first: Int, $after: String, $where: OrderFilterInput) {
         unitName
         qty
         unitPrice
+        modifiers {
+          id
+          groupName
+          optionName
+          qty
+          unitDeltaPrice
+        }
       }
     }
     pageInfo {
@@ -38,6 +45,13 @@ query GetOrderById($id: UUID!) {
       unitName
       qty
       unitPrice
+      modifiers {
+        id
+        groupName
+        optionName
+        qty
+        unitDeltaPrice
+      }
     }
   }
 }

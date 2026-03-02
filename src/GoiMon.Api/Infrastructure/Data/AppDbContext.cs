@@ -16,8 +16,12 @@ public class AppDbContext : DbContext
     public DbSet<Category> Categories { get; set; } = null!;
     public DbSet<Order> Orders { get; set; } = null!;
     public DbSet<OrderItem> OrderItems { get; set; } = null!;
+    public DbSet<OrderItemModifier> OrderItemModifiers { get; set; } = null!;
     public DbSet<ProductCombo> ProductCombos { get; set; } = null!;
     public DbSet<ProductComboItem> ProductComboItems { get; set; } = null!;
+    public DbSet<ProductVariant> ProductVariants { get; set; } = null!;
+    public DbSet<ModifierGroup> ModifierGroups { get; set; } = null!;
+    public DbSet<ModifierOption> ModifierOptions { get; set; } = null!;
     public DbSet<User> Users { get; set; } = null!;
     public DbSet<OtpToken> OtpTokens { get; set; } = null!;
     public DbSet<Infrastructure.Outbox.OutboxEvent> OutboxEvents { get; set; } = null!;

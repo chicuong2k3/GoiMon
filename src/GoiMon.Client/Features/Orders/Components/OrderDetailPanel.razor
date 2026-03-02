@@ -18,7 +18,8 @@
     <div class="flex items-start justify-between gap-4">
         <div class="space-y-1">
             <p class="text-xs uppercase text-muted-foreground font-semibold tracking-wider">Trạng thái</p>
-            <span class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold @StatusBadgeCls">
+            <span
+                class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold @StatusBadgeCls">
                 @StatusLabel
             </span>
         </div>
@@ -42,6 +43,10 @@
                 <div class="flex-1 min-w-0">
                     <p class="font-medium text-sm truncate">@item.ProductName</p>
                     <p class="text-xs text-muted-foreground">@ItemUnit(item) • x@item.Qty</p>
+                    @if (item.SafeModifiers.Count > 0)
+                    {
+                        <p class="text-xs text-muted-foreground mt-1 truncate">@ModifierSummary(item)</p>
+                    }
                 </div>
                 <div class="text-right shrink-0">
                     <p class="font-semibold text-sm">@ItemTotal(item)đ</p>
@@ -102,20 +107,20 @@
 
     private string StatusBadgeCls => Order.Status switch
     {
-        "OPEN"      => "bg-amber-100 text-amber-800 border-amber-200",
+        "OPEN" => "bg-amber-100 text-amber-800 border-amber-200",
         "COMPLETED" => "bg-green-100 text-green-800 border-green-200",
-        "PAID"      => "bg-blue-100 text-blue-800 border-blue-200",
+        "PAID" => "bg-blue-100 text-blue-800 border-blue-200",
         "CANCELLED" => "bg-red-100 text-red-800 border-red-200",
-        _           => "",
+        _ => "",
     };
 
     private string StatusLabel => Order.Status switch
     {
-        "OPEN"      => "ĐANG CHUẨN BỊ",
+        "OPEN" => "ĐANG CHUẨN BỊ",
         "COMPLETED" => "HOÀN THÀNH",
-        "PAID"      => "ĐÃ THANH TOÁN",
+        "PAID" => "ĐÃ THANH TOÁN",
         "CANCELLED" => "ĐÃ HUỶ",
-        _           => Order.Status,
+        _ => Order.Status,
     };
 
     private string CreatedLabel =>
@@ -132,6 +137,12 @@
 
     private static string UnitPriceLabel(OrderItemSnapshot item) =>
         item.UnitPrice.ToString("#,##0");
+
+    private static string ModifierSummary(OrderItemSnapshot item)
+    {
+        var parts = item.SafeModifiers.Select(m => $"{m.GroupName}: {m.OptionName} x{m.Qty}");
+        return string.Join(", ", parts);
+    }
 
     private static string ShortId(Guid id) =>
         id.ToString("N")[..4].ToUpper();

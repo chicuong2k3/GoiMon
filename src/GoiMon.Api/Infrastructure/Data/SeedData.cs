@@ -45,6 +45,68 @@ public static class SeedData
             }
         }
 
+        // Configurable beverage sample (size + topping)
+        // Keep this seed idempotent so reruns don't create duplicates.
+        var drinksCategory = await db.Categories.FirstOrDefaultAsync(c => c.Name == "drinks");
+        if (drinksCategory is null)
+        {
+            drinksCategory = new Domain.Entities.Category(Guid.NewGuid(), "Drinks");
+            db.Categories.Add(drinksCategory);
+            await db.SaveChangesAsync();
+        }
+
+        var milkTea = await db.Products.FirstOrDefaultAsync(p => p.Name == "milk tea");
+        if (milkTea is null)
+        {
+            milkTea = new Domain.Entities.Product(
+                Guid.NewGuid(),
+                "Milk Tea",
+                30000m,
+                drinksCategory.Id,
+                "Classic milk tea base");
+            milkTea.UpdateUnitName("ly");
+            db.Products.Add(milkTea);
+            await db.SaveChangesAsync();
+        }
+
+        var hasVariants = await db.ProductVariants.AnyAsync(v => v.ProductId == milkTea.Id);
+        if (!hasVariants)
+        {
+            db.ProductVariants.AddRange(
+                new Domain.Entities.ProductVariant(Guid.NewGuid(), milkTea.Id, "s", "Size S", 30000m, sortOrder: 1),
+                new Domain.Entities.ProductVariant(Guid.NewGuid(), milkTea.Id, "m", "Size M", 35000m, sortOrder: 2),
+                new Domain.Entities.ProductVariant(Guid.NewGuid(), milkTea.Id, "l", "Size L", 40000m, sortOrder: 3));
+            await db.SaveChangesAsync();
+        }
+
+        var toppingGroup = await db.ModifierGroups.FirstOrDefaultAsync(g => g.ProductId == milkTea.Id && g.Name == "Topping");
+        if (toppingGroup is null)
+        {
+            toppingGroup = new Domain.Entities.ModifierGroup(
+                Guid.NewGuid(),
+                milkTea.Id,
+                "Topping",
+                Domain.Entities.ModifierSelectionMode.Multiple,
+                minSelect: 0,
+                maxSelect: 3,
+                sortOrder: 1,
+                isRequired: false,
+                isActive: true);
+
+            db.ModifierGroups.Add(toppingGroup);
+            await db.SaveChangesAsync();
+        }
+
+        var hasToppingOptions = await db.ModifierOptions.AnyAsync(o => o.ModifierGroupId == toppingGroup.Id);
+        if (!hasToppingOptions)
+        {
+            db.ModifierOptions.AddRange(
+                new Domain.Entities.ModifierOption(Guid.NewGuid(), toppingGroup.Id, "Pearl", 5000m, maxQty: 2, sortOrder: 1),
+                new Domain.Entities.ModifierOption(Guid.NewGuid(), toppingGroup.Id, "Pudding", 6000m, maxQty: 2, sortOrder: 2),
+                new Domain.Entities.ModifierOption(Guid.NewGuid(), toppingGroup.Id, "Grass Jelly", 5000m, maxQty: 2, sortOrder: 3));
+            await db.SaveChangesAsync();
+        }
+
         // Orders - seed many records for dashboard/testing convenience
         const int targetOrderCount = 300;
         var existingOrders = await db.Orders.CountAsync();

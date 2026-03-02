@@ -135,14 +135,31 @@ GraphQL type notes (concepts demonstrated):
 ```graphql
 mutation {
   createOrder(input: {
-    items: [
-      { productId: "PRODUCT-GUID-1", qty: 2, unitPriceCents: 40000 },
-      { productId: "PRODUCT-GUID-2", qty: 1, unitPriceCents: 25000 }
+    lines: [
+      {
+        productId: "PRODUCT-GUID-1",
+        variantId: "VARIANT-GUID-M",
+        quantity: 2,
+        modifiers: [
+          { optionId: "OPTION-GUID-PEARL", quantity: 1 }
+        ]
+      },
+      {
+        productId: "PRODUCT-GUID-2",
+        quantity: 1
+      }
     ]
   }) {
-    id
-    status
-    totalCents
+    order {
+      id
+      status
+      total
+    }
+    errors {
+      code
+      message
+      lineIndex
+    }
   }
 }
 ```
