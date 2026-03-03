@@ -1,6 +1,7 @@
 @inherits LayoutComponentBase
 @using BlazorBlueprint.Primitives.Services
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
 @implements IDisposable
 
 <BbSidebarProvider>
@@ -19,35 +20,31 @@
                 <BbSidebarGroupLabel Class="group-data-[collapsible=icon]:hidden">Quản lý</BbSidebarGroupLabel>
                 <BbSidebarMenu>
                     <BbSidebarMenuItem>
-                        <BbSidebarMenuButton Href="/categories" IsActive="@IsActiveRoute("/categories", false)"
-                                             Tooltip="Danh mục">
+                        <BbSidebarMenuButton Href="/categories" Match="NavLinkMatch.All"   Tooltip="Danh mục">
                             <LucideIcon Name="tag" Class="h-4 w-4" />
                             <span class="truncate group-data-[collapsible=icon]:hidden">Danh mục</span>
                         </BbSidebarMenuButton>
                     </BbSidebarMenuItem>
                     <BbSidebarMenuItem>
-                        <BbSidebarMenuButton Href="/products" IsActive="@IsActiveRoute("/products", false)"
-                                             Tooltip="Sản phẩm">
+                        <BbSidebarMenuButton Href="/products" Match="NavLinkMatch.All"     Tooltip="Sản phẩm">
                             <LucideIcon Name="package" Class="h-4 w-4" />
                             <span class="truncate group-data-[collapsible=icon]:hidden">Sản phẩm</span>
                         </BbSidebarMenuButton>
                     </BbSidebarMenuItem>
                     <BbSidebarMenuItem>
-                        <BbSidebarMenuButton Href="/checkout" IsActive="@IsActiveRoute("/checkout", false)"
-                                             Tooltip="Đặt món">
+                        <BbSidebarMenuButton Href="/checkout" Match="NavLinkMatch.All"       Tooltip="Đặt món">
                             <LucideIcon Name="shopping-cart" Class="h-4 w-4" />
                             <span class="truncate group-data-[collapsible=icon]:hidden">Đặt món</span>
                         </BbSidebarMenuButton>
                     </BbSidebarMenuItem>
                     <BbSidebarMenuItem>
-                        <BbSidebarMenuButton Href="/orders" IsActive="@IsActiveRoute("/orders", false)"
-                                             Tooltip="Đơn hàng">
+                        <BbSidebarMenuButton Href="/orders" Match="NavLinkMatch.All"          Tooltip="Đơn hàng">
                             <LucideIcon Name="clipboard-list" Class="h-4 w-4" />
                             <span class="truncate group-data-[collapsible=icon]:hidden">Đơn hàng</span>
                         </BbSidebarMenuButton>
                     </BbSidebarMenuItem>
                     <BbSidebarMenuItem>
-                        <BbSidebarMenuButton Href="/combos" IsActive="@IsActiveRoute("/combos", false)" Tooltip="Combo">
+                        <BbSidebarMenuButton Href="/combos" Match="NavLinkMatch.All" Tooltip="Combo">
                             <LucideIcon Name="layers" Class="h-4 w-4" />
                             <span class="truncate group-data-[collapsible=icon]:hidden">Combo</span>
                         </BbSidebarMenuButton>
@@ -67,6 +64,16 @@
                 </div>
             </div>
             <BbSeparator Class="group-data-[collapsible=icon]:hidden" />
+            <div class="px-2 py-2 group-data-[collapsible=icon]:hidden">
+                <div class="flex items-center justify-between gap-3">
+                    <BbLabel Class="inline-flex items-center gap-2 text-xs text-muted-foreground">
+                        <LucideIcon Name="@(_isDarkMode ? "moon" : "sun")" Class="h-3.5 w-3.5" />
+                        <span>Chế độ tối</span>
+                    </BbLabel>
+                    <BbSwitch Checked="@_isDarkMode" CheckedChanged="OnThemeChangedAsync"
+                              AriaLabel="Bật/tắt chế độ tối" />
+                </div>
+            </div>
             <p
                 class="px-2 py-2 text-[10px] text-muted-foreground text-center uppercase tracking-wider group-data-[collapsible=icon]:hidden">
                 © 2025 GoiMon • Vendor Management
@@ -85,28 +92,33 @@
 <BbPortalHost />
 
 @code {
+    private bool _isDarkMode;
+
     protected override void OnInitialized()
     {
         Navigation.LocationChanged += OnLocationChanged;
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        _isDarkMode = await JS.InvokeAsync<bool>("goiMonTheme.getDarkMode");
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OnThemeChangedAsync(bool isDarkMode)
+    {
+        _isDarkMode = isDarkMode;
+        await JS.InvokeVoidAsync("goiMonTheme.setDarkMode", _isDarkMode);
+    }
+
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         InvokeAsync(StateHasChanged);
-    }
-
-    private bool IsActiveRoute(string basePath, bool exact)
-    {
-        var currentPath = Navigation.ToBaseRelativePath(Navigation.Uri).Trim('/');
-        var routePath = basePath.Trim('/');
-
-        if (exact)
-        {
-            return string.Equals(currentPath, routePath, StringComparison.OrdinalIgnoreCase);
-        }
-
-        return string.Equals(currentPath, routePath, StringComparison.OrdinalIgnoreCase)
-            || currentPath.StartsWith(routePath + "/", StringComparison.OrdinalIgnoreCase);
     }
 
     public void Dispose()

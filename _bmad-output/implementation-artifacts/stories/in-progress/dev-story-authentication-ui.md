@@ -1,6 +1,6 @@
 # 🔐 Dev Story: Authentication UI Implementation (Blazor WASM Client)
 
-**Status:** 🆕 ready-for-dev
+**Status:** In Progress
 **Date Created:** 2026-03-01  
 **Owner:** Amelia (Developer Agent)  
 **User:** Chicuong  

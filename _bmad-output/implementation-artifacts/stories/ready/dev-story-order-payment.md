@@ -1,6 +1,6 @@
 # 💳 Dev Story: Mark Order as Paid (Cashier Flow)
 
-**Status:** 🆕 ready-for-dev  
+**Status:** Ready  
 **Date Created:** 2026-03-03  
 **Owner:** Mary (Business Analyst)  
 **User:** Chicuong  

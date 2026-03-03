@@ -89,14 +89,15 @@
 @if (IsOpen)
 {
     <div class="flex gap-3 px-5 py-4 border-t bg-background">
-        <BbButton Variant="ButtonVariant.Outline" Class="flex-1" Disabled="@ActionLoading" OnClick="OnCancel">
+        <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Large" Class="flex-1" Disabled="@ActionLoading"
+                  OnClick="OnCancel">
             @if (ActionLoading && ActionType == "cancel")
             {
                 <BbSpinner Size="SpinnerSize.Small" Class="mr-2" />
             }
             Hủy đơn
         </BbButton>
-        <BbButton Class="flex-1" Disabled="@ActionLoading" OnClick="OnComplete">
+        <BbButton Size="ButtonSize.Large" Class="flex-1" Disabled="@ActionLoading" OnClick="OnComplete">
             @if (ActionLoading && ActionType == "complete")
             {
                 <BbSpinner Size="SpinnerSize.Small" Class="mr-2" />

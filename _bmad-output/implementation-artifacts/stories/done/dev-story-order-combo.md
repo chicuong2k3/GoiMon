@@ -1,6 +1,6 @@
 # 🍱 Dev Story: Order Combo Support
 
-**Status:** ✅ implemented (2026-03-03)  
+**Status:** Done (implemented 2026-03-03)  
 **Date Created:** 2026-03-03  
 **Owner:** Amelia (Developer Agent)  
 **User:** Chicuong  

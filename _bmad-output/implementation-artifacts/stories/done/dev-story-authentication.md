@@ -1,6 +1,6 @@
 # 🔐 Dev Story: User Authentication with OAuth + OTP
 
-**Status:** ✅ COMPLETED (2026-03-01 14:45 UTC)
+**Status:** Done (completed 2026-03-01 14:45 UTC)
 **Date Created:** 2026-03-01  
 **Owner:** Amelia (Developer Agent)  
 **User:** Chicuong
