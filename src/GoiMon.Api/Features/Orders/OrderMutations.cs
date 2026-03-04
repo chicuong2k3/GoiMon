@@ -263,6 +263,20 @@ public class OrderMutations
     }
 
     [UseDbContext(typeof(AppDbContext))]
+    public async Task<Order?> MarkOrderPaid(
+        Guid orderId,
+        [Service(ServiceKind.Pooled)] AppDbContext db,
+        [Service] ITopicEventSender eventSender)
+    {
+        var order = await db.Orders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == orderId);
+        if (order is null) return null;
+        order.MarkPaid();
+        await db.SaveChangesAsync();
+        await eventSender.SendAsync(OrderSubscriptionTopics.OrderChanged, order);
+        return order;
+    }
+
+    [UseDbContext(typeof(AppDbContext))]
     public async Task<Order?> CancelOrder(
         Guid orderId,
         [Service(ServiceKind.Pooled)] AppDbContext db,

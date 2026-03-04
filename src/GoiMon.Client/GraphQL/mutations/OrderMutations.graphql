@@ -45,3 +45,11 @@ mutation CancelOrder($orderId: UUID!) {
     total
   }
 }
+
+mutation MarkOrderPaid($orderId: UUID!) {
+  markOrderPaid(orderId: $orderId) {
+    id
+    status
+    total
+  }
+}

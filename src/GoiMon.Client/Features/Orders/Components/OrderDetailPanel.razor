@@ -85,7 +85,7 @@
     </div>
 </div>
 
-@* Action buttons — only for Open orders *@
+@* Action buttons — Open and Completed orders *@
 @if (IsOpen)
 {
     <div class="flex gap-3 px-5 py-4 border-t bg-background">
@@ -106,6 +106,18 @@
         </BbButton>
     </div>
 }
+else if (IsCompleted)
+{
+    <div class="px-5 py-4 border-t bg-background">
+        <BbButton Size="ButtonSize.Large" Class="w-full" Disabled="@ActionLoading" OnClick="OnPay">
+            @if (ActionLoading && ActionType == "pay")
+            {
+                <BbSpinner Size="SpinnerSize.Small" Class="mr-2" />
+            }
+            Thanh toán
+        </BbButton>
+    </div>
+}
 
 @code {
     [Parameter, EditorRequired] public OrderListItem Order { get; set; } = default!;
@@ -114,8 +126,10 @@
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback OnComplete { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback OnPay { get; set; }
 
     private bool IsOpen => Order.Status == "OPEN";
+    private bool IsCompleted => Order.Status == "COMPLETED";
 
     private string StatusBadgeCls => Order.Status switch
     {
@@ -129,7 +143,7 @@
     private string StatusLabel => Order.Status switch
     {
         "OPEN" => "ĐANG CHUẨN BỊ",
-        "COMPLETED" => "HOÀN THÀNH",
+        "COMPLETED" => "CHỜ THANH TOÁN",
         "PAID" => "ĐÃ THANH TOÁN",
         "CANCELLED" => "ĐÃ HUỶ",
         _ => Order.Status,

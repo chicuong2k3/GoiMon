@@ -40,10 +40,17 @@
                 }
             </button>
             <button class="@(TabCls("completed"))" @onclick="SetCompletedTab">
-                Hoàn thành
+                Chờ thanh toán
                 @if (_tabCounts.GetValueOrDefault("completed", 0) > 0)
                 {
                     <span class="ml-1.5 text-muted-foreground">(@(_tabCounts["completed"]))</span>
+                }
+            </button>
+            <button class="@(TabCls("paid"))" @onclick="SetPaidTab">
+                Đã thanh toán
+                @if (_tabCounts.GetValueOrDefault("paid", 0) > 0)
+                {
+                    <span class="ml-1.5 text-muted-foreground">(@(_tabCounts["paid"]))</span>
                 }
             </button>
             <button class="@(TabCls("cancelled"))" @onclick="SetCancelledTab">
@@ -142,7 +149,8 @@
                 ActionType="CurrentActionType"
                 OnClose="CloseDetail"
                 OnComplete="CompleteOrderAsync"
-                OnCancel="CancelOrderAsync" />
+                OnCancel="CancelOrderAsync"
+                OnPay="PayOrderAsync" />
         }
     </div>
 </div>
@@ -169,6 +177,7 @@
     {
         ["open"] = 0,
         ["completed"] = 0,
+        ["paid"] = 0,
         ["cancelled"] = 0,
     };
 
@@ -304,6 +313,7 @@
     {
         _tabCounts["open"] = await GetTabTotalCountAsync("open");
         _tabCounts["completed"] = await GetTabTotalCountAsync("completed");
+        _tabCounts["paid"] = await GetTabTotalCountAsync("paid");
         _tabCounts["cancelled"] = await GetTabTotalCountAsync("cancelled");
     }
 
@@ -335,6 +345,7 @@
 
     private Task SetOpenTab() => SetTab("open");
     private Task SetCompletedTab() => SetTab("completed");
+    private Task SetPaidTab() => SetTab("paid");
     private Task SetCancelledTab() => SetTab("cancelled");
 
     private async Task SelectOrder(OrderListItem order)
@@ -405,6 +416,33 @@
         }
     }
 
+    private async Task PayOrderAsync()
+    {
+        if (_selectedOrder is null) return;
+
+        _actionLoading = true;
+        _actionType = "pay";
+        try
+        {
+            var result = await Client.MarkOrderPaid.ExecuteAsync(_selectedOrder.Id);
+            if (result.IsErrorResult())
+            {
+                ToastService.Error(result.Errors.FirstOrDefault()?.Message ?? "Không thể thanh toán đơn hàng");
+                return;
+            }
+
+            ToastService.Success("Đơn hàng đã thanh toán");
+            _selectedId = null;
+            _selectedOrder = null;
+            await ReloadFromStartAsync(showLoading: false);
+        }
+        finally
+        {
+            _actionLoading = false;
+            _actionType = null;
+        }
+    }
+
     private async Task PersistState()
     {
         await DebounceManager.Debounce(
@@ -428,11 +466,11 @@
             },
             "completed" => new OrderFilterInput
             {
-                Or =
-                [
-                    new OrderFilterInput { Status = new OrderStatusOperationFilterInput { Eq = OrderStatus.Completed } },
-                    new OrderFilterInput { Status = new OrderStatusOperationFilterInput { Eq = OrderStatus.Paid } }
-                ]
+                Status = new OrderStatusOperationFilterInput { Eq = OrderStatus.Completed }
+            },
+            "paid" => new OrderFilterInput
+            {
+                Status = new OrderStatusOperationFilterInput { Eq = OrderStatus.Paid }
             },
             "cancelled" => new OrderFilterInput
             {
@@ -531,7 +569,8 @@
         => _activeTab switch
         {
             "open" => normalizedStatus == "OPEN",
-            "completed" => normalizedStatus is "COMPLETED" or "PAID",
+            "completed" => normalizedStatus == "COMPLETED",
+            "paid" => normalizedStatus == "PAID",
             "cancelled" => normalizedStatus == "CANCELLED",
             _ => normalizedStatus == "OPEN"
         };

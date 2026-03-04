@@ -90,6 +90,16 @@ public class Order : AggregateRoot
     }
 
     /// <summary>
+    /// Mark the order as paid. Only completed orders can be paid.
+    /// </summary>
+    public void MarkPaid()
+    {
+        if (Status != OrderStatus.Completed) throw new InvalidOperationException("Only completed orders can be marked as paid.");
+        Status = OrderStatus.Paid;
+        AddDomainEvent(new Events.OrderPaidEvent(Id));
+    }
+
+    /// <summary>
     /// Cancel the order. Only open orders can be cancelled.
     /// </summary>
     public void Cancel()
