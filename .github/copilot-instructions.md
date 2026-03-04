@@ -51,6 +51,13 @@
     - **Color and visual tokens:** Use semantic tokens/classes (`bg-background`, `text-foreground`, `text-muted-foreground`, `border`, `bg-card`, `text-primary`) and existing variants. Never hardcode new hex/oklch values in Razor files.
     - **State consistency:** Active/selected/disabled/loading states must use existing component variants/patterns already present in nearby screens. Do not invent a new visual pattern for the same interaction type.
     - **Inline styles:** Avoid inline `style="..."` for spacing/typography/colors. Prefer tokens + utility classes; inline style is allowed only for unavoidable dynamic layout constraints.
+- **Dialog componentization rules (MUST follow)** — Reduce duplicated dialog markup and keep dialog behavior consistent:
+    - Reusable dialogs shared by 2+ screens MUST be extracted into shared components under `src/GoiMon.Client/Shared/Components/`.
+    - Use a shared confirm dialog component for destructive confirmations (delete, bulk delete, irreversible actions) instead of duplicating `BbDialog` blocks in pages.
+    - Use a shared form-dialog shell component for standard create/edit flows when header/footer/actions are similar and only body fields differ.
+    - Keep feature-specific form dialogs as feature components in `Features/{FeatureName}/Components/` when the dialog has non-trivial business logic.
+    - Pages should orchestrate open/close state and submit handlers; componentized dialogs should own presentation structure only.
+    - For all new dialog components, follow spacing tokens `px-4 md:px-5`, `py-3/4`, and existing BlazorBlueprint variants for action hierarchy.
 - **Feature-based folder structure** — Each feature MUST be self-contained in its own folder to avoid conflicts when multiple features are developed in parallel. Follow this convention:
     - **API** (`src/GoiMon.Api/`): `Features/{FeatureName}/` containing its own `Models/`, `Services/`, `Mutations/`, `Queries/`, `Types/`, `Validators/` sub-folders as needed. Domain entities go in `Domain/{AggregateName}/`.
     - **Client** (`src/GoiMon.Client/`): `Features/{FeatureName}/` containing `Components/`, `Models/`, `Services/`, `Helpers/`, `State/` sub-folders as needed. Pages go in `Pages/{FeatureName}/`. GraphQL operation files go in `GraphQL/{FeatureName}/`.

@@ -9,62 +9,51 @@
 @using EasyAppDev.Blazor.Store.Core
 @using GoiMon.Client.State
 @using GoiMon.Client.Features.Orders.Components
+@using System.Globalization
 
-<header class="flex h-14 shrink-0 items-center gap-2 border-b px-5">
+<header class="flex h-12 shrink-0 items-center gap-2 border-b px-4 py-1 md:px-5">
     <BbSidebarTrigger />
-    <BbSeparator Orientation="SeparatorOrientation.Vertical" Class="h-4" />
-    <h1 class="text-sm font-semibold">Quản lý đơn hàng</h1>
+    <BbSeparator Orientation="SeparatorOrientation.Vertical" Class="h-3" />
+    <h1 class="text-xs font-semibold">Quản lý đơn hàng</h1>
     <span class="ml-2 flex items-center gap-1 text-xs text-emerald-600 font-medium">
         <span class="h-2 w-2 rounded-full bg-emerald-500 inline-block"></span>
         Trực tuyến
     </span>
-    <div class="ml-auto flex items-center gap-2">
-        <BbButton Size="ButtonSize.Small" Variant="ButtonVariant.Outline" OnClick="RefreshOrdersAsync">
-            <LucideIcon Name="refresh-cw" Class="h-4 w-4 mr-1" />
-            Làm mới
-        </BbButton>
-    </div>
 </header>
 
-<div class="flex flex-1 overflow-hidden gap-4 p-4" style="height: calc(100vh - 3.5rem);">
+<div class="flex flex-1 overflow-hidden p-4 md:p-5 h-[calc(100vh-3.5rem)]">
 
-    <div class="flex flex-col rounded-lg border bg-background overflow-hidden" style="width: 55%; min-width: 320px;">
-        <div class="flex border-b bg-background">
-            <button class="@(TabCls("open"))" @onclick="SetOpenTab">
-                Đang xử lý
-                @if (_tabCounts.GetValueOrDefault("open", 0) > 0)
-                {
-                    <span class="ml-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-semibold">
-                        @(_tabCounts["open"])
-                    </span>
-                }
-            </button>
-            <button class="@(TabCls("completed"))" @onclick="SetCompletedTab">
-                Chờ thanh toán
-                @if (_tabCounts.GetValueOrDefault("completed", 0) > 0)
-                {
-                    <span class="ml-1.5 text-muted-foreground">(@(_tabCounts["completed"]))</span>
-                }
-            </button>
-            <button class="@(TabCls("paid"))" @onclick="SetPaidTab">
-                Đã thanh toán
-                @if (_tabCounts.GetValueOrDefault("paid", 0) > 0)
-                {
-                    <span class="ml-1.5 text-muted-foreground">(@(_tabCounts["paid"]))</span>
-                }
-            </button>
-            <button class="@(TabCls("cancelled"))" @onclick="SetCancelledTab">
-                Đã hủy
-                @if (_tabCounts.GetValueOrDefault("cancelled", 0) > 0)
-                {
-                    <span class="ml-1.5 text-muted-foreground">(@(_tabCounts["cancelled"]))</span>
-                }
-            </button>
+    <div class="flex flex-col rounded-lg border bg-background overflow-hidden w-full min-w-0">
+        <div class="border-b bg-background px-4 md:px-5 py-3 space-y-3">
+            <div class="space-y-2">
+                <BbInput Value="@_searchKeyword"
+                         ValueChanged="OnSearchKeywordChangedAsync"
+                         Placeholder="Tìm mã đơn hoặc món..." />
+                <p class="text-xs text-muted-foreground">Tự động cập nhật theo thời gian thực</p>
+            </div>
+            <div class="mb-1 flex flex-wrap items-center gap-2">
+                <BbButton Variant="@(TabVariant("open"))" Size="ButtonSize.Small" OnClick="SetOpenTab">
+                    Đang xử lý
+                    <span class="ml-1 text-xs text-muted-foreground">@_tabCounts.GetValueOrDefault("open", 0)</span>
+                </BbButton>
+                <BbButton Variant="@(TabVariant("completed"))" Size="ButtonSize.Small" OnClick="SetCompletedTab">
+                    Chờ thanh toán
+                    <span class="ml-1 text-xs text-muted-foreground">@_tabCounts.GetValueOrDefault("completed", 0)</span>
+                </BbButton>
+                <BbButton Variant="@(TabVariant("paid"))" Size="ButtonSize.Small" OnClick="SetPaidTab">
+                    Đã thanh toán
+                    <span class="ml-1 text-xs text-muted-foreground">@_tabCounts.GetValueOrDefault("paid", 0)</span>
+                </BbButton>
+                <BbButton Variant="@(TabVariant("cancelled"))" Size="ButtonSize.Small" OnClick="SetCancelledTab">
+                    Đã hủy
+                    <span class="ml-1 text-xs text-muted-foreground">@_tabCounts.GetValueOrDefault("cancelled", 0)</span>
+                </BbButton>
+            </div>
         </div>
 
         @if (_loading)
         {
-            <div class="p-5 space-y-2 flex-1 overflow-y-auto">
+            <div class="px-4 md:px-5 py-4 space-y-2 flex-1 overflow-y-auto">
                 <BbSkeleton Height="52px" Class="w-full" />
                 <BbSkeleton Height="52px" Class="w-full" />
                 <BbSkeleton Height="52px" Class="w-full" />
@@ -74,7 +63,7 @@
         }
         else if (_error is not null)
         {
-            <div class="p-5">
+            <div class="px-4 md:px-5 py-4">
                 <BbAlert Variant="AlertVariant.Danger">
                     <BbAlertDescription>@_error</BbAlertDescription>
                 </BbAlert>
@@ -86,31 +75,41 @@
                 <table class="w-full text-sm">
                     <thead class="border-b bg-muted/40 sticky top-0">
                         <tr>
-                            <th class="h-9 px-4 text-left text-xs font-semibold text-muted-foreground tracking-wider uppercase">Mã đơn</th>
-                            <th class="h-9 px-4 text-left text-xs font-semibold text-muted-foreground tracking-wider uppercase">Thời gian</th>
-                            <th class="h-9 px-4 text-left text-xs font-semibold text-muted-foreground tracking-wider uppercase">Món ăn</th>
+                            <th class="h-9 px-4 text-left text-xs font-semibold text-muted-foreground tracking-wider uppercase align-middle">Mã đơn</th>
+                            <th class="h-9 px-4 text-left text-xs font-semibold text-muted-foreground tracking-wider uppercase align-middle">Trạng thái</th>
+                            <th class="h-9 px-4 text-left text-xs font-semibold text-muted-foreground tracking-wider uppercase align-middle">Thời gian</th>
+                            <th class="h-9 px-4 text-right text-xs font-semibold text-muted-foreground tracking-wider uppercase align-middle">Tổng</th>
+                            <th class="h-9 px-4 text-left text-xs font-semibold text-muted-foreground tracking-wider uppercase align-middle">Món ăn</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @if (_orders.Count == 0)
+                        @if (FilteredOrders.Count == 0)
                         {
                             <tr>
-                                <td colspan="3" class="py-12 text-center text-muted-foreground text-sm">
+                                <td colspan="5" class="py-12 text-center text-muted-foreground text-sm">
                                     <LucideIcon Name="inbox" Class="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
-                                    Không có đơn nào
+                                    Không tìm thấy đơn phù hợp
                                 </td>
                             </tr>
                         }
-                        @foreach (var order in _orders)
+                        @foreach (var order in FilteredOrders)
                         {
                             <tr class="@RowCls(order.Id)" @onclick="() => SelectOrder(order)">
-                                <td class="px-4 py-3 font-semibold text-primary whitespace-nowrap">
+                                <td class="px-4 py-3 font-semibold text-primary whitespace-nowrap align-middle">
                                     #GM-@ShortId(order.Id)
                                 </td>
-                                <td class="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                                <td class="px-4 py-3 whitespace-nowrap align-middle">
+                                    <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium @StatusPillClass(order.Status)">
+                                        @StatusText(order.Status)
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 text-muted-foreground whitespace-nowrap align-middle">
                                     @FormatTime(order.CreatedAt)
                                 </td>
-                                <td class="px-4 py-3 text-muted-foreground max-w-[180px] truncate">
+                                <td class="px-4 py-3 text-right whitespace-nowrap font-medium align-middle">
+                                    @FormatCurrency(order.Total)
+                                </td>
+                                <td class="px-4 py-3 text-muted-foreground max-w-[180px] truncate align-middle">
                                     @ItemsSummary(order)
                                 </td>
                             </tr>
@@ -120,7 +119,7 @@
 
                 @if (_loadingMore)
                 {
-                    <div class="p-4 space-y-2">
+                    <div class="px-4 md:px-5 py-3 space-y-2">
                         <BbSkeleton Height="40px" Class="w-full" />
                         <BbSkeleton Height="40px" Class="w-full" />
                     </div>
@@ -132,17 +131,14 @@
             </div>
         }
     </div>
+</div>
 
-    <div class="flex flex-col flex-1 overflow-hidden rounded-lg border bg-background">
-        @if (_selectedOrder is null)
-        {
-            <div class="flex flex-col items-center justify-center flex-1 gap-3 px-6 text-muted-foreground">
-                <LucideIcon Name="clipboard-list" Class="h-12 w-12 text-muted-foreground/30" />
-                <p class="text-sm">Chọn đơn hàng để xem chi tiết</p>
-            </div>
-        }
-        else
-        {
+@if (_selectedOrder is not null)
+{
+    <div class="fixed inset-0 z-50" @onclick="CloseDetail">
+        <div class="absolute inset-0 bg-black/30"></div>
+        <div class="absolute inset-y-0 right-0 w-full max-w-xl bg-background border-l shadow-xl flex flex-col"
+             @onclick:stopPropagation="true">
             <OrderDetailPanel
                 Order="_selectedOrder"
                 ActionLoading="_actionLoading"
@@ -151,11 +147,16 @@
                 OnComplete="CompleteOrderAsync"
                 OnCancel="CancelOrderAsync"
                 OnPay="PayOrderAsync" />
-        }
+        </div>
     </div>
-</div>
+}
 
 @code {
+    private static readonly CultureInfo VnCulture = CultureInfo.GetCultureInfo("vi-VN");
+
+    private static string FormatCurrency(decimal amount)
+        => string.Concat(amount.ToString("N0", VnCulture), "đ");
+
     private List<OrderListItem> _orders = new();
     private string _activeTab = "open";
     private Guid? _selectedId;
@@ -165,6 +166,7 @@
     private bool _actionLoading;
     private string? _actionType;
     private string? CurrentActionType => _actionType;
+    private string _searchKeyword = string.Empty;
     private string? _error;
     private bool _hasNextPage = true;
     private string? _endCursor;
@@ -180,6 +182,11 @@
         ["paid"] = 0,
         ["cancelled"] = 0,
     };
+
+    private IReadOnlyList<OrderListItem> FilteredOrders
+        => string.IsNullOrWhiteSpace(_searchKeyword)
+            ? _orders
+            : _orders.Where(MatchesSearch).ToList();
 
     protected override async Task OnInitializedAsync()
     {
@@ -232,8 +239,6 @@
             _loading = false;
         }
     }
-
-    private Task RefreshOrdersAsync() => ReloadFromStartAsync();
 
     private async Task LoadNextPageAsync()
     {
@@ -347,6 +352,12 @@
     private Task SetCompletedTab() => SetTab("completed");
     private Task SetPaidTab() => SetTab("paid");
     private Task SetCancelledTab() => SetTab("cancelled");
+
+    private Task OnSearchKeywordChangedAsync(string value)
+    {
+        _searchKeyword = value;
+        return InvokeAsync(StateHasChanged);
+    }
 
     private async Task SelectOrder(OrderListItem order)
     {
@@ -575,13 +586,8 @@
             _ => normalizedStatus == "OPEN"
         };
 
-    private string TabCls(string tab)
-    {
-        var active = _activeTab == tab;
-        return active
-            ? "flex-1 px-4 py-3 text-sm font-medium transition-colors border-b-2 border-primary text-primary"
-            : "flex-1 px-4 py-3 text-sm font-medium transition-colors border-b-2 border-transparent text-muted-foreground hover:text-foreground";
-    }
+    private ButtonVariant TabVariant(string tab)
+        => _activeTab == tab ? ButtonVariant.Default : ButtonVariant.Outline;
 
     private string RowCls(Guid id)
     {
@@ -598,6 +604,40 @@
         if (order.Items.Count > 3) summary += "...";
         return summary;
     }
+
+    private bool MatchesSearch(OrderListItem order)
+    {
+        var term = _searchKeyword.Trim();
+        if (string.IsNullOrWhiteSpace(term))
+            return true;
+
+        if (ShortId(order.Id).Contains(term, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return order.Items.Any(item =>
+            item.ProductName.Contains(term, StringComparison.OrdinalIgnoreCase)
+            || (!string.IsNullOrWhiteSpace(item.ComboName) && item.ComboName.Contains(term, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    private static string StatusText(string normalizedStatus)
+        => normalizedStatus switch
+        {
+            "OPEN" => "ĐANG XỬ LÝ",
+            "COMPLETED" => "CHỜ THANH TOÁN",
+            "PAID" => "ĐÃ THANH TOÁN",
+            "CANCELLED" => "ĐÃ HỦY",
+            _ => normalizedStatus
+        };
+
+    private static string StatusPillClass(string normalizedStatus)
+        => normalizedStatus switch
+        {
+            "OPEN" => "bg-amber-100 text-amber-800 border-amber-200",
+            "COMPLETED" => "bg-green-100 text-green-800 border-green-200",
+            "PAID" => "bg-blue-100 text-blue-800 border-blue-200",
+            "CANCELLED" => "bg-red-100 text-red-800 border-red-200",
+            _ => "bg-muted text-muted-foreground border-border"
+        };
 
     private static string FormatTime(DateTimeOffset dt)
         => dt.ToLocalTime().ToString("HH:mm");

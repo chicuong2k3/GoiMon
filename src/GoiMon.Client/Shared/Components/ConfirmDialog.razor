@@ -1,0 +1,35 @@
+<BbDialog Open="@Open" OpenChanged="@OpenChanged">
+    <BbDialogContent Class="@ContentClass">
+        <BbDialogHeader>
+            <BbDialogTitle>@Title</BbDialogTitle>
+            @if (!string.IsNullOrWhiteSpace(Description))
+            {
+                <BbDialogDescription>@Description</BbDialogDescription>
+            }
+        </BbDialogHeader>
+        <BbDialogFooter>
+            <BbDialogClose>
+                <BbButton Variant="ButtonVariant.Outline">@CancelText</BbButton>
+            </BbDialogClose>
+            <BbButton Variant="@ConfirmVariant"           Loading="@ConfirmLoading"                  LoadingText="@ConfirmLoadingText"
+                      Disabled="@ConfirmDisabled"               OnClick="@OnConfirm">
+                @ConfirmText
+            </BbButton>
+        </BbDialogFooter>
+    </BbDialogContent>
+</BbDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public string ConfirmText { get; set; } = "Xóa";
+    [Parameter] public string CancelText { get; set; } = "Hủy";
+    [Parameter] public ButtonVariant ConfirmVariant { get; set; } = ButtonVariant.Destructive;
+    [Parameter] public bool ConfirmLoading { get; set; }
+    [Parameter] public string ConfirmLoadingText { get; set; } = "Đang xử lý...";
+    [Parameter] public bool ConfirmDisabled { get; set; }
+    [Parameter] public string ContentClass { get; set; } = "max-w-md";
+    [Parameter] public EventCallback OnConfirm { get; set; }
+}

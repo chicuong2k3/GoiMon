@@ -7,26 +7,24 @@
 
 @using EasyAppDev.Blazor.Store.Core
 @using GoiMon.Client.State
+@using System.Globalization
 
-<header class="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+<header class="flex h-12 shrink-0 items-center gap-2 border-b px-4 py-1 md:px-5">
     <BbSidebarTrigger />
-    <BbSeparator Orientation="SeparatorOrientation.Vertical" Class="h-4" />
+    <BbSeparator Orientation="SeparatorOrientation.Vertical" Class="h-3" />
     <div>
-        <h1 class="text-sm font-semibold">Đặt món tại quầy</h1>
-        <p class="text-xs text-muted-foreground">Staff chọn món theo menu, cấu hình size/topping rồi xác nhận đơn cho
-            khách.</p>
-        </div>
-    </header>
+        <h1 class="text-xs font-semibold">Đặt món tại quầy</h1>
+        <p class="text-xs text-muted-foreground">Chọn món, cấu hình size / topping, rồi xác nhận đơn.</p>
+    </div>
+</header>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 p-3 lg:p-4">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 md:p-5">
         <BbCard>
-            <BbCardHeader>
+            <BbCardHeader Class="pb-2">
                 <BbCardTitle>Menu món ăn</BbCardTitle>
-                <BbCardDescription>Hiển thị theo từng danh mục để staff chọn món trực quan như menu quán ăn.
-                </BbCardDescription>
             </BbCardHeader>
             <BbCardContent Class="space-y-3">
-                <div class="flex items-center gap-2">
+                <div class="mb-2 flex items-center gap-2">
                     <BbButton Variant="@(_mode == ProductMode ? ButtonVariant.Default : ButtonVariant.Outline)"
                               Size="ButtonSize.Small"
                               OnClick="SwitchToProductModeAsync">
@@ -39,25 +37,21 @@
                     </BbButton>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <BbInput Value="@_search"
-                             ValueChanged="OnSearchChangedAsync"
-                             Placeholder="@(_mode == ProductMode ? "Tìm món theo tên..." : "Tìm combo theo tên...")" />
+                <div class="mb-3 flex flex-wrap items-center gap-3">
+                    <div class="w-full md:flex-1">
+                        <BbInput Value="@_search"
+                                 ValueChanged="OnSearchChangedAsync"
+                                 Placeholder="@(_mode == ProductMode ? "Tìm món theo tên..." : "Tìm combo theo tên...")" />
+                    </div>
                     @if (_mode == ProductMode)
                     {
-                        <div class="flex items-center gap-2 overflow-x-auto pb-1">
-                            <BbButton
-                                Variant="@(_selectedCategory == AllCategoriesValue ? ButtonVariant.Default : ButtonVariant.Outline)"
-                                Size="ButtonSize.Small" OnClick="() => SelectCategoryAsync(AllCategoriesValue)">
-                                Tất cả
-                            </BbButton>
-                            @foreach (var category in CategoryNames)
-                            {
-                                <BbButton Variant="@(_selectedCategory == category ? ButtonVariant.Default : ButtonVariant.Outline)"
-                                          Size="ButtonSize.Small" OnClick="() => SelectCategoryAsync(category)">
-                                    @category
-                                </BbButton>
-                            }
+                        <div class="w-full md:w-56">
+                            <BbSelect TValue="string"
+                                      Value="@_selectedCategory"
+                                      ValueChanged="SelectCategoryAsync"
+                                      Options="CategoryFilterOptions"
+                                      Placeholder="Danh mục"
+                                      Class="w-full" />
                         </div>
                     }
                 </div>
@@ -89,40 +83,39 @@
                     }
                     else
                     {
-                        <div class="max-h-[72vh] overflow-y-auto space-y-4 pr-1">
+                        <div class="mt-2 max-h-[72vh] overflow-y-auto space-y-5 pr-1">
                             @if (_mode == ProductMode)
                             {
                                 @foreach (var group in VisibleCategoryGroups)
                                 {
-                                    <div class="space-y-3">
-                                        <div class="flex items-center justify-between">
+                                    <div class="mb-1 space-y-3.5">
+                                        <div class="mb-1 flex items-center justify-between">
                                             <div class="flex items-center gap-2">
-                                                <h3 class="text-sm font-semibold">@group.CategoryName</h3>
+                                                <h3 class="text-xs font-semibold">@group.CategoryName</h3>
                                                 <BbBadge Variant="BadgeVariant.Outline">@group.Products.Count món</BbBadge>
                                             </div>
                                         </div>
 
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                             @foreach (var product in group.Products)
                                             {
                                                 var isSelected = _selectedProductId == product.Id;
-                                                <div class="flex items-center gap-3 rounded-lg border p-2.5 cursor-pointer transition-colors @(isSelected ? "border-primary bg-primary/10 ring-1 ring-primary/40" : "hover:bg-muted/40")"
-                                                     @onclick="() => SelectProductAsync(product.Id)">
+                                                                                                <div class="my-1 flex min-h-24 items-stretch gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors @(isSelected ? "border-primary bg-primary/10 ring-1 ring-primary/40" : "hover:bg-muted/40")"
+                                                     @onclick="() => OpenProductModalAsync(product.Id)">
                                                     @if (!string.IsNullOrWhiteSpace(product.ImageUrl))
                                                     {
                                                         <img src="@product.ImageUrl" alt="@product.Name"
-                                                             class="h-14 w-14 rounded-md object-cover shrink-0" />
+                                                             class="h-16 w-16 rounded-md object-cover shrink-0 self-center" />
                                                     }
                                                     else
                                                     {
-                                                        <div class="h-14 w-14 rounded-md bg-muted flex items-center justify-center shrink-0">
+                                                        <div class="h-16 w-16 rounded-md bg-muted flex items-center justify-center shrink-0 self-center">
                                                             <LucideIcon Name="image" Class="h-5 w-5 text-muted-foreground/40" />
                                                         </div>
                                                     }
-                                                    <div class="flex-1 min-w-0 space-y-0.5">
-                                                        <div class="flex items-start justify-between gap-1">
+                                                    <div class="flex-1 min-w-0 flex flex-col justify-between space-y-1">
+                                                        <div class="flex items-center gap-2">
                                                             <span class="text-sm font-semibold leading-snug truncate">@product.Name</span>
-                                                            <span class="text-sm font-semibold whitespace-nowrap text-primary shrink-0">@product.Price.ToString("#,##0")đ</span>
                                                         </div>
                                                         @if (!string.IsNullOrWhiteSpace(product.UnitName))
                                                         {
@@ -143,6 +136,9 @@
                                                             }
                                                         </div>
                                                     </div>
+                                                    <div class="ml-2 flex items-center self-stretch text-right">
+                                                        <span class="text-sm font-semibold whitespace-nowrap text-primary">@FormatCurrency(product.Price)</span>
+                                                    </div>
                                                 </div>
                                             }
                                         </div>
@@ -151,25 +147,38 @@
                             }
                             else
                             {
-                                <div class="space-y-2">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     @foreach (var combo in FilteredCombos)
                                     {
                                         var isSelectedCombo = _selectedComboId == combo.Id;
-                                        <div class="rounded-lg border p-3 cursor-pointer transition-colors @(isSelectedCombo ? "border-primary bg-primary/10 ring-1 ring-primary/40" : "hover:bg-muted/40")"
-                                             @onclick="() => SelectCombo(combo.Id)">
-                                            <div class="flex items-start justify-between gap-2">
-                                                <div class="min-w-0">
-                                                    <div class="text-sm font-semibold truncate">@combo.Name</div>
-                                                    <div class="text-xs text-muted-foreground">@combo.Items.Count món trong combo</div>
-                                                </div>
-                                                <div class="text-sm font-semibold text-primary whitespace-nowrap">@combo.Price.ToString("#,##0")đ</div>
-                                            </div>
-                                            @if (combo.Items.Count > 0)
+                                        <div class="my-1 flex min-h-24 items-stretch gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors @(isSelectedCombo ? "border-primary bg-primary/10 ring-1 ring-primary/40" : "hover:bg-muted/40")"
+                                             @onclick="() => OpenComboModalAsync(combo.Id)">
+                                            @if (!string.IsNullOrWhiteSpace(combo.ImageUrl))
                                             {
-                                                <div class="mt-2 text-xs text-muted-foreground line-clamp-2">
-                                                    @string.Join(", ", combo.Items.Select(item => $"{item.Qty}× {item.ProductName}{(string.IsNullOrWhiteSpace(item.VariantName) ? string.Empty : $" ({item.VariantName})")}"))
+                                                <img src="@combo.ImageUrl" alt="@combo.Name"
+                                                     class="h-16 w-16 rounded-md object-cover shrink-0 self-center" />
+                                            }
+                                            else
+                                            {
+                                                <div class="h-16 w-16 rounded-md bg-muted flex items-center justify-center shrink-0 self-center">
+                                                    <LucideIcon Name="layers" Class="h-5 w-5 text-muted-foreground/40" />
                                                 </div>
                                             }
+                                            <div class="flex-1 min-w-0 flex flex-col justify-between space-y-1">
+                                                <div class="flex items-center gap-2">
+                                                    <span class="text-sm font-semibold leading-snug truncate">@combo.Name</span>
+                                                </div>
+                                                @if (combo.Items.Count > 0)
+                                                {
+                                                    <div class="text-xs text-muted-foreground line-clamp-1">
+                                                        @string.Join(", ", combo.Items.Select(item => $"{item.Qty}× {item.ProductName}{(string.IsNullOrWhiteSpace(item.VariantName) ? string.Empty : $" ({item.VariantName})")}"))
+                                                    </div>
+                                                }
+                                                <BbBadge Variant="BadgeVariant.Secondary" Class="text-[10px] px-1.5 py-0">@combo.Items.Count món</BbBadge>
+                                            </div>
+                                            <div class="ml-2 flex items-center self-stretch text-right">
+                                                <span class="text-sm font-semibold whitespace-nowrap text-primary">@FormatCurrency(combo.Price)</span>
+                                            </div>
                                         </div>
                                     }
                                 </div>
@@ -191,171 +200,20 @@
                         }
                     </div>
 
-                    <div class="flex-1 overflow-y-auto divide-y">
-
-                        <div class="p-4 space-y-3">
-                            @if (_mode == ProductMode && _selectedProduct is null && !_loadingConfigurator)
-                            {
-                                <p class="text-sm text-muted-foreground py-1">Chọn một món trong menu để thêm vào đơn.</p>
-                            }
-                            else if (_mode == ProductMode && _loadingConfigurator)
-                            {
-                                <div class="space-y-2">
-                                    <BbSkeleton Height="20px" Class="w-40" />
-                                    <BbSkeleton Height="44px" Class="w-full" />
-                                    <BbSkeleton Height="44px" Class="w-full" />
-                                </div>
-                            }
-                            else if (_mode == ProductMode)
-                            {
-                                <div class="flex items-center justify-between text-sm">
-                                    <span class="font-medium">@_selectedProduct!.Name</span>
-                                    <span class="text-muted-foreground">@_selectedProduct.Price.ToString("#,##0")đ cơ bản</span>
-                                </div>
-
-                                @if (_selectedProduct.Variants.Any(v => v.IsActive))
-                                {
-                                    <div class="space-y-1.5">
-                                        <BbLabel>Chọn size</BbLabel>
-                                        <div class="flex flex-wrap gap-2">
-                                            @foreach (var variant in _selectedProduct.Variants.Where(v => v.IsActive).OrderBy(v => v.SortOrder))
-                                            {
-                                                <BbButton Variant="@(variant.Id == _selectedVariantId ? ButtonVariant.Default : ButtonVariant.Outline)"
-                                                          Size="ButtonSize.Small" OnClick="() => _selectedVariantId = variant.Id">
-                                                    @variant.Name (@variant.Price.ToString("#,##0")đ)
-                                                </BbButton>
-                                            }
-                                        </div>
-                                    </div>
-                                }
-
-                                @foreach (var group in _selectedProduct.ModifierGroups.Where(g => g.IsActive).OrderBy(g => g.SortOrder))
-                                {
-                                    <div class="space-y-2 border rounded-md p-3">
-                                        <div class="flex items-center justify-between">
-                                            <BbLabel>@group.Name</BbLabel>
-                                            <span class="text-xs text-muted-foreground">Min @group.MinSelect • Max @group.MaxSelect</span>
-                                        </div>
-                                        @if (group.SelectionMode == ModifierSelectionMode.Single)
-                                        {
-                                            <div class="flex flex-wrap gap-2">
-                                                @foreach (var option in group.Options.Where(o => o.IsActive).OrderBy(o => o.SortOrder))
-                                                {
-                                                    var optSelected = GetOptionQty(option.Id) > 0;
-                                                    <BbButton Variant="@(optSelected ? ButtonVariant.Default : ButtonVariant.Outline)"
-                                                              Size="ButtonSize.Small" OnClick="() => SelectSingleOption(group, option)">
-                                                        @option.Name (+@option.PriceDelta.ToString("#,##0")đ)
-                                                    </BbButton>
-                                                }
-                                            </div>
-                                        }
-                                        else
-                                        {
-                                            <div class="space-y-2">
-                                                @foreach (var option in group.Options.Where(o => o.IsActive).OrderBy(o => o.SortOrder))
-                                                {
-                                                    <div class="flex items-center justify-between gap-2">
-                                                        <span class="text-sm">@option.Name (+@option.PriceDelta.ToString("#,##0")đ)</span>
-                                                        <div class="flex items-center gap-1">
-                                                            <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.IconSmall"
-                                                                      OnClick="() => DecreaseOption(option)">
-                                                                <LucideIcon Name="minus" Class="h-4 w-4" />
-                                                            </BbButton>
-                                                            <span class="w-8 text-center text-sm">@GetOptionQty(option.Id)</span>
-                                                            <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.IconSmall"
-                                                                      Disabled="@(!CanIncreaseOption(group, option))"
-                                                                      OnClick="() => IncreaseOption(group, option)">
-                                                                <LucideIcon Name="plus" Class="h-4 w-4" />
-                                                            </BbButton>
-                                                        </div>
-                                                    </div>
-                                                }
-                                            </div>
-                                        }
-                                    </div>
-                                }
-
-                                <div class="flex items-center justify-between pt-1">
-                                    <div class="flex items-center gap-2">
-                                        <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.IconSmall"
-                                                  Disabled="@(_lineQty <= 1)" OnClick="DecreaseLineQty">
-                                            <LucideIcon Name="minus" Class="h-4 w-4" />
-                                        </BbButton>
-                                        <span class="w-10 text-center text-sm">@_lineQty</span>
-                                        <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.IconSmall" OnClick="IncreaseLineQty">
-                                            <LucideIcon Name="plus" Class="h-4 w-4" />
-                                        </BbButton>
-                                    </div>
-                                    <span class="text-sm">Tạm tính: <strong>@EstimatedLineTotal.ToString("#,##0")đ</strong></span>
-                                </div>
-
-                                @if (!IsCurrentSelectionValid())
-                                {
-                                    <BbAlert Variant="AlertVariant.Warning">
-                                        <BbAlertDescription>Vui lòng chọn đúng số lượng topping theo ràng buộc từng nhóm.</BbAlertDescription>
-                                    </BbAlert>
-                                }
-
-                                <BbButton OnClick="AddToCartAsync" Disabled="@(!CanAddToCart)" Class="w-full" Size="ButtonSize.Large">
-                                    <LucideIcon Name="plus" Class="mr-2 h-4 w-4" />
-                                    Thêm vào đơn
-                                </BbButton>
-                            }
-                            else
-                            {
-                                @if (_selectedCombo is null)
-                                {
-                                    <p class="text-sm text-muted-foreground py-1">Chọn một combo trong menu để thêm vào đơn.</p>
-                                }
-                                else
-                                {
-                                    <div class="space-y-2">
-                                        <div class="flex items-center justify-between text-sm">
-                                            <span class="font-medium">@(_selectedCombo.Name ?? "Combo")</span>
-                                            <span class="text-muted-foreground">@_selectedCombo.Price.ToString("#,##0")đ</span>
-                                        </div>
-                                        @if (_selectedCombo.Items.Count > 0)
-                                        {
-                                            <div class="rounded-md border p-2 text-xs text-muted-foreground space-y-1">
-                                                @foreach (var item in _selectedCombo.Items)
-                                                {
-                                                    <div>@item.Qty× @item.ProductName@(string.IsNullOrWhiteSpace(item.VariantName) ? string.Empty : $" ({item.VariantName})")</div>
-                                                }
-                                            </div>
-                                        }
-                                        <div class="flex items-center justify-between pt-1">
-                                            <div class="flex items-center gap-2">
-                                                <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.IconSmall"
-                                                          Disabled="@(_comboQty <= 1)" OnClick="DecreaseComboQty">
-                                                    <LucideIcon Name="minus" Class="h-4 w-4" />
-                                                </BbButton>
-                                                <span class="w-10 text-center text-sm">@_comboQty</span>
-                                                <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.IconSmall" OnClick="IncreaseComboQty">
-                                                    <LucideIcon Name="plus" Class="h-4 w-4" />
-                                                </BbButton>
-                                            </div>
-                                            <span class="text-sm">Tạm tính: <strong>@(_selectedCombo.Price * _comboQty).ToString("#,##0")đ</strong></span>
-                                        </div>
-
-                                        <BbButton OnClick="AddComboToCartAsync" Class="w-full" Size="ButtonSize.Large">
-                                            <LucideIcon Name="plus" Class="mr-2 h-4 w-4" />
-                                            Thêm combo vào đơn
-                                        </BbButton>
-                                    </div>
-                                }
-                            }
-                        </div>
-
+                    <div class="flex-1 overflow-y-auto">
                         @if (_cart.Count == 0)
                         {
-                            <div class="px-4 py-6 text-center text-sm text-muted-foreground">Chưa có món nào trong đơn.</div>
+                            <div class="px-4 py-8 text-center space-y-1">
+                                <div class="text-sm text-muted-foreground">Đơn hàng trống</div>
+                                <div class="text-xs text-muted-foreground">Nhấn nút thêm để thêm món nhanh</div>
+                            </div>
                         }
                         else
                         {
-                            <div class="p-4 space-y-2">
+                            <div class="divide-y">
                                 @foreach (var (item, index) in _cart.Select((x, i) => (x, i)))
                                 {
-                                    <div class="flex items-start justify-between gap-2 text-sm">
+                                    <div class="flex items-center justify-between gap-2 p-3 text-sm">
                                         <div class="flex-1 min-w-0 space-y-0.5">
                                             <div class="font-medium truncate">
                                                 @item.DisplayName @(item.VariantName is not null ? $"({item.VariantName})" : "")
@@ -371,7 +229,7 @@
                                                 </div>
                                             }
                                             <div class="text-xs text-muted-foreground">
-                                                @item.Quantity × @item.UnitPrice.ToString("#,##0")đ = <strong>@((item.Quantity * item.UnitPrice).ToString("#,##0"))đ</strong>
+                                                @item.Quantity × @FormatCurrency(item.UnitPrice) = <strong>@FormatCurrency(item.Quantity * item.UnitPrice)</strong>
                                             </div>
                                         </div>
                                         <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall"
@@ -390,7 +248,7 @@
                         {
                             <div class="flex justify-between font-semibold text-sm">
                                 <span>Tổng tạm tính</span>
-                                <span>@CartTotal.ToString("#,##0")đ</span>
+                                <span>@FormatCurrency(CartTotal)</span>
                             </div>
                             <div class="flex gap-2">
                                 <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Large" OnClick="ClearCartAsync">Xóa đơn</BbButton>
@@ -410,7 +268,159 @@
             </div>
         </div>
 
+<FormDialog Open="@_productModalOpen" OpenChanged="OnProductModalOpenChanged"
+            Title="@(_selectedProduct?.Name ?? (_loadingConfigurator ? "Đang tải..." : "Cấu hình món"))"
+            Description="Chọn size, topping và số lượng trước khi thêm vào đơn."
+            SubmitText="Thêm vào đơn"
+            SubmitDisabled="@(!CanAddToCart)"
+            ContentClass="max-w-lg max-h-[90dvh] overflow-y-auto"
+            OnSubmit="AddToCartAsync">
+    @if (_loadingConfigurator)
+    {
+        <div class="space-y-2">
+            <BbSkeleton Height="20px" Class="w-40" />
+            <BbSkeleton Height="44px" Class="w-full" />
+            <BbSkeleton Height="44px" Class="w-full" />
+        </div>
+    }
+    else if (_selectedProduct is not null)
+    {
+        <div class="flex items-center justify-between text-sm pb-1">
+            <span class="text-muted-foreground">Giá cơ bản</span>
+            <span>@FormatCurrency(_selectedProduct.Price)</span>
+        </div>
+        @if (_selectedProduct.Variants.Any(v => v.IsActive))
+        {
+            <div class="space-y-1.5">
+                <BbLabel>Chọn size</BbLabel>
+                <div class="flex flex-wrap gap-2">
+                    @foreach (var variant in _selectedProduct.Variants.Where(v => v.IsActive).OrderBy(v => v.SortOrder))
+                    {
+                        <BbButton Variant="@(variant.Id == _selectedVariantId ? ButtonVariant.Default : ButtonVariant.Outline)"
+                                  Size="ButtonSize.Small" OnClick="() => _selectedVariantId = variant.Id">
+                            @variant.Name (@FormatCurrency(variant.Price))
+                        </BbButton>
+                    }
+                </div>
+            </div>
+        }
+        @foreach (var group in _selectedProduct.ModifierGroups.Where(g => g.IsActive).OrderBy(g => g.SortOrder))
+        {
+            <div class="space-y-2 border rounded-md p-3">
+                <div class="flex items-center justify-between">
+                    <BbLabel>@group.Name</BbLabel>
+                    <span class="text-xs text-muted-foreground">Min @group.MinSelect • Max @group.MaxSelect</span>
+                </div>
+                @if (group.SelectionMode == ModifierSelectionMode.Single)
+                {
+                    <div class="flex flex-wrap gap-2">
+                        @foreach (var option in group.Options.Where(o => o.IsActive).OrderBy(o => o.SortOrder))
+                        {
+                            var optSelected = GetOptionQty(option.Id) > 0;
+                            <BbButton Variant="@(optSelected ? ButtonVariant.Default : ButtonVariant.Outline)"
+                                      Size="ButtonSize.Small" OnClick="() => SelectSingleOption(group, option)">
+                                @option.Name (+@FormatCurrency(option.PriceDelta))
+                            </BbButton>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="space-y-2">
+                        @foreach (var option in group.Options.Where(o => o.IsActive).OrderBy(o => o.SortOrder))
+                        {
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-sm">@option.Name (+@FormatCurrency(option.PriceDelta))</span>
+                                <div class="flex items-center gap-1">
+                                    <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.IconSmall"
+                                              OnClick="() => DecreaseOption(option)">
+                                        <LucideIcon Name="minus" Class="h-4 w-4" />
+                                    </BbButton>
+                                    <span class="w-8 text-center text-sm">@GetOptionQty(option.Id)</span>
+                                    <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.IconSmall"
+                                              Disabled="@(!CanIncreaseOption(group, option))"
+                                              OnClick="() => IncreaseOption(group, option)">
+                                        <LucideIcon Name="plus" Class="h-4 w-4" />
+                                    </BbButton>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+        <div class="flex items-center justify-between pt-1">
+            <div class="flex items-center gap-2">
+                <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.IconSmall"
+                          Disabled="@(_lineQty <= 1)" OnClick="DecreaseLineQty">
+                    <LucideIcon Name="minus" Class="h-4 w-4" />
+                </BbButton>
+                <span class="w-10 text-center text-sm">@_lineQty</span>
+                <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.IconSmall" OnClick="IncreaseLineQty">
+                    <LucideIcon Name="plus" Class="h-4 w-4" />
+                </BbButton>
+            </div>
+            <span class="text-sm">Tạm tính: <strong>@FormatCurrency(EstimatedLineTotal)</strong></span>
+        </div>
+        @if (!IsCurrentSelectionValid())
+        {
+            <BbAlert Variant="AlertVariant.Warning">
+                <BbAlertDescription>Vui lòng chọn đúng số lượng topping theo ràng buộc từng nhóm.</BbAlertDescription>
+            </BbAlert>
+        }
+    }
+</FormDialog>
+
+<FormDialog Open="@_comboModalOpen" OpenChanged="OnComboModalOpenChanged"
+            Title="@(_selectedCombo?.Name ?? "Thêm combo")"
+            Description="Xác nhận số lượng combo trước khi thêm vào đơn."
+            SubmitText="Thêm vào đơn"
+            SubmitDisabled="@(_selectedCombo is null)"
+            OnSubmit="AddComboToCartAsync"
+            ContentClass="max-w-xs max-h-[85dvh] overflow-y-auto"
+            BodyClass="space-y-3 py-3 pr-1 max-h-[52vh] overflow-y-auto">
+    @if (_selectedCombo is not null)
+    {
+        <div class="rounded-md border bg-muted/20 px-3 py-2">
+            <div class="flex items-center justify-between text-sm">
+                <span class="text-muted-foreground">Giá combo</span>
+                <span class="font-semibold">@FormatCurrency(_selectedCombo.Price)</span>
+            </div>
+        </div>
+        @if (_selectedCombo.Items.Count > 0)
+        {
+            <div class="space-y-1.5">
+                <BbLabel>Món trong combo</BbLabel>
+                <div class="rounded-md border p-2.5 text-xs text-muted-foreground space-y-1.5 max-h-40 overflow-y-auto">
+                @foreach (var item in _selectedCombo.Items)
+                {
+                    <div>@item.Qty× @item.ProductName@(string.IsNullOrWhiteSpace(item.VariantName) ? string.Empty : $" ({item.VariantName})")</div>
+                }
+                </div>
+            </div>
+        }
+
+        <BbSeparator Orientation="SeparatorOrientation.Horizontal" />
+
+        <div class="flex items-center justify-between pt-2">
+            <div class="flex items-center gap-2">
+                <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.IconSmall"
+                          Disabled="@(_comboQty <= 1)" OnClick="DecreaseComboQty">
+                    <LucideIcon Name="minus" Class="h-4 w-4" />
+                </BbButton>
+                <span class="w-10 text-center text-sm">@_comboQty</span>
+                <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.IconSmall" OnClick="IncreaseComboQty">
+                    <LucideIcon Name="plus" Class="h-4 w-4" />
+                </BbButton>
+            </div>
+            <span class="text-sm">Tạm tính: <strong>@FormatCurrency(_selectedCombo.Price * _comboQty)</strong></span>
+        </div>
+    }
+</FormDialog>
+
 @code {
+    private static readonly CultureInfo VnCulture = CultureInfo.GetCultureInfo("vi-VN");
+
     private bool _loadingProducts;
     private bool _loadingCombos;
     private bool _loadingConfigurator;
@@ -423,6 +433,8 @@
     private string _selectedCategory = AllCategoriesValue;
     private List<CartLineItemDto> _cart = [];
 
+    private bool _productModalOpen;
+    private bool _comboModalOpen;
     private Guid? _selectedProductId;
     private ConfiguredProductDto? _selectedProduct;
     private Guid? _selectedVariantId;
@@ -439,6 +451,9 @@
     .Distinct(StringComparer.OrdinalIgnoreCase)
     .OrderBy(name => name)
     .ToList();
+
+    private List<SelectOption<string>> CategoryFilterOptions =>
+        [new SelectOption<string>(AllCategoriesValue, "Tất cả danh mục"), .. CategoryNames.Select(category => new SelectOption<string>(category, category))];
 
     private IReadOnlyList<CategoryGroupDto> VisibleCategoryGroups => FilteredProducts
     .GroupBy(product => product.CategoryName)
@@ -486,6 +501,9 @@
     private bool CanPlaceOrder => _cart.Count > 0 && !_placingOrder;
 
     private decimal CartTotal => _cart.Sum(l => l.UnitPrice * l.Quantity);
+
+    private static string FormatCurrency(decimal amount)
+        => string.Concat(amount.ToString("N0", VnCulture), "đ");
 
     protected override async Task OnInitializedAsync()
     {
@@ -876,39 +894,22 @@
             .ToList();
     }
 
-    private void SelectCombo(Guid comboId)
+    private void OpenComboModalAsync(Guid comboId)
     {
-        if (_selectedComboId == comboId)
-        {
-            _selectedComboId = null;
-            _selectedCombo = null;
-            _comboQty = 1;
-            return;
-        }
-
         _selectedComboId = comboId;
         _selectedCombo = _combos.FirstOrDefault(c => c.Id == comboId);
         _comboQty = 1;
+        _comboModalOpen = true;
     }
 
-    private async Task SelectProductAsync(Guid productId)
+    private async Task OpenProductModalAsync(Guid productId)
     {
-        // Click selected product again → deselect
-        if (_selectedProductId == productId)
-        {
-            _selectedProductId = null;
-            _selectedProduct = null;
-            _selectedVariantId = null;
-            _selectedOptionQuantities.Clear();
-            _lineQty = 1;
-            return;
-        }
-
         _selectedProductId = productId;
         _selectedProduct = null;
         _selectedVariantId = null;
         _selectedOptionQuantities.Clear();
         _lineQty = 1;
+        _productModalOpen = true;
 
         _loadingConfigurator = true;
         try
@@ -956,6 +957,22 @@
         finally
         {
             _loadingConfigurator = false;
+        }
+    }
+
+    private void OnProductModalOpenChanged(bool v)
+    {
+        _productModalOpen = v;
+        if (!v) _selectedProductId = null;
+    }
+
+    private void OnComboModalOpenChanged(bool v)
+    {
+        _comboModalOpen = v;
+        if (!v)
+        {
+            _selectedComboId = null;
+            _selectedCombo = null;
         }
     }
 
@@ -1070,21 +1087,8 @@
             _cart.Add(newLine);
         }
 
-        // Reset configurator state, re-apply defaults
-        _selectedVariantId = null;
-        _selectedOptionQuantities.Clear();
-        _lineQty = 1;
-        if (_selectedProduct.Variants.Any(v => v.IsActive))
-            _selectedVariantId = _selectedProduct.Variants.Where(v => v.IsActive).OrderBy(v => v.SortOrder).First().Id;
-        foreach (var group in _selectedProduct.ModifierGroups.Where(g => g.IsActive))
-        {
-            var defaults = group.Options.Where(o => o.IsActive && o.IsDefault).OrderBy(o => o.SortOrder).ToList();
-            if (group.SelectionMode == ModifierSelectionMode.Single && defaults.Count > 0)
-                _selectedOptionQuantities[defaults[0].Id] = 1;
-            else
-                foreach (var opt in defaults) _selectedOptionQuantities[opt.Id] = 1;
-        }
-
+        _productModalOpen = false;
+        _selectedProductId = null;
         await PersistStateAsync();
     }
 
@@ -1118,6 +1122,7 @@
             _cart.Add(comboLine);
         }
 
+        _comboModalOpen = false;
         _comboQty = 1;
         await PersistStateAsync();
     }

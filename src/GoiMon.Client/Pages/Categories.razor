@@ -7,10 +7,10 @@
 @using EasyAppDev.Blazor.Store.Core
 @using GoiMon.Client.State
 
-<header class="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+<header class="flex h-12 shrink-0 items-center gap-2 border-b px-4 py-1 md:px-5">
     <BbSidebarTrigger />
-    <BbSeparator Orientation="SeparatorOrientation.Vertical" Class="h-4" />
-    <h1 class="text-sm font-semibold">Danh mục</h1>
+    <BbSeparator Orientation="SeparatorOrientation.Vertical" Class="h-3" />
+    <h1 class="text-xs font-semibold">Danh mục</h1>
     <div class="ml-auto flex items-center gap-2">
         @if (_selectedIds.Count > 0)
         {
@@ -27,22 +27,21 @@
     </div>
 </header>
 
-<div class="p-6 space-y-4">
-    <div class="flex items-center gap-3">
+<div class="p-4 md:p-5 space-y-4">
+    <div class="mb-1 flex flex-wrap items-center gap-3">
         <div class="w-72">
             <BbInput Value="@_search"
                      ValueChanged="OnSearchChangedAsync"
+                     @oninput="OnSearchInputAsync"
                      Placeholder="Tìm kiếm danh mục..." />
         </div>
         <div class="w-56">
-            <BbCombobox TValue="string"
-                        Value="@_sortOption"
-                        ValueChanged="OnSortChangedAsync"
-                        Options="SortOptions"
-                        Placeholder="Sắp xếp"
-                        SearchPlaceholder="Tìm kiểu sắp xếp..."
-                        EmptyMessage="Không có thứ tự."
-                        MatchTriggerWidth="true" />
+            <BbSelect TValue="string"
+                      Value="@_sortOption"
+                      ValueChanged="OnSortChangedAsync"
+                      Options="SortOptions"
+                      Placeholder="Sắp xếp"
+                      Class="w-full" />
         </div>
     </div>
 
@@ -67,11 +66,11 @@
             <table class="w-full text-sm">
                 <thead class="border-b bg-muted/50">
                     <tr>
-                        <th class="h-10 w-10 px-3">
+                        <th class="h-10 w-10 px-3 align-middle">
                             <BbCheckbox Checked="@AllSelected" CheckedChanged="@ToggleSelectAll" />
                         </th>
-                        <th class="h-10 px-4 text-left font-medium text-muted-foreground">Tên danh mục</th>
-                        <th class="h-10 px-4 text-right font-medium text-muted-foreground w-32">Thao tác</th>
+                        <th class="h-10 px-4 text-left font-medium text-muted-foreground align-middle">Tên danh mục</th>
+                        <th class="h-10 px-4 text-right font-medium text-muted-foreground w-32 align-middle">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -86,13 +85,13 @@
                     @foreach (var item in _items)
                     {
                         <tr class="border-b last:border-0 hover:bg-muted/50 transition-colors @(_selectedIds.Contains(item.Id) ? "bg-muted/30" : "")">
-                            <td class="px-3 py-3">
+                            <td class="px-3 py-3 align-middle">
                                 <BbCheckbox Checked="@_selectedIds.Contains(item.Id)"
                                             CheckedChanged="@(v => ToggleSelect(item.Id, v))" />
                             </td>
-                            <td class="px-4 py-3 font-medium">@item.Name</td>
-                            <td class="px-4 py-3 text-right">
-                                <div class="flex justify-end gap-1">
+                            <td class="px-4 py-3 font-medium align-middle">@item.Name</td>
+                            <td class="px-4 py-3 text-right align-middle">
+                                <div class="flex items-center justify-end gap-1">
                                     <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall"
                                               AriaLabel="Sửa" OnClick="() => OpenEditAsync(item)">
                                         <LucideIcon Name="pencil" Class="h-4 w-4" />
@@ -110,7 +109,7 @@
             </table>
         </div>
 
-        <div class="flex items-center justify-between text-sm text-muted-foreground">
+        <div class="pt-1 flex items-center justify-between text-sm text-muted-foreground">
             <span>Hiển thị @(_items.Count) / @_total danh mục</span>
             <div class="flex items-center gap-2">
                 <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small"
@@ -130,83 +129,48 @@
 </div>
 
 <!-- Create Dialog -->
-<BbDialog Open="@_showCreate" OpenChanged="@(v => _showCreate = v)">
-    <BbDialogContent Class="max-w-md max-h-[90dvh] overflow-y-auto">
-        <BbDialogHeader>
-            <BbDialogTitle>Thêm danh mục</BbDialogTitle>
-            <BbDialogDescription>Nhập tên danh mục mới.</BbDialogDescription>
-        </BbDialogHeader>
-        <div class="py-4 pr-1" style="max-height: 60vh; overflow-y: auto;">
-            <BbInput @bind-Value="_formName" Placeholder="Tên danh mục" />
-        </div>
-        <BbDialogFooter>
-            <BbDialogClose>
-                <BbButton Variant="ButtonVariant.Outline">Hủy</BbButton>
-            </BbDialogClose>
-            <BbButton OnClick="HandleCreate"
-                      Loading="@_saving" LoadingText="Đang lưu..."
-                      Disabled="@(string.IsNullOrWhiteSpace(_formName))">
-                Lưu
-            </BbButton>
-        </BbDialogFooter>
-    </BbDialogContent>
-</BbDialog>
+<FormDialog Open="@_showCreate"
+            OpenChanged="@(v => _showCreate = v)"
+            Title="Thêm danh mục"
+            Description="Nhập tên danh mục mới."
+            BodyClass="py-4 pr-1 max-h-[60vh] overflow-y-auto"
+            SubmitText="Lưu"
+            SubmitLoading="@_saving"
+            SubmitLoadingText="Đang lưu..."
+            SubmitDisabled="@(string.IsNullOrWhiteSpace(_formName))"
+            OnSubmit="HandleCreate">
+    <BbInput @bind-Value="_formName" Placeholder="Tên danh mục" />
+</FormDialog>
 
 <!-- Delete Confirm Dialog -->
-<BbDialog Open="@_showDeleteConfirm" OpenChanged="@(v => _showDeleteConfirm = v)">
-    <BbDialogContent Class="max-w-md">
-        <BbDialogHeader>
-            <BbDialogTitle>Xóa danh mục?</BbDialogTitle>
-            <BbDialogDescription>Hành động này không thể hoàn tác.</BbDialogDescription>
-        </BbDialogHeader>
-        <BbDialogFooter>
-            <BbDialogClose>
-                <BbButton Variant="ButtonVariant.Outline">Hủy</BbButton>
-            </BbDialogClose>
-            <BbButton Variant="ButtonVariant.Destructive" OnClick="ConfirmDeleteAsync">Xóa</BbButton>
-        </BbDialogFooter>
-    </BbDialogContent>
-</BbDialog>
+<ConfirmDialog Open="@_showDeleteConfirm"
+               OpenChanged="@(v => _showDeleteConfirm = v)"
+               Title="Xóa danh mục?"
+               Description="Hành động này không thể hoàn tác."
+               OnConfirm="ConfirmDeleteAsync" />
 
 <!-- Bulk Delete Confirm Dialog -->
-<BbDialog Open="@_showBulkDeleteConfirm" OpenChanged="@(v => _showBulkDeleteConfirm = v)">
-    <BbDialogContent Class="max-w-md">
-        <BbDialogHeader>
-            <BbDialogTitle>Xóa @_selectedIds.Count danh mục?</BbDialogTitle>
-            <BbDialogDescription>Hành động này không thể hoàn tác.</BbDialogDescription>
-        </BbDialogHeader>
-        <BbDialogFooter>
-            <BbDialogClose>
-                <BbButton Variant="ButtonVariant.Outline">Hủy</BbButton>
-            </BbDialogClose>
-            <BbButton Variant="ButtonVariant.Destructive" Loading="@_bulkDeleting" LoadingText="Đang xóa..."
-                      OnClick="HandleBulkDelete">Xóa</BbButton>
-        </BbDialogFooter>
-    </BbDialogContent>
-</BbDialog>
+<ConfirmDialog Open="@_showBulkDeleteConfirm"
+               OpenChanged="@(v => _showBulkDeleteConfirm = v)"
+               Title="@("Xóa " + _selectedIds.Count + " danh mục?")"
+               Description="Hành động này không thể hoàn tác."
+               ConfirmLoading="@_bulkDeleting"
+               ConfirmLoadingText="Đang xóa..."
+               OnConfirm="HandleBulkDelete" />
 
 <!-- Edit Dialog -->
-<BbDialog Open="@_showEdit" OpenChanged="@(v => _showEdit = v)">
-    <BbDialogContent Class="max-w-md max-h-[90dvh] overflow-y-auto">
-        <BbDialogHeader>
-            <BbDialogTitle>Sửa danh mục</BbDialogTitle>
-            <BbDialogDescription>Cập nhật tên danh mục.</BbDialogDescription>
-        </BbDialogHeader>
-        <div class="py-4 pr-1" style="max-height: 60vh; overflow-y: auto;">
-            <BbInput @bind-Value="_formName" Placeholder="Tên danh mục" />
-        </div>
-        <BbDialogFooter>
-            <BbDialogClose>
-                <BbButton Variant="ButtonVariant.Outline">Hủy</BbButton>
-            </BbDialogClose>
-            <BbButton OnClick="HandleEdit"
-                      Loading="@_saving" LoadingText="Đang lưu..."
-                      Disabled="@(string.IsNullOrWhiteSpace(_formName))">
-                Cập nhật
-            </BbButton>
-        </BbDialogFooter>
-    </BbDialogContent>
-</BbDialog>
+<FormDialog Open="@_showEdit"
+            OpenChanged="@(v => _showEdit = v)"
+            Title="Sửa danh mục"
+            Description="Cập nhật tên danh mục."
+            BodyClass="py-4 pr-1 max-h-[60vh] overflow-y-auto"
+            SubmitText="Cập nhật"
+            SubmitLoading="@_saving"
+            SubmitLoadingText="Đang lưu..."
+            SubmitDisabled="@(string.IsNullOrWhiteSpace(_formName))"
+            OnSubmit="HandleEdit">
+    <BbInput @bind-Value="_formName" Placeholder="Tên danh mục" />
+</FormDialog>
 
 @code {
     private List<CategoryDto> _items = [];
@@ -236,7 +200,10 @@
 
     private void ToggleSelectAll(bool selected)
     {
-        _selectedIds = selected ? _items.Select(i => i.Id).ToHashSet() : [];
+        if (selected)
+            foreach (var id in _items.Select(i => i.Id)) _selectedIds.Add(id);
+        else
+            foreach (var id in _items.Select(i => i.Id)) _selectedIds.Remove(id);
         _ = PersistStateAsync();
     }
 
@@ -319,11 +286,28 @@
             300);
     }
 
+    private Task OnSearchInputAsync(ChangeEventArgs args)
+    {
+        var value = args.Value?.ToString() ?? string.Empty;
+        return OnSearchChangedAsync(value);
+    }
+
     private Task OnSortChangedAsync(string value)
     {
         _sortOption = value;
         _skip = 0;
-        return LoadAsync();
+        return ReloadAsyncNonBlocking();
+    }
+
+    private Task ReloadAsyncNonBlocking()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await LoadAsync(showLoading: true);
+            StateHasChanged();
+        });
+
+        return Task.CompletedTask;
     }
 
     private async Task LoadAsync(bool showLoading = false)

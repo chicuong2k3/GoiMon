@@ -1,14 +1,14 @@
 @page "/"
 
-<header class="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+<header class="flex h-12 shrink-0 items-center gap-2 border-b px-4 py-1 md:px-5">
     <BbSidebarTrigger />
-    <BbSeparator Orientation="SeparatorOrientation.Vertical" Class="h-4" />
-    <h1 class="text-sm font-semibold">Trang chủ</h1>
+    <BbSeparator Orientation="SeparatorOrientation.Vertical" Class="h-3" />
+    <h1 class="text-xs font-semibold">Trang chủ</h1>
 </header>
 
-<div class="p-6 space-y-4">
+<div class="p-4 md:p-5 space-y-4">
     <p class="text-muted-foreground">Chào mừng đến GoiMon. Chọn mục quản lý từ thanh bên.</p>
-    <div class="flex gap-3 flex-wrap">
+    <div class="flex flex-wrap items-center gap-3">
         <BbButton Href="/categories" Variant="ButtonVariant.Outline">
             <LucideIcon Name="tag" Class="h-4 w-4 mr-2" />
             Danh mục

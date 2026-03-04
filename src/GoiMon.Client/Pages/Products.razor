@@ -7,11 +7,12 @@
 
 @using EasyAppDev.Blazor.Store.Core
 @using GoiMon.Client.State
+@using System.Globalization
 
-<header class="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+<header class="flex h-12 shrink-0 items-center gap-2 border-b px-4 py-1 md:px-5">
     <BbSidebarTrigger />
-    <BbSeparator Orientation="SeparatorOrientation.Vertical" Class="h-4" />
-    <h1 class="text-sm font-semibold">Sản phẩm</h1>
+    <BbSeparator Orientation="SeparatorOrientation.Vertical" Class="h-3" />
+    <h1 class="text-xs font-semibold">Sản phẩm</h1>
     <div class="ml-auto flex items-center gap-2">
         @if (_selectedIds.Count > 0)
         {
@@ -28,46 +29,47 @@
     </div>
 </header>
 
-<div class="p-6 space-y-4">
-    <div class="flex flex-wrap items-center gap-3">
-        <div class="w-72">
+<div class="p-4 md:p-5 space-y-4">
+    <div class="mb-1 flex flex-wrap items-center gap-3">
+        <div class="w-64">
             <BbInput Value="@_search"
                      ValueChanged="OnSearchChangedAsync"
+                     @oninput="OnSearchInputAsync"
                      Placeholder="Tìm kiếm sản phẩm..." />
         </div>
-        <div class="flex items-center gap-2">
-            <div class="w-52">
-                <BbCombobox TValue="Guid?"
-                            Value="@_filterCategoryId"
-                            ValueChanged="@(async v => { _filterCategoryId = v; _skip = 0; await LoadAsync(); })"
-                            Options="FilterCategoryOptions"
-                            Placeholder="Tất cả danh mục"
-                            SearchPlaceholder="Tìm danh mục..."
-                            EmptyMessage="Không tìm thấy danh mục."
-                            MatchTriggerWidth="true" />
-            </div>
-        </div>
-    </div>
-    <div class="flex flex-wrap items-center gap-3">
-        <div class="w-40">
-            <BbInput Value="@_filterPriceMin"
-                     ValueChanged="OnPriceMinChangedAsync"
-                     Placeholder="Giá từ" />
-        </div>
-        <div class="w-40">
-            <BbInput Value="@_filterPriceMax"
-                     ValueChanged="OnPriceMaxChangedAsync"
-                     Placeholder="Giá đến" />
-        </div>
-        <div class="w-56">
-            <BbCombobox TValue="string"
-                        Value="@_sortOption"
-                        ValueChanged="@(async v => { _sortOption = v; _skip = 0; await LoadAsync(); })"
-                        Options="SortOptions"
-                        Placeholder="Sắp xếp"
-                        SearchPlaceholder="Tìm kiểu sắp xếp..."
-                        EmptyMessage="Không có trường."
+        <div class="w-48">
+            <BbCombobox TValue="Guid?"
+                        Value="@_filterCategoryId"
+                        ValueChanged="OnFilterCategoryChangedAsync"
+                        Options="FilterCategoryOptions"
+                        Placeholder="Tất cả danh mục"
+                        SearchPlaceholder="Tìm danh mục..."
+                        EmptyMessage="Không tìm thấy danh mục."
                         MatchTriggerWidth="true" />
+        </div>
+        <div class="w-44">
+            <BbSelect TValue="string"
+                      Value="@_sortOption"
+                      ValueChanged="OnSortOptionChangedAsync"
+                      Options="SortOptions"
+                      Placeholder="Sắp xếp"
+                      Class="w-full" />
+        </div>
+        <div class="w-56 space-y-1">
+            <div class="flex items-center justify-between text-[10px] text-muted-foreground leading-none">
+                <span>Lọc giá</span>
+                <span>@FormatCurrency((decimal)_priceRange.Start) – @FormatCurrency((decimal)_priceRange.End)</span>
+            </div>
+            <BbRangeSlider Value="@_priceRange"
+                           ValueChanged="OnPriceRangeChangedAsync"
+                           Min="0"
+                           Max="@_priceRangeMax"
+                           Step="5000"
+                           MinRange="5000"
+                           ShowTooltips="true"
+                           Class="w-full"
+                           StartLabel="Giá tối thiểu"
+                           EndLabel="Giá tối đa" />
         </div>
     </div>
 
@@ -92,15 +94,15 @@
             <table class="w-full text-sm">
                 <thead class="border-b bg-muted/50">
                     <tr>
-                        <th class="h-10 w-10 px-3">
+                        <th class="h-10 w-10 px-3 align-middle">
                             <BbCheckbox Checked="@AllSelected" CheckedChanged="@ToggleSelectAll" />
                         </th>
-                        <th class="h-10 px-4 text-left font-medium text-muted-foreground">Tên sản phẩm</th>
-                        <th class="h-10 px-4 text-left font-medium text-muted-foreground">Danh mục</th>
-                        <th class="h-10 px-4 text-right font-medium text-muted-foreground">Giá</th>
-                        <th class="h-10 px-4 text-left font-medium text-muted-foreground">Đơn vị</th>
-                        <th class="h-10 px-4 text-left font-medium text-muted-foreground hidden md:table-cell">Mô tả</th>
-                        <th class="h-10 px-4 text-right font-medium text-muted-foreground w-28">Thao tác</th>
+                        <th class="h-10 px-4 text-left font-medium text-muted-foreground align-middle">Tên sản phẩm</th>
+                        <th class="h-10 px-4 text-left font-medium text-muted-foreground align-middle">Danh mục</th>
+                        <th class="h-10 px-4 text-right font-medium text-muted-foreground align-middle">Giá</th>
+                        <th class="h-10 px-4 text-left font-medium text-muted-foreground align-middle">Đơn vị</th>
+                        <th class="h-10 px-4 text-left font-medium text-muted-foreground hidden md:table-cell align-middle">Mô tả</th>
+                        <th class="h-10 px-4 text-right font-medium text-muted-foreground w-28 align-middle">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -115,11 +117,11 @@
                     @foreach (var item in _items)
                     {
                         <tr class="border-b last:border-0 hover:bg-muted/50 transition-colors @(_selectedIds.Contains(item.Id) ? "bg-muted/30" : "")">
-                            <td class="px-3 py-3">
+                            <td class="px-3 py-3 align-middle">
                                 <BbCheckbox Checked="@_selectedIds.Contains(item.Id)"
                                             CheckedChanged="@(v => ToggleSelect(item.Id, v))" />
                             </td>
-                            <td class="px-4 py-3 font-medium">
+                            <td class="px-4 py-3 font-medium align-middle">
                                 <div class="flex items-center gap-3">
                                     @if (!string.IsNullOrEmpty(item.ImageUrl))
                                     {
@@ -134,7 +136,7 @@
                                     <span>@item.Name</span>
                                 </div>
                             </td>
-                            <td class="px-4 py-3">
+                            <td class="px-4 py-3 align-middle">
                                 @if (item.CategoryName is not null)
                                 {
                                     <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium">
@@ -146,13 +148,13 @@
                                     <span class="text-muted-foreground text-xs">—</span>
                                 }
                             </td>
-                            <td class="px-4 py-3 text-right font-medium tabular-nums">
-                                @item.Price.ToString("#,##0") đ
+                            <td class="px-4 py-3 text-right font-medium tabular-nums align-middle">
+                                @FormatCurrency(item.Price)
                             </td>
-                            <td class="px-4 py-3">
+                            <td class="px-4 py-3 align-middle">
                                 @(string.IsNullOrWhiteSpace(item.UnitName) ? "—" : item.UnitName)
                             </td>
-                            <td class="px-4 py-3 text-muted-foreground hidden md:table-cell max-w-[200px] truncate">
+                            <td class="px-4 py-3 text-muted-foreground hidden md:table-cell max-w-[200px] truncate align-middle">
                                 @(item.Description ?? "—")
                                 @if (item.ActiveVariantCount > 0 || item.ActiveModifierGroupCount > 0)
                                 {
@@ -168,8 +170,8 @@
                                     </div>
                                 }
                             </td>
-                            <td class="px-4 py-3 text-right">
-                                <div class="flex justify-end gap-1">
+                            <td class="px-4 py-3 text-right align-middle">
+                                <div class="flex items-center justify-end gap-1">
                                     <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall"
                                               AriaLabel="Cấu hình" OnClick="() => OpenConfigureAsync(item)">
                                         <LucideIcon Name="settings-2" Class="h-4 w-4" />
@@ -191,7 +193,7 @@
             </table>
         </div>
 
-        <div class="flex items-center justify-between text-sm text-muted-foreground">
+        <div class="pt-1 flex items-center justify-between text-sm text-muted-foreground">
             <span>Hiển thị @(_items.Count) / @_total sản phẩm</span>
             <div class="flex items-center gap-2">
                 <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small"
@@ -211,103 +213,76 @@
 </div>
 
 <!-- Create Dialog -->
-<BbDialog Open="@_showCreate" OpenChanged="@(v => _showCreate = v)">
-    <BbDialogContent Class="max-w-md max-h-[90dvh] overflow-y-auto">
-        <BbDialogHeader>
-            <BbDialogTitle>Thêm sản phẩm</BbDialogTitle>
-            <BbDialogDescription>Nhập thông tin sản phẩm mới.</BbDialogDescription>
-        </BbDialogHeader>
-        <div class="space-y-3 py-4 pr-1" style="max-height: 60vh; overflow-y: auto;">
-            <div class="space-y-1">
-                <label class="text-sm font-medium">Tên sản phẩm <span class="text-destructive">*</span></label>
-                <BbInput @bind-Value="_formName" Placeholder="Tên sản phẩm" />
-            </div>
-            <div class="space-y-1">
-                <label class="text-sm font-medium">Giá (đ) <span class="text-destructive">*</span></label>
-                <BbInput @bind-Value="_formPriceStr" Type="InputType.Number" Placeholder="0" />
-            </div>
-            <div class="space-y-1">
-                <label class="text-sm font-medium">Đơn vị tính</label>
-                <BbInput @bind-Value="_formUnitName" Placeholder="Ví dụ: ly, phần, chai" />
-            </div>
-            <div class="space-y-1">
-                <label class="text-sm font-medium">Danh mục</label>
-                <BbCombobox TValue="Guid?"
-                            @bind-Value="_formCategoryId"
-                            Options="CategoryOptions"
-                            Placeholder="Chọn danh mục..."
-                            SearchPlaceholder="Tìm danh mục..."
-                            EmptyMessage="Không tìm thấy danh mục."
-                            Class="w-full"
-                            MatchTriggerWidth="true" />
-                @if (_formCategoryId.HasValue)
-                {
-                    <p class="text-xs text-muted-foreground">Đã chọn: @GetCategoryDisplayName(_formCategoryId)</p>
-                }
-            </div>
-            <div class="space-y-1">
-                <label class="text-sm font-medium">Mô tả</label>
-                <BbInput @bind-Value="_formDescription" Placeholder="Mô tả sản phẩm" />
-            </div>
-            <div class="space-y-1">
-                <label class="text-sm font-medium">Hình ảnh</label>
-                @if (HasImage)
-                {
-                    <img src="@DisplayImageUrl" class="w-full h-32 object-cover rounded-lg mb-2" alt="Product image" />
-                }
-                <InputFile OnChange="HandleImageSelected" accept="image/*" class="hidden" id="create-product-img" />
-                <label for="create-product-img"
-                       class="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm hover:bg-accent hover:text-accent-foreground">
-                    <LucideIcon Name="image" Class="h-4 w-4" />
-                    <span>@(HasImage ? "Đổi ảnh" : "Chọn ảnh")</span>
-                </label>
-            </div>
-        </div>
-        <BbDialogFooter>
-            <BbDialogClose>
-                <BbButton Variant="ButtonVariant.Outline">Hủy</BbButton>
-            </BbDialogClose>
-            <BbButton OnClick="HandleCreate"
-                      Loading="@_saving" LoadingText="Đang lưu..."
-                      Disabled="@(string.IsNullOrWhiteSpace(_formName) || !decimal.TryParse(_formPriceStr, out _))">
-                Lưu
-            </BbButton>
-        </BbDialogFooter>
-    </BbDialogContent>
-</BbDialog>
+<FormDialog Open="@_showCreate"
+            OpenChanged="@(v => _showCreate = v)"
+            Title="Thêm sản phẩm"
+            Description="Nhập thông tin sản phẩm mới."
+            SubmitText="Lưu"
+            SubmitLoading="@_saving"
+            SubmitLoadingText="Đang lưu..."
+            SubmitDisabled="@(string.IsNullOrWhiteSpace(_formName) || !decimal.TryParse(_formPriceStr, out _))"
+            OnSubmit="HandleCreate">
+    <div class="space-y-1">
+        <label class="text-sm font-medium">Tên sản phẩm <span class="text-destructive">*</span></label>
+        <BbInput @bind-Value="_formName" Placeholder="Tên sản phẩm" />
+    </div>
+    <div class="space-y-1">
+        <label class="text-sm font-medium">Giá (đ) <span class="text-destructive">*</span></label>
+        <BbInput @bind-Value="_formPriceStr" Type="InputType.Number" Placeholder="0" />
+    </div>
+    <div class="space-y-1">
+        <label class="text-sm font-medium">Đơn vị tính</label>
+        <BbInput @bind-Value="_formUnitName" Placeholder="Ví dụ: ly, phần, chai" />
+    </div>
+    <div class="space-y-1">
+        <label class="text-sm font-medium">Danh mục</label>
+        <BbCombobox TValue="Guid?"
+                    @bind-Value="_formCategoryId"
+                    Options="CategoryOptions"
+                    Placeholder="Chọn danh mục..."
+                    SearchPlaceholder="Tìm danh mục..."
+                    EmptyMessage="Không tìm thấy danh mục."
+                    Class="w-full"
+                    MatchTriggerWidth="true" />
+        @if (_formCategoryId.HasValue)
+        {
+            <p class="text-xs text-muted-foreground">Đã chọn: @GetCategoryDisplayName(_formCategoryId)</p>
+        }
+    </div>
+    <div class="space-y-1">
+        <label class="text-sm font-medium">Mô tả</label>
+        <BbInput @bind-Value="_formDescription" Placeholder="Mô tả sản phẩm" />
+    </div>
+    <div class="space-y-1">
+        <label class="text-sm font-medium">Hình ảnh</label>
+        @if (HasImage)
+        {
+            <img src="@DisplayImageUrl" class="w-full h-32 object-cover rounded-lg mb-2" alt="Product image" />
+        }
+        <InputFile OnChange="HandleImageSelected" accept="image/*" class="hidden" id="create-product-img" />
+        <label for="create-product-img"
+               class="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm hover:bg-accent hover:text-accent-foreground">
+            <LucideIcon Name="image" Class="h-4 w-4" />
+            <span>@(HasImage ? "Đổi ảnh" : "Chọn ảnh")</span>
+        </label>
+    </div>
+</FormDialog>
 
 <!-- Delete Confirm Dialog -->
-<BbDialog Open="@_showDeleteConfirm" OpenChanged="@(v => _showDeleteConfirm = v)">
-    <BbDialogContent Class="max-w-md">
-        <BbDialogHeader>
-            <BbDialogTitle>Xóa sản phẩm?</BbDialogTitle>
-            <BbDialogDescription>Hành động này không thể hoàn tác.</BbDialogDescription>
-        </BbDialogHeader>
-        <BbDialogFooter>
-            <BbDialogClose>
-                <BbButton Variant="ButtonVariant.Outline">Hủy</BbButton>
-            </BbDialogClose>
-            <BbButton Variant="ButtonVariant.Destructive" OnClick="ConfirmDeleteAsync">Xóa</BbButton>
-        </BbDialogFooter>
-    </BbDialogContent>
-</BbDialog>
+<ConfirmDialog Open="@_showDeleteConfirm"
+               OpenChanged="@(v => _showDeleteConfirm = v)"
+               Title="Xóa sản phẩm?"
+               Description="Hành động này không thể hoàn tác."
+               OnConfirm="ConfirmDeleteAsync" />
 
 <!-- Bulk Delete Confirm Dialog -->
-<BbDialog Open="@_showBulkDeleteConfirm" OpenChanged="@(v => _showBulkDeleteConfirm = v)">
-    <BbDialogContent Class="max-w-md">
-        <BbDialogHeader>
-            <BbDialogTitle>Xóa @_selectedIds.Count sản phẩm?</BbDialogTitle>
-            <BbDialogDescription>Hành động này không thể hoàn tác.</BbDialogDescription>
-        </BbDialogHeader>
-        <BbDialogFooter>
-            <BbDialogClose>
-                <BbButton Variant="ButtonVariant.Outline">Hủy</BbButton>
-            </BbDialogClose>
-            <BbButton Variant="ButtonVariant.Destructive" Loading="@_bulkDeleting" LoadingText="Đang xóa..."
-                      OnClick="HandleBulkDelete">Xóa</BbButton>
-        </BbDialogFooter>
-    </BbDialogContent>
-</BbDialog>
+<ConfirmDialog Open="@_showBulkDeleteConfirm"
+               OpenChanged="@(v => _showBulkDeleteConfirm = v)"
+               Title="@("Xóa " + _selectedIds.Count + " sản phẩm?")"
+               Description="Hành động này không thể hoàn tác."
+               ConfirmLoading="@_bulkDeleting"
+               ConfirmLoadingText="Đang xóa..."
+               OnConfirm="HandleBulkDelete" />
 
 <!-- Configure Dialog (Variants + Modifier Groups) -->
 <BbDialog Open="@_showConfigure" OpenChanged="@(v => { _showConfigure = v; if (!v) { _showVariantForm = false; _showGroupForm = false; _optionFormGroupId = null; } })">
@@ -356,7 +331,7 @@
                                             <tr class="border-b last:border-0 hover:bg-muted/40">
                                                 <td class="px-3 py-2 font-mono text-xs">@v.Code</td>
                                                 <td class="px-3 py-2">@v.Name</td>
-                                                <td class="px-3 py-2 text-right tabular-nums">@v.Price.ToString("#,##0")đ</td>
+                                                <td class="px-3 py-2 text-right tabular-nums">@FormatCurrency(v.Price)</td>
                                                 <td class="px-3 py-2 text-center">@v.SortOrder</td>
                                                 <td class="px-3 py-2 text-center">
                                                     <BbBadge Variant="@(v.IsActive ? BadgeVariant.Default : BadgeVariant.Outline)" Class="text-[10px]">
@@ -477,7 +452,7 @@
                                         <div class="flex items-center justify-between py-1.5">
                                             <div>
                                                 <span class="text-sm">@opt.Name</span>
-                                                <span class="ml-2 text-xs text-muted-foreground">+@opt.PriceDelta.ToString("#,##0")đ</span>
+                                                <span class="ml-2 text-xs text-muted-foreground">+@FormatCurrency(opt.PriceDelta)</span>
                                                 @if (opt.IsDefault)
                                                 {
                                                     <span class="ml-1 text-xs text-muted-foreground">(mặc định)</span>
@@ -578,10 +553,10 @@
                                 <div class="grid grid-cols-2 gap-2">
                                     <div class="space-y-1">
                                         <label class="text-xs font-medium">Kiểu chọn</label>
-                                        <BbCombobox TValue="ModifierSelectionMode"
-                                                    @bind-Value="_gMode"
-                                                    Options="SelectionModeOptions"
-                                                    MatchTriggerWidth="true" />
+                                        <BbSelect TValue="ModifierSelectionMode"
+                                                  @bind-Value="_gMode"
+                                                  Options="SelectionModeOptions"
+                                                  Class="w-full" />
                                     </div>
                                     <div class="space-y-1">
                                         <label class="text-xs font-medium">Thứ tự</label>
@@ -637,72 +612,70 @@
 </BbDialog>
 
 <!-- Edit Dialog -->
-<BbDialog Open="@_showEdit" OpenChanged="@(v => _showEdit = v)">
-    <BbDialogContent Class="max-w-md max-h-[90dvh] overflow-y-auto">
-        <BbDialogHeader>
-            <BbDialogTitle>Sửa sản phẩm</BbDialogTitle>
-            <BbDialogDescription>Cập nhật thông tin sản phẩm.</BbDialogDescription>
-        </BbDialogHeader>
-        <div class="space-y-3 py-4 pr-1" style="max-height: 60vh; overflow-y: auto;">
-            <div class="space-y-1">
-                <label class="text-sm font-medium">Tên sản phẩm <span class="text-destructive">*</span></label>
-                <BbInput @bind-Value="_formName" Placeholder="Tên sản phẩm" />
-            </div>
-            <div class="space-y-1">
-                <label class="text-sm font-medium">Giá (đ) <span class="text-destructive">*</span></label>
-                <BbInput @bind-Value="_formPriceStr" Type="InputType.Number" Placeholder="0" />
-            </div>
-            <div class="space-y-1">
-                <label class="text-sm font-medium">Đơn vị tính</label>
-                <BbInput @bind-Value="_formUnitName" Placeholder="Ví dụ: ly, phần, chai" />
-            </div>
-            <div class="space-y-1">
-                <label class="text-sm font-medium">Danh mục</label>
-                <BbCombobox TValue="Guid?"
-                            @bind-Value="_formCategoryId"
-                            Options="CategoryOptions"
-                            Placeholder="Chọn danh mục..."
-                            SearchPlaceholder="Tìm danh mục..."
-                            EmptyMessage="Không tìm thấy danh mục."
-                            Class="w-full"
-                            MatchTriggerWidth="true" />
-                @if (_formCategoryId.HasValue)
-                {
-                    <p class="text-xs text-muted-foreground">Đã chọn: @GetCategoryDisplayName(_formCategoryId)</p>
-                }
-            </div>
-            <div class="space-y-1">
-                <label class="text-sm font-medium">Mô tả</label>
-                <BbInput @bind-Value="_formDescription" Placeholder="Mô tả sản phẩm" />
-            </div>
-            <div class="space-y-1">
-                <label class="text-sm font-medium">Hình ảnh</label>
-                @if (HasImage)
-                {
-                    <img src="@DisplayImageUrl" class="w-full h-32 object-cover rounded-lg mb-2" alt="Product image" />
-                }
-                <InputFile OnChange="HandleImageSelected" accept="image/*" class="hidden" id="edit-product-img" />
-                <label for="edit-product-img"
-                       class="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm hover:bg-accent hover:text-accent-foreground">
-                    <LucideIcon Name="image" Class="h-4 w-4" />
-                    <span>@(HasImage ? "Đổi ảnh" : "Chọn ảnh")</span>
-                </label>
-            </div>
-        </div>
-        <BbDialogFooter>
-            <BbDialogClose>
-                <BbButton Variant="ButtonVariant.Outline">Hủy</BbButton>
-            </BbDialogClose>
-            <BbButton OnClick="HandleEdit"
-                      Loading="@_saving" LoadingText="Đang lưu..."
-                      Disabled="@(string.IsNullOrWhiteSpace(_formName) || !decimal.TryParse(_formPriceStr, out _))">
-                Cập nhật
-            </BbButton>
-        </BbDialogFooter>
-    </BbDialogContent>
-</BbDialog>
+<FormDialog Open="@_showEdit"
+            OpenChanged="@(v => _showEdit = v)"
+            Title="Sửa sản phẩm"
+            Description="Cập nhật thông tin sản phẩm."
+            SubmitText="Cập nhật"
+            SubmitLoading="@_saving"
+            SubmitLoadingText="Đang lưu..."
+            SubmitDisabled="@(string.IsNullOrWhiteSpace(_formName) || !decimal.TryParse(_formPriceStr, out _))"
+            OnSubmit="HandleEdit">
+    <div class="space-y-1">
+        <label class="text-sm font-medium">Tên sản phẩm <span class="text-destructive">*</span></label>
+        <BbInput @bind-Value="_formName" Placeholder="Tên sản phẩm" />
+    </div>
+    <div class="space-y-1">
+        <label class="text-sm font-medium">Giá (đ) <span class="text-destructive">*</span></label>
+        <BbInput @bind-Value="_formPriceStr" Type="InputType.Number" Placeholder="0" />
+    </div>
+    <div class="space-y-1">
+        <label class="text-sm font-medium">Đơn vị tính</label>
+        <BbInput @bind-Value="_formUnitName" Placeholder="Ví dụ: ly, phần, chai" />
+    </div>
+    <div class="space-y-1">
+        <label class="text-sm font-medium">Danh mục</label>
+        <BbCombobox TValue="Guid?"
+                    @bind-Value="_formCategoryId"
+                    Options="CategoryOptions"
+                    Placeholder="Chọn danh mục..."
+                    SearchPlaceholder="Tìm danh mục..."
+                    EmptyMessage="Không tìm thấy danh mục."
+                    Class="w-full"
+                    MatchTriggerWidth="true" />
+        @if (_formCategoryId.HasValue)
+        {
+            <p class="text-xs text-muted-foreground">Đã chọn: @GetCategoryDisplayName(_formCategoryId)</p>
+        }
+    </div>
+    <div class="space-y-1">
+        <label class="text-sm font-medium">Mô tả</label>
+        <BbInput @bind-Value="_formDescription" Placeholder="Mô tả sản phẩm" />
+    </div>
+    <div class="space-y-1">
+        <label class="text-sm font-medium">Hình ảnh</label>
+        @if (HasImage)
+        {
+            <img src="@DisplayImageUrl" class="w-full h-32 object-cover rounded-lg mb-2" alt="Product image" />
+        }
+        <InputFile OnChange="HandleImageSelected" accept="image/*" class="hidden" id="edit-product-img" />
+        <label for="edit-product-img"
+               class="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm hover:bg-accent hover:text-accent-foreground">
+            <LucideIcon Name="image" Class="h-4 w-4" />
+            <span>@(HasImage ? "Đổi ảnh" : "Chọn ảnh")</span>
+        </label>
+    </div>
+</FormDialog>
 
 @code {
+    private static readonly CultureInfo VnCulture = CultureInfo.GetCultureInfo("vi-VN");
+
+    private static string FormatNumber(decimal amount)
+        => amount.ToString("N0", VnCulture);
+
+    private static string FormatCurrency(decimal amount)
+        => string.Concat(FormatNumber(amount), "đ");
+
     private List<ProductDto> _items = [];
     private List<CategoryItem> _allCategories = [];
     private bool _loading, _saving;
@@ -711,6 +684,9 @@
     private Guid? _filterCategoryId;
     private string _filterPriceMin = "";
     private string _filterPriceMax = "";
+    private (double Start, double End) _priceRange = (0, 500000);
+    private int _priceRangeMax = 500000;
+    private bool _priceRangeInitialized;
     private string _sortOption = "name_asc";
     private string? _error;
 
@@ -743,7 +719,10 @@
 
     private void ToggleSelectAll(bool selected)
     {
-        _selectedIds = selected ? _items.Select(i => i.Id).ToHashSet() : [];
+        if (selected)
+            foreach (var id in _items.Select(i => i.Id)) _selectedIds.Add(id);
+        else
+            foreach (var id in _items.Select(i => i.Id)) _selectedIds.Remove(id);
         _ = PersistStateAsync();
     }
 
@@ -782,7 +761,7 @@
         [new SelectOption<Guid?>(null, "Không có"), .. _allCategories.Select(c => new SelectOption<Guid?>(c.Id, c.Name))];
 
     private List<SelectOption<Guid?>> FilterCategoryOptions =>
-        [new SelectOption<Guid?>(null, "✕ Tất cả danh mục"), .. _allCategories.Select(c => new SelectOption<Guid?>(c.Id, c.Name))];
+        [new SelectOption<Guid?>(null, "Tất cả danh mục"), .. _allCategories.Select(c => new SelectOption<Guid?>(c.Id, c.Name))];
 
     protected override async Task OnInitializedAsync()
     {
@@ -833,18 +812,44 @@
         return DebounceReloadAsync("products.search.load");
     }
 
-    private Task OnPriceMinChangedAsync(string value)
+    private Task OnSearchInputAsync(ChangeEventArgs args)
     {
-        _filterPriceMin = value;
-        _skip = 0;
-        return DebounceReloadAsync("products.price-min.load");
+        var value = args.Value?.ToString() ?? string.Empty;
+        return OnSearchChangedAsync(value);
     }
 
-    private Task OnPriceMaxChangedAsync(string value)
+    private Task OnFilterCategoryChangedAsync(Guid? value)
     {
-        _filterPriceMax = value;
+        _filterCategoryId = value;
         _skip = 0;
-        return DebounceReloadAsync("products.price-max.load");
+        return ReloadAsyncNonBlocking();
+    }
+
+    private Task OnSortOptionChangedAsync(string value)
+    {
+        _sortOption = value;
+        _skip = 0;
+        return ReloadAsyncNonBlocking();
+    }
+
+    private Task ReloadAsyncNonBlocking()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await LoadAsync(showLoading: true);
+            StateHasChanged();
+        });
+
+        return Task.CompletedTask;
+    }
+
+    private Task OnPriceRangeChangedAsync((double Start, double End) value)
+    {
+        _priceRange = value;
+        _filterPriceMin = ((int)value.Start).ToString();
+        _filterPriceMax = ((int)value.End).ToString();
+        _skip = 0;
+        return DebounceReloadAsync("products.price-range.load", 200);
     }
 
     private Task DebounceReloadAsync(string key, int delayMs = 300)
@@ -960,6 +965,8 @@
             StateHasChanged();
         try
         {
+            await SyncPriceRangeBoundsAsync();
+
             var serverFilter = BuildServerFilter();
             var order = BuildOrder();
 
@@ -1006,11 +1013,59 @@
         _loading = false;
     }
 
-    private ProductFilterInput? BuildServerFilter()
+    private async Task SyncPriceRangeBoundsAsync()
+    {
+        var cacheKey = $"products.price.max.{_search.Trim().ToLowerInvariant()}.{_filterCategoryId}";
+        var dynamicMax = await LazyCache.GetOrLoadAsync(
+            cacheKey,
+            async () =>
+            {
+                var baseFilter = BuildServerFilter(includePrice: false);
+                var allItems = await FetchAllProductsAsync(baseFilter, null);
+
+                if (_filterCategoryId.HasValue)
+                    allItems = allItems.Where(i => i.CategoryId == _filterCategoryId).ToList();
+
+                if (allItems.Count == 0)
+                    return 50000;
+
+                var rawMax = allItems.Max(i => i.Price);
+                var rounded = (int)(Math.Ceiling(rawMax / 5000m) * 5000m);
+                return Math.Max(50000, rounded);
+            },
+            TimeSpan.FromSeconds(10));
+
+        _priceRangeMax = dynamicMax;
+
+        if (!_priceRangeInitialized)
+        {
+            _priceRange = (0, _priceRangeMax);
+            _priceRangeInitialized = true;
+            return;
+        }
+
+        var start = Math.Clamp((int)_priceRange.Start, 0, _priceRangeMax);
+        var end = Math.Clamp((int)_priceRange.End, start, _priceRangeMax);
+        _priceRange = (start, end);
+
+        if (decimal.TryParse(_filterPriceMin, out var min) && min > _priceRangeMax)
+            _filterPriceMin = start.ToString();
+
+        if (decimal.TryParse(_filterPriceMax, out var max) && max > _priceRangeMax)
+            _filterPriceMax = end.ToString();
+    }
+
+    private ProductFilterInput? BuildServerFilter(bool includePrice = true)
     {
         var hasSearch = !string.IsNullOrWhiteSpace(_search);
         var hasPriceMin = decimal.TryParse(_filterPriceMin, out var minPrice);
         var hasPriceMax = decimal.TryParse(_filterPriceMax, out var maxPrice);
+
+        if (!includePrice)
+        {
+            hasPriceMin = false;
+            hasPriceMax = false;
+        }
 
         if (!hasSearch && !hasPriceMin && !hasPriceMax)
             return null;
