@@ -1,9 +1,10 @@
 @page "/combos"
+@inherits SelectorStoreComponent<CombosUiState>
 @inject IGoiMonClient Client
 @inject ToastService ToastService
-@inject IStateReader<UiCacheState> UiStateReader
-@inject IStateWriter<UiCacheState> UiStateWriter
+@inject IStateWriter<CombosUiState> UiStateWriter
 @inject GoiMon.Client.Features.ImageUpload.Services.IImageUploadService ImageUploadSvc
+@inject IDebounceManager DebounceManager
 
 @using EasyAppDev.Blazor.Store.Core
 @using GoiMon.Client.State
@@ -32,23 +33,17 @@
     <div class="flex flex-wrap items-center gap-3">
         <div class="w-72">
             <BbInput Value="@_search"
-                     ValueChanged="@(async v => { _search = v; _skip = 0; await LoadAsync(); })"
-                     UpdateTiming="UpdateTiming.Debounced"
-                     DebounceInterval="400"
+                     ValueChanged="OnSearchChangedAsync"
                      Placeholder="Tìm kiếm combo..." />
         </div>
         <div class="w-40">
             <BbInput Value="@_filterPriceMin"
-                     ValueChanged="@(async v => { _filterPriceMin = v; _skip = 0; await LoadAsync(); })"
-                     UpdateTiming="UpdateTiming.Debounced"
-                     DebounceInterval="400"
+                     ValueChanged="OnPriceMinChangedAsync"
                      Placeholder="Giá từ" />
         </div>
         <div class="w-40">
             <BbInput Value="@_filterPriceMax"
-                     ValueChanged="@(async v => { _filterPriceMax = v; _skip = 0; await LoadAsync(); })"
-                     UpdateTiming="UpdateTiming.Debounced"
-                     DebounceInterval="400"
+                     ValueChanged="OnPriceMaxChangedAsync"
                      Placeholder="Giá đến" />
         </div>
         <div class="w-48">
@@ -506,7 +501,7 @@
 
     private bool TryRestoreState()
     {
-        var cached = UiStateReader.GetState().Combos;
+        var cached = State.Cache;
         if (cached is null) return false;
 
         _search = cached.Search;
@@ -522,6 +517,9 @@
         _selectedIds = cached.SelectedIds.ToHashSet();
         return true;
     }
+
+    protected override object SelectState(CombosUiState state)
+        => (state.Cache?.Search, state.Cache?.Skip, state.Cache?.Take, state.Cache?.Total, state.Cache?.Items.Count, state.Cache?.Products.Count, state.Cache?.SelectedIds.Count);
 
     private Task PersistStateAsync()
     {
@@ -540,7 +538,36 @@
             _allProducts.Select(p => new ProductLookupItem(p.Id, p.Name)).ToList(),
             _selectedIds.ToList());
 
-        return UiStateWriter.UpdateAsync(s => s with { Combos = snapshot }, "cache.combos");
+        return UiStateWriter.UpdateAsync(s => s with { Cache = snapshot }, "cache.combos");
+    }
+
+    private Task OnSearchChangedAsync(string value)
+    {
+        _search = value;
+        _skip = 0;
+        return DebounceReloadAsync("combos.search.load");
+    }
+
+    private Task OnPriceMinChangedAsync(string value)
+    {
+        _filterPriceMin = value;
+        _skip = 0;
+        return DebounceReloadAsync("combos.price-min.load");
+    }
+
+    private Task OnPriceMaxChangedAsync(string value)
+    {
+        _filterPriceMax = value;
+        _skip = 0;
+        return DebounceReloadAsync("combos.price-max.load");
+    }
+
+    private Task DebounceReloadAsync(string key, int delayMs = 300)
+    {
+        return DebounceManager.Debounce(
+            key,
+            async () => await InvokeAsync(async () => await LoadAsync()),
+            delayMs);
     }
 
     private async Task LoadProductsAsync(bool silent = false)

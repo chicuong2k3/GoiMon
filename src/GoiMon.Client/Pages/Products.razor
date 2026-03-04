@@ -1,9 +1,10 @@
 @page "/products"
+@inherits SelectorStoreComponent<ProductsUiState>
 @inject IGoiMonClient Client
 @inject ToastService ToastService
-@inject IStateReader<UiCacheState> UiStateReader
-@inject IStateWriter<UiCacheState> UiStateWriter
+@inject IStateWriter<ProductsUiState> UiStateWriter
 @inject GoiMon.Client.Features.ImageUpload.Services.IImageUploadService ImageUploadSvc
+@inject IDebounceManager DebounceManager
 
 @using EasyAppDev.Blazor.Store.Core
 @using GoiMon.Client.State
@@ -32,9 +33,7 @@
     <div class="flex flex-wrap items-center gap-3">
         <div class="w-72">
             <BbInput Value="@_search"
-                     ValueChanged="@(async v => { _search = v; _skip = 0; await LoadAsync(); })"
-                     UpdateTiming="UpdateTiming.Debounced"
-                     DebounceInterval="400"
+                     ValueChanged="OnSearchChangedAsync"
                      Placeholder="Tìm kiếm sản phẩm..." />
         </div>
         <div class="flex items-center gap-2">
@@ -53,16 +52,12 @@
     <div class="flex flex-wrap items-center gap-3">
         <div class="w-40">
             <BbInput Value="@_filterPriceMin"
-                     ValueChanged="@(async v => { _filterPriceMin = v; _skip = 0; await LoadAsync(); })"
-                     UpdateTiming="UpdateTiming.Debounced"
-                     DebounceInterval="400"
+                     ValueChanged="OnPriceMinChangedAsync"
                      Placeholder="Giá từ" />
         </div>
         <div class="w-40">
             <BbInput Value="@_filterPriceMax"
-                     ValueChanged="@(async v => { _filterPriceMax = v; _skip = 0; await LoadAsync(); })"
-                     UpdateTiming="UpdateTiming.Debounced"
-                     DebounceInterval="400"
+                     ValueChanged="OnPriceMaxChangedAsync"
                      Placeholder="Giá đến" />
         </div>
         <div class="w-56">
@@ -804,7 +799,7 @@
 
     private bool TryRestoreState()
     {
-        var cached = UiStateReader.GetState().Products;
+        var cached = State.Cache;
         if (cached is null) return false;
 
         _search = cached.Search;
@@ -818,6 +813,9 @@
         return true;
     }
 
+    protected override object SelectState(ProductsUiState state)
+        => (state.Cache?.Search, state.Cache?.FilterCategoryId, state.Cache?.Skip, state.Cache?.Take, state.Cache?.Total, state.Cache?.Items.Count, state.Cache?.Categories.Count, state.Cache?.SelectedIds.Count);
+
     private Task PersistStateAsync()
     {
         var snapshot = new ProductPageCache(
@@ -830,7 +828,36 @@
             _allCategories.Select(c => new CategoryLookupItem(c.Id, c.Name)).ToList(),
             _selectedIds.ToList());
 
-        return UiStateWriter.UpdateAsync(s => s with { Products = snapshot }, "cache.products");
+        return UiStateWriter.UpdateAsync(s => s with { Cache = snapshot }, "cache.products");
+    }
+
+    private Task OnSearchChangedAsync(string value)
+    {
+        _search = value;
+        _skip = 0;
+        return DebounceReloadAsync("products.search.load");
+    }
+
+    private Task OnPriceMinChangedAsync(string value)
+    {
+        _filterPriceMin = value;
+        _skip = 0;
+        return DebounceReloadAsync("products.price-min.load");
+    }
+
+    private Task OnPriceMaxChangedAsync(string value)
+    {
+        _filterPriceMax = value;
+        _skip = 0;
+        return DebounceReloadAsync("products.price-max.load");
+    }
+
+    private Task DebounceReloadAsync(string key, int delayMs = 300)
+    {
+        return DebounceManager.Debounce(
+            key,
+            async () => await InvokeAsync(async () => await LoadAsync()),
+            delayMs);
     }
 
     private async Task LoadCategoriesAsync(bool silent = false)

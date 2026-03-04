@@ -1,9 +1,10 @@
 @page "/checkout"
+@inherits SelectorStoreComponent<CheckoutUiState>
 @inject IGoiMonClient Client
 @inject ToastService ToastService
 @inject NavigationManager Navigation
-@inject IStateReader<UiCacheState> UiStateReader
-@inject IStateWriter<UiCacheState> UiStateWriter
+@inject IStateWriter<CheckoutUiState> UiStateWriter
+@inject IDebounceManager DebounceManager
 
 @using EasyAppDev.Blazor.Store.Core
 @using GoiMon.Client.State
@@ -42,8 +43,6 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <BbInput Value="@_search"
                              ValueChanged="OnSearchChangedAsync"
-                             UpdateTiming="UpdateTiming.Debounced"
-                             DebounceInterval="300"
                              Placeholder="@(_mode == ProductMode ? "Tìm món theo tên..." : "Tìm combo theo tên...")" />
                     @if (_mode == ProductMode)
                     {
@@ -506,7 +505,7 @@
 
     private bool TryRestoreState()
     {
-        var cached = UiStateReader.GetState().Checkout;
+        var cached = State.Cache;
         if (cached is null)
         {
             return false;
@@ -565,6 +564,9 @@
         return true;
     }
 
+    protected override object SelectState(CheckoutUiState state)
+        => (state.Cache?.Mode, state.Cache?.Search, state.Cache?.SelectedCategory, state.Cache?.Products.Count, state.Cache?.Combos.Count, state.Cache?.Cart.Count);
+
     private Task PersistStateAsync()
     {
         var snapshot = new CheckoutPageState(
@@ -609,13 +611,16 @@
                     modifier.Qty,
                     modifier.PriceDelta)).ToList())).ToList());
 
-        return UiStateWriter.UpdateAsync(state => state with { Checkout = snapshot }, "cache.checkout");
+        return UiStateWriter.UpdateAsync(state => state with { Cache = snapshot }, "cache.checkout");
     }
 
     private async Task OnSearchChangedAsync(string value)
     {
         _search = value;
-        await PersistStateAsync();
+        await DebounceManager.Debounce(
+            "checkout.search.persist",
+            async () => await InvokeAsync(PersistStateAsync),
+            300);
     }
 
     private async Task SwitchToProductModeAsync()

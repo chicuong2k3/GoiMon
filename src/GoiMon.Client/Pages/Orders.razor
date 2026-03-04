@@ -1,9 +1,10 @@
 @page "/orders"
+@inherits SelectorStoreComponent<OrdersUiState>
 @inject IGoiMonClient Client
 @inject ToastService ToastService
-@inject IStateReader<UiCacheState> UiStateReader
-@inject IStateWriter<UiCacheState> UiStateWriter
+@inject IStateWriter<OrdersUiState> UiStateWriter
 @inject IJSRuntime JS
+@inject IDebounceManager DebounceManager
 @implements IAsyncDisposable
 
 @using EasyAppDev.Blazor.Store.Core
@@ -173,7 +174,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var cached = UiStateReader.GetState().Orders;
+        var cached = State.Cache;
         if (cached is not null)
         {
             _orders = cached.Items.ToList();
@@ -194,6 +195,9 @@
             _ = ReloadFromStartAsync(showLoading: false);
         }
     }
+
+    protected override object SelectState(OrdersUiState state)
+        => (state.Cache?.ActiveTab, state.Cache?.SelectedOrderId, state.Cache?.Items.Count);
 
     private async Task ReloadFromStartAsync(bool showLoading = true)
     {
@@ -392,10 +396,16 @@
 
     private async Task PersistState()
     {
-        await UiStateWriter.UpdateAsync(s => s with
-        {
-            Orders = new OrderPageState(_activeTab, _selectedId, _orders)
-        }, "cache.orders");
+        await DebounceManager.Debounce(
+            "orders.persist",
+            async () =>
+            {
+                await UiStateWriter.UpdateAsync(s => s with
+                {
+                    Cache = new OrderPageState(_activeTab, _selectedId, _orders)
+                }, "cache.orders");
+            },
+            250);
     }
 
     private static OrderFilterInput BuildFilterForTab(string tab)

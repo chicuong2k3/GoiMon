@@ -1,13 +1,28 @@
 namespace GoiMon.Client.State;
 
-public record UiCacheState(
-    CategoryPageCache? Categories,
-    ProductPageCache? Products,
-    ComboPageCache? Combos,
-    OrderPageState? Orders,
-    CheckoutPageState? Checkout)
+public record CategoriesUiState(CategoryPageCache? Cache)
 {
-    public static UiCacheState Initial => new(null, null, null, null, null);
+    public static CategoriesUiState Initial => new((CategoryPageCache?)null);
+}
+
+public record ProductsUiState(ProductPageCache? Cache)
+{
+    public static ProductsUiState Initial => new((ProductPageCache?)null);
+}
+
+public record CombosUiState(ComboPageCache? Cache)
+{
+    public static CombosUiState Initial => new((ComboPageCache?)null);
+}
+
+public record OrdersUiState(OrderPageState? Cache)
+{
+    public static OrdersUiState Initial => new((OrderPageState?)null);
+}
+
+public record CheckoutUiState(CheckoutPageState? Cache)
+{
+    public static CheckoutUiState Initial => new((CheckoutPageState?)null);
 }
 
 public record CategoryPageCache(

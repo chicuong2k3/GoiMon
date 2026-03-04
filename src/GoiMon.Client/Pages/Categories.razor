@@ -1,8 +1,9 @@
 @page "/categories"
+@inherits SelectorStoreComponent<CategoriesUiState>
 @inject IGoiMonClient Client
 @inject ToastService ToastService
-@inject IStateReader<UiCacheState> UiStateReader
-@inject IStateWriter<UiCacheState> UiStateWriter
+@inject IStateWriter<CategoriesUiState> UiStateWriter
+@inject IDebounceManager DebounceManager
 
 @using EasyAppDev.Blazor.Store.Core
 @using GoiMon.Client.State
@@ -31,15 +32,13 @@
     <div class="flex items-center gap-3">
         <div class="w-72">
             <BbInput Value="@_search"
-                     ValueChanged="@(async v => { _search = v; _skip = 0; await LoadAsync(); })"
-                     UpdateTiming="UpdateTiming.Debounced"
-                     DebounceInterval="400"
+                     ValueChanged="OnSearchChangedAsync"
                      Placeholder="Tìm kiếm danh mục..." />
         </div>
         <div class="w-56">
             <BbCombobox TValue="string"
                         Value="@_sortOption"
-                        ValueChanged="@(async v => { _sortOption = v; _skip = 0; await LoadAsync(); })"
+                        ValueChanged="OnSortChangedAsync"
                         Options="SortOptions"
                         Placeholder="Sắp xếp"
                         SearchPlaceholder="Tìm kiểu sắp xếp..."
@@ -281,7 +280,7 @@
 
     private bool TryRestoreState()
     {
-        var cached = UiStateReader.GetState().Categories;
+        var cached = State.Cache;
         if (cached is null) return false;
 
         _search = cached.Search;
@@ -293,6 +292,9 @@
         return true;
     }
 
+    protected override object SelectState(CategoriesUiState state)
+        => (state.Cache?.Search, state.Cache?.Skip, state.Cache?.Take, state.Cache?.Total, state.Cache?.Items.Count, state.Cache?.SelectedIds.Count);
+
     private Task PersistStateAsync()
     {
         var snapshot = new CategoryPageCache(
@@ -303,7 +305,25 @@
             _items.Select(i => new CategoryListItem(i.Id, i.Name)).ToList(),
             _selectedIds.ToList());
 
-        return UiStateWriter.UpdateAsync(s => s with { Categories = snapshot }, "cache.categories");
+        return UiStateWriter.UpdateAsync(s => s with { Cache = snapshot }, "cache.categories");
+    }
+
+    private Task OnSearchChangedAsync(string value)
+    {
+        _search = value;
+        _skip = 0;
+
+        return DebounceManager.Debounce(
+            "categories.search.load",
+            async () => await InvokeAsync(async () => await LoadAsync()),
+            300);
+    }
+
+    private Task OnSortChangedAsync(string value)
+    {
+        _sortOption = value;
+        _skip = 0;
+        return LoadAsync();
     }
 
     private async Task LoadAsync(bool showLoading = false)

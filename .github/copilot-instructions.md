@@ -57,6 +57,16 @@
     - **Tests**: Mirror the feature structure — `tests/GoiMon.Api.Tests/Features/{FeatureName}/`, `tests/GoiMon.Client.Tests/Features/{FeatureName}/`.
     - **NEVER** place feature-specific code in shared/root folders (e.g., don't put authentication models in a generic `Models/` folder). Each feature owns its files.
     - **Shared code** (used by 2+ features) goes in `Shared/` or `Infrastructure/` folders — but only after confirming it is truly cross-cutting.
+- **State management performance rules (MUST follow)** — Optimize `EasyAppDev.Blazor.Store` usage for render performance and maintainability:
+    - **Prefer multiple focused stores** over one monolithic app/UI store. In GoiMon.Client, use domain stores (`CategoriesUiState`, `ProductsUiState`, `CombosUiState`, `OrdersUiState`, `CheckoutUiState`) and register each with `AddScopedStoreWithUtilities()`.
+    - **Use selectors for granular re-rendering** on state-driven components. For all pages/screens bound to store state, MUST inherit `SelectorStoreComponent<TState>` and implement `SelectState(...)` so UI re-renders only when selected data changes.
+    - **Keep state minimal and derived**: avoid duplicating computable values in state records; expose computed/derived values as properties or dedicated derived records.
+    - **Batch and debounce updates** for high-frequency events (search, scroll, resize). Prefer debounced update helpers or a single combined update over sequential updates, and ALWAYS apply debouncing wherever feasible.
+    - **Debounced updates in selector components:** `UpdateDebounced` exists on `StoreComponentWithUtilities<TState>`. For pages using `SelectorStoreComponent<TState>`, use injected `IDebounceManager` as the equivalent debounced update mechanism.
+    - **Store boundaries by domain**: do not write unrelated page cache into another domain store. Keep cache payload and update action names scoped (`cache.categories`, `cache.products`, etc.).
+    - **Current GoiMon.Client baseline (required)**: `Categories.razor`, `Products.razor`, `Combos.razor`, `Checkout.razor`, `Orders.razor` use selector-based store subscriptions with domain stores.
+    - **Async/UI patterns**: optimistic updates are allowed only for reversible operations with clear rollback; for critical operations prefer server-confirmed updates.
+    - **Performance validation**: before/after optimization, record render/update hotspots (component or event level) and verify no behavior regression.
 
 ## Available Agents
 
