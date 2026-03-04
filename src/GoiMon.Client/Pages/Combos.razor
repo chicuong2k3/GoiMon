@@ -1,10 +1,9 @@
 @page "/combos"
-@inherits SelectorStoreComponent<CombosUiState>
+@inherits StoreComponentWithUtilities<CombosUiState>
 @inject IGoiMonClient Client
 @inject ToastService ToastService
 @inject IStateWriter<CombosUiState> UiStateWriter
 @inject GoiMon.Client.Features.ImageUpload.Services.IImageUploadService ImageUploadSvc
-@inject IDebounceManager DebounceManager
 
 @using EasyAppDev.Blazor.Store.Core
 @using GoiMon.Client.State
@@ -409,7 +408,6 @@
     private string _formImageUrl = "";
     private string? _imagePreviewUrl;
     private IBrowserFile? _pendingImage;
-    private bool _uploadingImage;
     private string? DisplayImageUrl => _imagePreviewUrl ?? (string.IsNullOrEmpty(_formImageUrl) ? null : _formImageUrl);
     private bool HasImage => DisplayImageUrl is not null;
     private bool _showDeleteConfirm;
@@ -518,9 +516,6 @@
         return true;
     }
 
-    protected override object SelectState(CombosUiState state)
-        => (state.Cache?.Search, state.Cache?.Skip, state.Cache?.Take, state.Cache?.Total, state.Cache?.Items.Count, state.Cache?.Products.Count, state.Cache?.SelectedIds.Count);
-
     private Task PersistStateAsync()
     {
         var snapshot = new ComboPageCache(
@@ -574,8 +569,17 @@
     {
         try
         {
-            _allProducts = await FetchAllProductsAsync();
-            await PersistStateAsync();
+            var asyncExecutor = RequireAsyncExecutor();
+            _allProducts = await asyncExecutor.ExecuteCachedAsync(
+                "combos.lookup.products",
+                FetchAllProductsFromApiAsync,
+                loading: state => state,
+                success: (state, products) => state with
+                {
+                    Cache = BuildCacheWithProducts(state.Cache, products)
+                },
+                error: (state, _) => state,
+                cacheFor: TimeSpan.FromMinutes(5));
         }
         catch (Exception ex)
         {
@@ -586,11 +590,30 @@
 
     private async Task EnsureProductsLoadedAsync(bool forceRefresh = false)
     {
+        var asyncExecutor = RequireAsyncExecutor();
+        if (forceRefresh)
+            await asyncExecutor.InvalidateCacheAsync("combos.lookup.products");
+
         if (forceRefresh || _allProducts.Count == 0)
             await LoadProductsAsync(silent: true);
     }
 
-    private async Task<List<ProductItem>> FetchAllProductsAsync()
+    private IAsyncActionExecutor<CombosUiState> RequireAsyncExecutor()
+        => AsyncExecutor ?? throw new InvalidOperationException("AsyncExecutor is not available.");
+
+    private static ComboPageCache BuildCacheWithProducts(ComboPageCache? currentCache, IReadOnlyList<ProductItem> products)
+    {
+        var productLookup = products.Select(product => new ProductLookupItem(product.Id, product.Name)).ToList();
+
+        if (currentCache is null)
+        {
+            return new ComboPageCache(string.Empty, 0, 5, 0, [], productLookup, []);
+        }
+
+        return currentCache with { Products = productLookup };
+    }
+
+    private async Task<List<ProductItem>> FetchAllProductsFromApiAsync()
     {
         var pageSize = 100;
         const int minPageSize = 1;
@@ -879,10 +902,7 @@
     private async Task<string?> UploadPendingImageAsync(string folder)
     {
         if (_pendingImage is null) return null;
-        _uploadingImage = true;
-        StateHasChanged();
         var url = await ImageUploadSvc.UploadAsync(_pendingImage, folder);
-        _uploadingImage = false;
         _pendingImage = null;
         _imagePreviewUrl = null;
         if (url is null) ToastService.Error("Tải ảnh thất bại.");

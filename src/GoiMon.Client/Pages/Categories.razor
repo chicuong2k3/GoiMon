@@ -1,9 +1,8 @@
 @page "/categories"
-@inherits SelectorStoreComponent<CategoriesUiState>
+@inherits StoreComponentWithUtilities<CategoriesUiState>
 @inject IGoiMonClient Client
 @inject ToastService ToastService
 @inject IStateWriter<CategoriesUiState> UiStateWriter
-@inject IDebounceManager DebounceManager
 
 @using EasyAppDev.Blazor.Store.Core
 @using GoiMon.Client.State
@@ -16,12 +15,12 @@
         @if (_selectedIds.Count > 0)
         {
             <BbButton Variant="ButtonVariant.Destructive" Size="ButtonSize.Small"
-                      OnClick="OpenBulkDeleteConfirm">
+                      OnClick="OpenBulkDeleteConfirmAsync">
                 <LucideIcon Name="trash-2" Class="h-4 w-4 mr-1" />
                 Xóa (@_selectedIds.Count)
             </BbButton>
         }
-        <BbButton OnClick="OpenCreate" Size="ButtonSize.Small">
+        <BbButton OnClick="OpenCreateAsync" Size="ButtonSize.Small">
             <LucideIcon Name="plus" Class="h-4 w-4 mr-1" />
             Thêm danh mục
         </BbButton>
@@ -95,12 +94,12 @@
                             <td class="px-4 py-3 text-right">
                                 <div class="flex justify-end gap-1">
                                     <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall"
-                                              AriaLabel="Sửa" OnClick="() => OpenEdit(item)">
+                                              AriaLabel="Sửa" OnClick="() => OpenEditAsync(item)">
                                         <LucideIcon Name="pencil" Class="h-4 w-4" />
                                     </BbButton>
                                     <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall"
                                               AriaLabel="Xóa" Class="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                              OnClick="() => OpenDeleteConfirm(item.Id)">
+                                              OnClick="() => OpenDeleteConfirmAsync(item.Id)">
                                         <LucideIcon Name="trash-2" Class="h-4 w-4" />
                                     </BbButton>
                                 </div>
@@ -241,7 +240,11 @@
         _ = PersistStateAsync();
     }
 
-    private void OpenBulkDeleteConfirm() => _showBulkDeleteConfirm = true;
+    private async Task OpenBulkDeleteConfirmAsync()
+    {
+        _showBulkDeleteConfirm = true;
+        await InvokeAsync(StateHasChanged);
+    }
 
     private async Task HandleBulkDelete()
     {
@@ -291,9 +294,6 @@
         _selectedIds = cached.SelectedIds.ToHashSet();
         return true;
     }
-
-    protected override object SelectState(CategoriesUiState state)
-        => (state.Cache?.Search, state.Cache?.Skip, state.Cache?.Take, state.Cache?.Total, state.Cache?.Items.Count, state.Cache?.SelectedIds.Count);
 
     private Task PersistStateAsync()
     {
@@ -400,8 +400,20 @@
         return nameMatches;
     }
 
-    private void OpenCreate() { _formName = ""; _showCreate = true; }
-    private void OpenEdit(CategoryDto item) { _editId = item.Id; _formName = item.Name; _showEdit = true; }
+    private async Task OpenCreateAsync()
+    {
+        _formName = "";
+        _showCreate = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task OpenEditAsync(CategoryDto item)
+    {
+        _editId = item.Id;
+        _formName = item.Name;
+        _showEdit = true;
+        await InvokeAsync(StateHasChanged);
+    }
 
     private async Task HandleCreate()
     {
@@ -468,10 +480,11 @@
         }
     }
 
-    private void OpenDeleteConfirm(Guid id)
+    private async Task OpenDeleteConfirmAsync(Guid id)
     {
         _pendingDeleteId = id;
         _showDeleteConfirm = true;
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task ConfirmDeleteAsync()

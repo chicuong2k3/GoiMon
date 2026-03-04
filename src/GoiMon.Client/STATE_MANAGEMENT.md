@@ -30,11 +30,17 @@ Focused stores provide:
 - lower risk of accidental regressions
 - better team parallelism
 
-## Selector Pattern (Granular Re-render)
+## Choosing Component Base
 
-When a component binds to store state, use selector-based subscription.
+Choose the page/component base class by interaction pattern:
 
-Mandatory rule in GoiMon.Client: all state-driven pages/screens must inherit `SelectorStoreComponent<TState>`.
+- `StoreComponentWithUtilities<TState>` for interaction-heavy screens with local UI state (dialogs, selection state, tab/panel state, form drafts).
+- `SelectorStoreComponent<TState>` for read-heavy components where selected store slices are the main render trigger and local UI state is minimal.
+
+### Selector Safety Rule
+
+Selector render-gating can block local UI updates when selected store values do not change.
+Do not use selector-based pages for dialog-heavy CRUD screens unless all local interaction triggers are explicitly represented in the render trigger strategy.
 
 ```razor
 @inherits SelectorStoreComponent<OrdersUiState>
@@ -54,15 +60,15 @@ Recommended selector patterns:
 
 ## Applied Coverage (Current Baseline)
 
-Selector-based store subscriptions are already applied to:
+Interaction-heavy pages currently use `StoreComponentWithUtilities<TState>`:
 
-- `Pages/Categories.razor` (`SelectorStoreComponent<CategoriesUiState>`)
-- `Pages/Products.razor` (`SelectorStoreComponent<ProductsUiState>`)
-- `Pages/Combos.razor` (`SelectorStoreComponent<CombosUiState>`)
-- `Pages/Checkout.razor` (`SelectorStoreComponent<CheckoutUiState>`)
-- `Pages/Orders.razor` (`SelectorStoreComponent<OrdersUiState>`)
+- `Pages/Categories.razor` (`StoreComponentWithUtilities<CategoriesUiState>`)
+- `Pages/Products.razor` (`StoreComponentWithUtilities<ProductsUiState>`)
+- `Pages/Combos.razor` (`StoreComponentWithUtilities<CombosUiState>`)
+- `Pages/Checkout.razor` (`StoreComponentWithUtilities<CheckoutUiState>`)
+- `Pages/Orders.razor` (`StoreComponentWithUtilities<OrdersUiState>`)
 
-Any new state-driven page should follow this same pattern.
+Use selector-based components selectively for read-heavy views/components.
 
 ## Update Patterns
 
@@ -81,11 +87,11 @@ Any new state-driven page should follow this same pattern.
 
 Mandatory policy in GoiMon.Client: always apply debounced updates for every feasible high-frequency input/event path.
 
-Because GoiMon pages use `SelectorStoreComponent<TState>` for granular re-rendering, the equivalent debounced pattern is:
+Preferred approach:
 
-1. Inject `IDebounceManager`
-2. Debounce expensive update/load callbacks
-3. Execute UI-bound logic via `InvokeAsync(...)`
+1. Use `UpdateDebounced` when updating store-backed state slices.
+2. Use `IDebounceManager` for explicit key-based debounce flows.
+3. Execute UI-bound logic via `InvokeAsync(...)` when needed.
 
 Example:
 
@@ -120,6 +126,114 @@ Applied debounce coverage (current baseline):
 - `Pages/Checkout.razor` (search state persistence)
 - `Pages/Orders.razor` (debounced cache persistence)
 
+## Throttled Updates (`UpdateThrottled` Pattern)
+
+`UpdateThrottled` is available on `StoreComponentWithUtilities<TState>`.
+
+Preferred approach: use `UpdateThrottled` directly when suitable; use `IThrottleManager` for explicit key-based throttling of continuous/high-frequency event streams.
+
+Example:
+
+```razor
+@inject IThrottleManager ThrottleManager
+
+@code {
+  private Task OnScrollAsync(EventArgs _)
+    => ThrottleManager.Throttle(
+      "orders.scroll.load-next",
+      async () => await InvokeAsync(LoadNextPageAsync),
+      100,
+      leading: true);
+}
+```
+
+Interval guidance:
+
+- Scroll/mouse tracking: ~100ms
+- Resize/layout recalculation: 150-250ms
+- Realtime streams/analytics bursts: 200-500ms
+
+Mandatory policy in GoiMon.Client: always apply throttling for continuous high-frequency event paths wherever feasible.
+
+Applied throttle coverage (current baseline):
+
+- `Pages/Orders.razor` (`@onscroll` load-next handling)
+
+Audit reference:
+
+- `PERFORMANCE_EVENT_CHECKLIST.md` (high-frequency event inventory and status)
+
+## LazyLoad / Request Deduplication (`ILazyCache` Pattern)
+
+Use lazy-load caching for repeated read paths to avoid duplicate API calls and improve perceived performance.
+
+In state-driven pages/components, use `ILazyCache.GetOrLoadAsync(...)` for repeated read/query paths.
+
+Example:
+
+```csharp
+var products = await LazyCache.GetOrLoadAsync(
+    "checkout.menu.products",
+    FetchCheckoutProductsAsync,
+    TimeSpan.FromMinutes(2));
+```
+
+Guidelines:
+
+- Use stable, descriptive cache keys (`{feature}.{resource}.{scope}`)
+- Choose TTL by volatility:
+  - 5-10s: tab/count summaries
+  - 1-2m: frequently refreshed list/menu data
+  - 5m+: lookup/reference lists
+- Invalidate (`RemoveAsync`) on force-refresh or after mutations when stale risk is high.
+
+Mandatory policy in GoiMon.Client: always apply lazy-load caching for repeated read/query paths wherever feasible.
+
+Applied lazy-load coverage (current baseline):
+
+- `Pages/Products.razor` — categories lookup (`products.lookup.categories`)
+- `Pages/Combos.razor` — products lookup (`combos.lookup.products`)
+- `Pages/Checkout.razor` — menu products/combos (`checkout.menu.products`, `checkout.menu.combos`)
+- `Pages/Orders.razor` — tab total counts (`orders.tab.count.{tab}`)
+
+## ExecuteCachedAsync (Fetch + State-Update Deduplication)
+
+Use `IAsyncActionExecutor<TState>.ExecuteCachedAsync(...)` when concurrent callers may hit the same read path and the screen also writes store state.
+
+Why:
+
+- Deduplicates network fetch across concurrent callers
+- Deduplicates loading/success/error callbacks (first caller only)
+- Prevents `N×2` duplicated store writes when multiple callers share one `cacheKey`
+
+State-driven pages can use executor directly:
+
+```razor
+@inject IAsyncActionExecutor<ProductsUiState> AsyncExecutor
+
+@code {
+  var categories = await AsyncExecutor.ExecuteCachedAsync(
+    "products.lookup.categories",
+    FetchAllCategoriesFromApiAsync,
+    loading: state => state,
+    success: (state, result) => state with { Cache = BuildCacheWithCategories(state.Cache, result) },
+    error: (state, _) => state,
+    cacheFor: TimeSpan.FromMinutes(5));
+}
+```
+
+Invalidation guidance:
+
+- Use `InvalidateCacheAsync(cacheKey)` after mutation paths that stale the specific cached entry
+- Use `InvalidateCacheByPrefixAsync(prefix)` for grouped invalidation after bulk operations
+- Use `ClearCacheAsync()` for global reset/logout scenarios
+
+Applied `ExecuteCachedAsync` coverage (current baseline):
+
+- `Pages/Products.razor` — categories lookup/state update (`products.lookup.categories`)
+- `Pages/Combos.razor` — products lookup/state update (`combos.lookup.products`)
+- `Pages/Checkout.razor` — menu products/combos lookup + cache snapshot writes (`checkout.menu.products`, `checkout.menu.combos`)
+
 ## Derived State Guidance
 
 Do not store values that can be computed from source data (counts, totals, filtered views) unless needed for persistence/interoperability.
@@ -148,6 +262,6 @@ Avoid optimistic updates for irreversible critical operations.
 When generating or refactoring UI state code:
 
 1. Never re-introduce a monolithic cache store for multiple features.
-2. Prefer selector-based subscriptions for state-driven components.
+2. Choose component base by interaction type; avoid selector gating on dialog-heavy CRUD screens.
 3. Keep state immutable, minimal, and domain-focused.
 4. Update documentation and `copilot-instructions.md` when introducing new store patterns.

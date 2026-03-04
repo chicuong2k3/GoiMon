@@ -131,7 +131,7 @@ public class GoimonAuthenticationStateProvider : AuthenticationStateProvider
                 claims.Add(new Claim(claimType, claimValue));
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             // Log or handle parsing error
             return new List<Claim>();

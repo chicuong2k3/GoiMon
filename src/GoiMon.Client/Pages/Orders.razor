@@ -1,10 +1,9 @@
 @page "/orders"
-@inherits SelectorStoreComponent<OrdersUiState>
+@inherits StoreComponentWithUtilities<OrdersUiState>
 @inject IGoiMonClient Client
 @inject ToastService ToastService
 @inject IStateWriter<OrdersUiState> UiStateWriter
 @inject IJSRuntime JS
-@inject IDebounceManager DebounceManager
 @implements IAsyncDisposable
 
 @using EasyAppDev.Blazor.Store.Core
@@ -140,7 +139,7 @@
             <OrderDetailPanel
                 Order="_selectedOrder"
                 ActionLoading="_actionLoading"
-                ActionType="_actionType"
+                ActionType="CurrentActionType"
                 OnClose="CloseDetail"
                 OnComplete="CompleteOrderAsync"
                 OnCancel="CancelOrderAsync" />
@@ -157,6 +156,7 @@
     private bool _loadingMore;
     private bool _actionLoading;
     private string? _actionType;
+    private string? CurrentActionType => _actionType;
     private string? _error;
     private bool _hasNextPage = true;
     private string? _endCursor;
@@ -195,9 +195,6 @@
             _ = ReloadFromStartAsync(showLoading: false);
         }
     }
-
-    protected override object SelectState(OrdersUiState state)
-        => (state.Cache?.ActiveTab, state.Cache?.SelectedOrderId, state.Cache?.Items.Count);
 
     private async Task ReloadFromStartAsync(bool showLoading = true)
     {
@@ -288,12 +285,19 @@
         if (_loading || _loadingMore || !_hasNextPage)
             return;
 
-        var metrics = await JS.InvokeAsync<ScrollMetrics>("ordersScroll.getMetrics", _orderListRef);
-        if (metrics.ScrollTop + metrics.ClientHeight >= metrics.ScrollHeight - 80)
-        {
-            await LoadNextPageAsync();
-            await InvokeAsync(StateHasChanged);
-        }
+        await ThrottleManager.Throttle(
+            "orders.scroll.load-next",
+            async () =>
+            {
+                var metrics = await JS.InvokeAsync<ScrollMetrics>("ordersScroll.getMetrics", _orderListRef);
+                if (metrics.ScrollTop + metrics.ClientHeight >= metrics.ScrollHeight - 80)
+                {
+                    await LoadNextPageAsync();
+                    await InvokeAsync(StateHasChanged);
+                }
+            },
+            100,
+            leading: true);
     }
 
     private async Task RefreshTabCountsAsync()
@@ -305,10 +309,17 @@
 
     private async Task<int> GetTabTotalCountAsync(string tab)
     {
-        var result = await Client.GetOrders.ExecuteAsync(first: 1, after: null, where: BuildFilterForTab(tab));
-        if (result.Data?.Orders is { } data)
-            return data.TotalCount;
-        return 0;
+        var cacheKey = $"orders.tab.count.{tab}";
+        return await LazyCache.GetOrLoadAsync(
+            cacheKey,
+            async () =>
+            {
+                var result = await Client.GetOrders.ExecuteAsync(first: 1, after: null, where: BuildFilterForTab(tab));
+                if (result.Data?.Orders is { } data)
+                    return data.TotalCount;
+                return 0;
+            },
+            TimeSpan.FromSeconds(10));
     }
 
     private async Task SetTab(string tab)
@@ -445,19 +456,26 @@
             {
                 if (!result.IsErrorResult() && result.Data?.OnOrderChanged is { } changed)
                 {
-                    _ = InvokeAsync(() =>
-                    {
-                        MergeRealtimeOrder(changed);
-
-                        if (DateTimeOffset.UtcNow >= _nextCountRefreshAt)
+                    _ = ThrottleManager.Throttle(
+                        "orders.realtime.merge",
+                        async () =>
                         {
-                            _nextCountRefreshAt = DateTimeOffset.UtcNow.AddSeconds(10);
-                            _ = RefreshTabCountsAsync();
-                        }
+                            await InvokeAsync(() =>
+                            {
+                                MergeRealtimeOrder(changed);
 
-                        StateHasChanged();
-                        return Task.CompletedTask;
-                    });
+                                if (DateTimeOffset.UtcNow >= _nextCountRefreshAt)
+                                {
+                                    _nextCountRefreshAt = DateTimeOffset.UtcNow.AddSeconds(10);
+                                    _ = RefreshTabCountsAsync();
+                                }
+
+                                StateHasChanged();
+                                return Task.CompletedTask;
+                            });
+                        },
+                        200,
+                        leading: true);
                 }
             });
     }

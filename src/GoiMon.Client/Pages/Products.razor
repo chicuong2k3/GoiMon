@@ -1,10 +1,9 @@
 @page "/products"
-@inherits SelectorStoreComponent<ProductsUiState>
+@inherits StoreComponentWithUtilities<ProductsUiState>
 @inject IGoiMonClient Client
 @inject ToastService ToastService
 @inject IStateWriter<ProductsUiState> UiStateWriter
 @inject GoiMon.Client.Features.ImageUpload.Services.IImageUploadService ImageUploadSvc
-@inject IDebounceManager DebounceManager
 
 @using EasyAppDev.Blazor.Store.Core
 @using GoiMon.Client.State
@@ -725,7 +724,6 @@
     private string _formImageUrl = "";
     private string? _imagePreviewUrl;
     private IBrowserFile? _pendingImage;
-    private bool _uploadingImage;
     private string? DisplayImageUrl => _imagePreviewUrl ?? (string.IsNullOrEmpty(_formImageUrl) ? null : _formImageUrl);
     private bool HasImage => DisplayImageUrl is not null;
     private bool _showDeleteConfirm;
@@ -813,9 +811,6 @@
         return true;
     }
 
-    protected override object SelectState(ProductsUiState state)
-        => (state.Cache?.Search, state.Cache?.FilterCategoryId, state.Cache?.Skip, state.Cache?.Take, state.Cache?.Total, state.Cache?.Items.Count, state.Cache?.Categories.Count, state.Cache?.SelectedIds.Count);
-
     private Task PersistStateAsync()
     {
         var snapshot = new ProductPageCache(
@@ -864,8 +859,17 @@
     {
         try
         {
-            _allCategories = await FetchAllCategoriesAsync();
-            await PersistStateAsync();
+            var asyncExecutor = RequireAsyncExecutor();
+            _allCategories = await asyncExecutor.ExecuteCachedAsync(
+                "products.lookup.categories",
+                FetchAllCategoriesFromApiAsync,
+                loading: state => state,
+                success: (state, categories) => state with
+                {
+                    Cache = BuildCacheWithCategories(state.Cache, categories)
+                },
+                error: (state, _) => state,
+                cacheFor: TimeSpan.FromMinutes(5));
         }
         catch (Exception ex)
         {
@@ -876,11 +880,30 @@
 
     private async Task EnsureCategoriesLoadedAsync(bool forceRefresh = false)
     {
+        var asyncExecutor = RequireAsyncExecutor();
+        if (forceRefresh)
+            await asyncExecutor.InvalidateCacheAsync("products.lookup.categories");
+
         if (forceRefresh || _allCategories.Count == 0)
             await LoadCategoriesAsync(silent: true);
     }
 
-    private async Task<List<CategoryItem>> FetchAllCategoriesAsync()
+    private IAsyncActionExecutor<ProductsUiState> RequireAsyncExecutor()
+        => AsyncExecutor ?? throw new InvalidOperationException("AsyncExecutor is not available.");
+
+    private static ProductPageCache BuildCacheWithCategories(ProductPageCache? currentCache, IReadOnlyList<CategoryItem> categories)
+    {
+        var categoryLookup = categories.Select(c => new CategoryLookupItem(c.Id, c.Name)).ToList();
+
+        if (currentCache is null)
+        {
+            return new ProductPageCache(string.Empty, null, 0, 5, 0, [], categoryLookup, []);
+        }
+
+        return currentCache with { Categories = categoryLookup };
+    }
+
+    private async Task<List<CategoryItem>> FetchAllCategoriesFromApiAsync()
     {
         var pageSize = 100;
         const int minPageSize = 1;
@@ -1187,10 +1210,7 @@
     private async Task<string?> UploadPendingImageAsync(string folder)
     {
         if (_pendingImage is null) return null;
-        _uploadingImage = true;
-        StateHasChanged();
         var url = await ImageUploadSvc.UploadAsync(_pendingImage, folder);
-        _uploadingImage = false;
         _pendingImage = null;
         _imagePreviewUrl = null;
         if (url is null) ToastService.Error("Tải ảnh thất bại.");

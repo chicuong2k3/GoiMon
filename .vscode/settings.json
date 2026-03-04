@@ -48,5 +48,6 @@
         "Mediat",
         "Npgsql",
         "Serilog"
-    ]
+    ],
+    "css.lint.unknownAtRules": "ignore"
 }

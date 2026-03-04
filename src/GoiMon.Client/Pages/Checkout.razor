@@ -1,10 +1,9 @@
 @page "/checkout"
-@inherits SelectorStoreComponent<CheckoutUiState>
+@inherits StoreComponentWithUtilities<CheckoutUiState>
 @inject IGoiMonClient Client
 @inject ToastService ToastService
 @inject NavigationManager Navigation
 @inject IStateWriter<CheckoutUiState> UiStateWriter
-@inject IDebounceManager DebounceManager
 
 @using EasyAppDev.Blazor.Store.Core
 @using GoiMon.Client.State
@@ -564,9 +563,6 @@
         return true;
     }
 
-    protected override object SelectState(CheckoutUiState state)
-        => (state.Cache?.Mode, state.Cache?.Search, state.Cache?.SelectedCategory, state.Cache?.Products.Count, state.Cache?.Combos.Count, state.Cache?.Cart.Count);
-
     private Task PersistStateAsync()
     {
         var snapshot = new CheckoutPageState(
@@ -658,68 +654,17 @@
         _loadingProducts = true;
         try
         {
-            var pageSize = 100;
-            const int minPageSize = 1;
-            var skip = 0;
-            var all = new List<ProductListItem>();
-
-            while (true)
-            {
-                var result = await Client.GetProducts.ExecuteAsync(
-                    skip: skip,
-                    take: pageSize,
-                    where: null,
-                    order: [new ProductSortInput { Name = SortEnumType.Asc }]);
-
-                if (result.Data?.Products is { } data)
+            var asyncExecutor = RequireAsyncExecutor();
+            _products = await asyncExecutor.ExecuteCachedAsync(
+                "checkout.menu.products",
+                FetchCheckoutProductsAsync,
+                loading: state => state,
+                success: (state, products) => state with
                 {
-                    if (data.Items is { } items)
-                    {
-                        all.AddRange(items.Select(p => new ProductListItem(
-                            p.Id,
-                            p.Name,
-                            p.Price,
-                            p.UnitName,
-                            p.Description,
-                            p.ImageUrl,
-                            p.Category?.Name ?? "Khác",
-                            p.Variants.Count(v => v.IsActive),
-                            p.ModifierGroups.Count(group => group.IsActive))));
-                    }
-
-                    if (data.PageInfo?.HasNextPage != true)
-                    {
-                        break;
-                    }
-
-                    skip += pageSize;
-                    continue;
-                }
-
-                if (result.Errors.Count > 0)
-                {
-                    var message = result.Errors[0].Message;
-                    if (IsPageSizeExceededError(message) && pageSize > minPageSize)
-                    {
-                        pageSize = Math.Max(minPageSize, pageSize / 2);
-                        skip = 0;
-                        all.Clear();
-                        continue;
-                    }
-
-                    ToastService.Error(message);
-                    return;
-                }
-
-                break;
-            }
-
-            _products = all
-                .GroupBy(p => p.Id)
-                .Select(g => g.First())
-                .ToList();
-
-            await PersistStateAsync();
+                    Cache = BuildCacheWithProducts(state.Cache, products)
+                },
+                error: (state, _) => state,
+                cacheFor: TimeSpan.FromMinutes(2));
         }
         finally
         {
@@ -732,70 +677,17 @@
         _loadingCombos = true;
         try
         {
-            var pageSize = 100;
-            const int minPageSize = 1;
-            var skip = 0;
-            var all = new List<ComboMenuItemDto>();
-
-            while (true)
-            {
-                var result = await Client.GetCombos.ExecuteAsync(
-                    skip: skip,
-                    take: pageSize,
-                    where: null,
-                    order: [new ProductComboSortInput { Name = SortEnumType.Asc }]);
-
-                if (result.Data?.Combos is { } data)
+            var asyncExecutor = RequireAsyncExecutor();
+            _combos = await asyncExecutor.ExecuteCachedAsync(
+                "checkout.menu.combos",
+                FetchCheckoutCombosAsync,
+                loading: state => state,
+                success: (state, combos) => state with
                 {
-                    if (data.Items is { } items)
-                    {
-                        all.AddRange(items.Select(combo => new ComboMenuItemDto(
-                            combo.Id,
-                            combo.Name,
-                            combo.Price,
-                            combo.ImageUrl,
-                            combo.Items.Select(item => new ComboMenuItemLineDto(
-                                item.Id,
-                                item.ProductId,
-                                item.Product?.Name,
-                                item.VariantId,
-                                item.Variant?.Name,
-                                item.Qty)).ToList())));
-                    }
-
-                    if (data.PageInfo?.HasNextPage != true)
-                    {
-                        break;
-                    }
-
-                    skip += pageSize;
-                    continue;
-                }
-
-                if (result.Errors.Count > 0)
-                {
-                    var message = result.Errors[0].Message;
-                    if (IsPageSizeExceededError(message) && pageSize > minPageSize)
-                    {
-                        pageSize = Math.Max(minPageSize, pageSize / 2);
-                        skip = 0;
-                        all.Clear();
-                        continue;
-                    }
-
-                    ToastService.Error(message);
-                    return;
-                }
-
-                break;
-            }
-
-            _combos = all
-                .GroupBy(c => c.Id)
-                .Select(g => g.First())
-                .ToList();
-
-            await PersistStateAsync();
+                    Cache = BuildCacheWithCombos(state.Cache, combos)
+                },
+                error: (state, _) => state,
+                cacheFor: TimeSpan.FromMinutes(2));
         }
         finally
         {
@@ -803,11 +695,186 @@
         }
     }
 
+    private IAsyncActionExecutor<CheckoutUiState> RequireAsyncExecutor()
+        => AsyncExecutor ?? throw new InvalidOperationException("AsyncExecutor is not available.");
+
+    private static CheckoutPageState BuildCacheWithProducts(CheckoutPageState? currentCache, IReadOnlyList<ProductListItem> products)
+    {
+        var mappedProducts = products.Select(product => new CheckoutProductListItem(
+            product.Id,
+            product.Name,
+            product.Price,
+            product.UnitName,
+            product.Description,
+            product.ImageUrl,
+            product.CategoryName,
+            product.ActiveVariantCount,
+            product.ActiveModifierGroupCount)).ToList();
+
+        if (currentCache is null)
+        {
+            return new CheckoutPageState(ProductMode, string.Empty, AllCategoriesValue, mappedProducts, [], []);
+        }
+
+        return currentCache with { Products = mappedProducts };
+    }
+
+    private static CheckoutPageState BuildCacheWithCombos(CheckoutPageState? currentCache, IReadOnlyList<ComboMenuItemDto> combos)
+    {
+        var mappedCombos = combos.Select(combo => new CheckoutComboListItem(
+            combo.Id,
+            combo.Name,
+            combo.Price,
+            combo.ImageUrl,
+            combo.Items.Select(item => new CheckoutComboItemListItem(
+                item.Id,
+                item.ProductId,
+                item.ProductName,
+                item.VariantId,
+                item.VariantName,
+                item.Qty)).ToList())).ToList();
+
+        if (currentCache is null)
+        {
+            return new CheckoutPageState(ProductMode, string.Empty, AllCategoriesValue, [], mappedCombos, []);
+        }
+
+        return currentCache with { Combos = mappedCombos };
+    }
+
     private static bool IsPageSizeExceededError(string message)
         => message.Contains("maximum allowed items per page", StringComparison.OrdinalIgnoreCase)
            || message.Contains("items per page", StringComparison.OrdinalIgnoreCase)
            || message.Contains("page size", StringComparison.OrdinalIgnoreCase)
            || message.Contains("take", StringComparison.OrdinalIgnoreCase);
+
+    private async Task<List<ProductListItem>> FetchCheckoutProductsAsync()
+    {
+        var pageSize = 100;
+        const int minPageSize = 1;
+        var skip = 0;
+        var all = new List<ProductListItem>();
+
+        while (true)
+        {
+            var result = await Client.GetProducts.ExecuteAsync(
+                skip: skip,
+                take: pageSize,
+                where: null,
+                order: [new ProductSortInput { Name = SortEnumType.Asc }]);
+
+            if (result.Data?.Products is { } data)
+            {
+                if (data.Items is { } items)
+                {
+                    all.AddRange(items.Select(p => new ProductListItem(
+                        p.Id,
+                        p.Name,
+                        p.Price,
+                        p.UnitName,
+                        p.Description,
+                        p.ImageUrl,
+                        p.Category?.Name ?? "Khác",
+                        p.Variants.Count(v => v.IsActive),
+                        p.ModifierGroups.Count(group => group.IsActive))));
+                }
+
+                if (data.PageInfo?.HasNextPage != true)
+                {
+                    break;
+                }
+
+                skip += pageSize;
+                continue;
+            }
+
+            if (result.Errors.Count > 0)
+            {
+                var message = result.Errors[0].Message;
+                if (IsPageSizeExceededError(message) && pageSize > minPageSize)
+                {
+                    pageSize = Math.Max(minPageSize, pageSize / 2);
+                    skip = 0;
+                    all.Clear();
+                    continue;
+                }
+
+                throw new InvalidOperationException(message);
+            }
+
+            break;
+        }
+
+        return all
+            .GroupBy(p => p.Id)
+            .Select(g => g.First())
+            .ToList();
+    }
+
+    private async Task<List<ComboMenuItemDto>> FetchCheckoutCombosAsync()
+    {
+        var pageSize = 100;
+        const int minPageSize = 1;
+        var skip = 0;
+        var all = new List<ComboMenuItemDto>();
+
+        while (true)
+        {
+            var result = await Client.GetCombos.ExecuteAsync(
+                skip: skip,
+                take: pageSize,
+                where: null,
+                order: [new ProductComboSortInput { Name = SortEnumType.Asc }]);
+
+            if (result.Data?.Combos is { } data)
+            {
+                if (data.Items is { } items)
+                {
+                    all.AddRange(items.Select(combo => new ComboMenuItemDto(
+                        combo.Id,
+                        combo.Name,
+                        combo.Price,
+                        combo.ImageUrl,
+                        combo.Items.Select(item => new ComboMenuItemLineDto(
+                            item.Id,
+                            item.ProductId,
+                            item.Product?.Name,
+                            item.VariantId,
+                            item.Variant?.Name,
+                            item.Qty)).ToList())));
+                }
+
+                if (data.PageInfo?.HasNextPage != true)
+                {
+                    break;
+                }
+
+                skip += pageSize;
+                continue;
+            }
+
+            if (result.Errors.Count > 0)
+            {
+                var message = result.Errors[0].Message;
+                if (IsPageSizeExceededError(message) && pageSize > minPageSize)
+                {
+                    pageSize = Math.Max(minPageSize, pageSize / 2);
+                    skip = 0;
+                    all.Clear();
+                    continue;
+                }
+
+                throw new InvalidOperationException(message);
+            }
+
+            break;
+        }
+
+        return all
+            .GroupBy(c => c.Id)
+            .Select(g => g.First())
+            .ToList();
+    }
 
     private void SelectCombo(Guid comboId)
     {

@@ -59,12 +59,20 @@
     - **Shared code** (used by 2+ features) goes in `Shared/` or `Infrastructure/` folders — but only after confirming it is truly cross-cutting.
 - **State management performance rules (MUST follow)** — Optimize `EasyAppDev.Blazor.Store` usage for render performance and maintainability:
     - **Prefer multiple focused stores** over one monolithic app/UI store. In GoiMon.Client, use domain stores (`CategoriesUiState`, `ProductsUiState`, `CombosUiState`, `OrdersUiState`, `CheckoutUiState`) and register each with `AddScopedStoreWithUtilities()`.
-    - **Use selectors for granular re-rendering** on state-driven components. For all pages/screens bound to store state, MUST inherit `SelectorStoreComponent<TState>` and implement `SelectState(...)` so UI re-renders only when selected data changes.
+    - **Choose component base by interaction type:**
+        - Use `StoreComponentWithUtilities<TState>` for pages/screens with substantial local UI state (dialogs, popovers, selection panels, form draft state, stepper/tab state) to avoid selector render-gating issues.
+        - Use `SelectorStoreComponent<TState>` only for read-heavy components where selected store slices are the primary render trigger and local UI state is minimal.
+    - **Selector safety rule:** If using `SelectorStoreComponent<TState>`, ensure local UI interactions are not blocked by selector gating. Do not use selector-based pages for dialog-heavy CRUD screens unless all required UI-render triggers are explicitly handled.
     - **Keep state minimal and derived**: avoid duplicating computable values in state records; expose computed/derived values as properties or dedicated derived records.
     - **Batch and debounce updates** for high-frequency events (search, scroll, resize). Prefer debounced update helpers or a single combined update over sequential updates, and ALWAYS apply debouncing wherever feasible.
-    - **Debounced updates in selector components:** `UpdateDebounced` exists on `StoreComponentWithUtilities<TState>`. For pages using `SelectorStoreComponent<TState>`, use injected `IDebounceManager` as the equivalent debounced update mechanism.
+    - **Debounced updates:** Prefer `UpdateDebounced` on `StoreComponentWithUtilities<TState>`. Use `IDebounceManager` for explicit key-based debounce flows where needed.
+    - **Throttled updates:** Prefer `UpdateThrottled` on `StoreComponentWithUtilities<TState>`. Use `IThrottleManager` for explicit key-based throttle flows where needed.
+    - **Always throttle continuous high-frequency events** (scroll, resize, pointer/mouse move, realtime stream bursts) wherever feasible to avoid UI/update storms.
+    - **LazyLoad / cache dedupe for repeated reads:** Always apply lazy-load caching wherever feasible on repeated data-read paths (lookup lists, menu/reference data, tab/count queries) using `ILazyCache.GetOrLoadAsync(...)` with stable keys and appropriate TTL.
+    - **ExecuteCachedAsync for concurrent load + state writes:** When repeated reads also trigger store state callbacks and may be called concurrently (same cache key), prefer `IAsyncActionExecutor<TState>.ExecuteCachedAsync(...)` over `LazyLoad + manual UpdateAsync/PersistStateAsync` so both fetch and state-callback updates are deduplicated.
+    - **ExecuteCachedAsync invalidation:** After create/update/delete affecting cached keys, invalidate with `InvalidateCacheAsync(cacheKey)` or grouped invalidation via `InvalidateCacheByPrefixAsync(prefix)`; use `ClearCacheAsync()` on global reset/logout flows.
     - **Store boundaries by domain**: do not write unrelated page cache into another domain store. Keep cache payload and update action names scoped (`cache.categories`, `cache.products`, etc.).
-    - **Current GoiMon.Client baseline (required)**: `Categories.razor`, `Products.razor`, `Combos.razor`, `Checkout.razor`, `Orders.razor` use selector-based store subscriptions with domain stores.
+    - **Current GoiMon.Client baseline (required)**: `Categories.razor`, `Products.razor`, `Combos.razor`, `Checkout.razor`, `Orders.razor` use `StoreComponentWithUtilities<TState>` with domain stores.
     - **Async/UI patterns**: optimistic updates are allowed only for reversible operations with clear rollback; for critical operations prefer server-confirmed updates.
     - **Performance validation**: before/after optimization, record render/update hotspots (component or event level) and verify no behavior regression.
 

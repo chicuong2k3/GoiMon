@@ -118,11 +118,14 @@
         {
             IsLoading = true;
             ErrorMessage = null;
+            SuccessMessage = null;
             await OnVerificationSuccess.InvokeAsync(OtpCode);
+            SuccessMessage = "Code verified successfully.";
         }
         catch (Exception ex)
         {
             ErrorMessage = "Verification failed. Please try again.";
+            SuccessMessage = null;
             await OnError.InvokeAsync(ex.Message);
         }
         finally
@@ -137,6 +140,7 @@
         ResendCooldown = 60;
         TimeRemaining = 600;
         ErrorMessage = null;
+        SuccessMessage = "A new verification code has been sent.";
         await InvokeAsync(StateHasChanged);
     }
 
