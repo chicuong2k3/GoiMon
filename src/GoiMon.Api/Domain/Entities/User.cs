@@ -53,6 +53,11 @@ public sealed class User : IAggregateRoot
     public bool IsActive { get; set; } = true;
 
     /// <summary>
+    /// Employee authorization role.
+    /// </summary>
+    public Domain.Enums.UserRole Role { get; set; } = Domain.Enums.UserRole.Owner;
+
+    /// <summary>
     /// Timestamp when user was created.
     /// </summary>
     public DateTime CreatedAt { get; set; }
@@ -114,6 +119,18 @@ public sealed class User : IAggregateRoot
     public void Deactivate()
     {
         IsActive = false;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void Activate()
+    {
+        IsActive = true;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void ChangeRole(Domain.Enums.UserRole role)
+    {
+        Role = role;
         UpdatedAt = DateTime.UtcNow;
     }
 }

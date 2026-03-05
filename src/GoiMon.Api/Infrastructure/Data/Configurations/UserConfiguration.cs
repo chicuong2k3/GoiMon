@@ -32,6 +32,11 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.IsVerified).HasDefaultValue(false);
         builder.Property(u => u.IsActive).HasDefaultValue(true);
 
+        builder.Property(u => u.Role)
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .HasDefaultValue(Domain.Enums.UserRole.Owner);
+
         // Relationships
         builder.HasMany(u => u.OtpTokens)
             .WithOne(o => o.User)

@@ -25,6 +25,11 @@ public record CheckoutUiState(CheckoutPageState? Cache)
     public static CheckoutUiState Initial => new((CheckoutPageState?)null);
 }
 
+public record EmployeesUiState(EmployeePageCache? Cache)
+{
+    public static EmployeesUiState Initial => new((EmployeePageCache?)null);
+}
+
 public record CategoryPageCache(
     string Search,
     int Skip,
@@ -162,3 +167,24 @@ public record CheckoutComboItemListItem(
     Guid? VariantId,
     string? VariantName,
     int Qty);
+
+public record EmployeePageCache(
+    string Search,
+    int Skip,
+    int Take,
+    int Total,
+    string SortOption,
+    IReadOnlyList<EmployeeListItem> Items,
+    IReadOnlyList<Guid> SelectedIds);
+
+public record EmployeeListItem(
+    Guid Id,
+    string Email,
+    string? Phone,
+    string? FirstName,
+    string? LastName,
+    string Role,
+    bool IsActive,
+    bool IsVerified,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt);

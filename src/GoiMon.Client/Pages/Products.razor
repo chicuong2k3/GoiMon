@@ -34,7 +34,6 @@
         <div class="w-64">
             <BbInput Value="@_search"
                      ValueChanged="OnSearchChangedAsync"
-                     @oninput="OnSearchInputAsync"
                      Placeholder="Tìm kiếm sản phẩm..." />
         </div>
         <div class="w-48">
@@ -810,12 +809,6 @@
         _search = value;
         _skip = 0;
         return DebounceReloadAsync("products.search.load");
-    }
-
-    private Task OnSearchInputAsync(ChangeEventArgs args)
-    {
-        var value = args.Value?.ToString() ?? string.Empty;
-        return OnSearchChangedAsync(value);
     }
 
     private Task OnFilterCategoryChangedAsync(Guid? value)

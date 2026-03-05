@@ -1,0 +1,536 @@
+@page "/employees"
+@inherits StoreComponentWithUtilities<EmployeesUiState>
+@inject IGoiMonClient Client
+@inject ToastService ToastService
+@inject IStateWriter<EmployeesUiState> UiStateWriter
+
+@using EasyAppDev.Blazor.Store.Core
+@using GoiMon.Client.State
+
+<header class="flex h-12 shrink-0 items-center gap-2 border-b px-4 py-1 md:px-5">
+    <BbSidebarTrigger />
+    <BbSeparator Orientation="SeparatorOrientation.Vertical" Class="h-3" />
+    <h1 class="text-xs font-semibold">Nhân sự</h1>
+    <div class="ml-auto flex items-center gap-2">
+        <BbButton OnClick="OpenCreate" Size="ButtonSize.Small">
+            <LucideIcon Name="plus" Class="h-4 w-4 mr-1" />
+            Thêm nhân sự
+        </BbButton>
+    </div>
+</header>
+
+<div class="p-4 md:p-5 space-y-4">
+    <div class="mb-1 flex flex-wrap items-center gap-3">
+        <div class="w-72">
+            <BbInput Value="@_search"
+                     ValueChanged="OnSearchChangedAsync"
+                     Placeholder="Tìm theo email hoặc tên..." />
+        </div>
+        <div class="w-44">
+            <BbSelect TValue="string"
+                      Value="@_sortOption"
+                      ValueChanged="OnSortChangedAsync"
+                      Options="SortOptions"
+                      Placeholder="Sắp xếp"
+                      Class="w-full" />
+        </div>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="space-y-2">
+            @for (int i = 0; i < 5; i++)
+            {
+                <BbSkeleton Height="48px" Class="w-full" />
+            }
+        </div>
+    }
+    else if (_error is not null)
+    {
+        <div class="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            @_error
+        </div>
+    }
+    else
+    {
+        <div class="rounded-md border">
+            <table class="w-full text-sm">
+                <thead class="border-b bg-muted/50">
+                    <tr>
+                        <th class="h-10 px-4 text-left font-medium text-muted-foreground align-middle">Email</th>
+                        <th class="h-10 px-4 text-left font-medium text-muted-foreground align-middle">Tên hiển thị</th>
+                        <th class="h-10 px-4 text-left font-medium text-muted-foreground align-middle">Vai trò</th>
+                        <th class="h-10 px-4 text-left font-medium text-muted-foreground align-middle">Trạng thái</th>
+                        <th class="h-10 px-4 text-right font-medium text-muted-foreground align-middle w-40">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (_items.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="5" class="p-8 text-center text-muted-foreground">Không tìm thấy nhân sự nào.</td>
+                        </tr>
+                    }
+                    @foreach (var item in _items)
+                    {
+                        <tr class="border-b last:border-0 hover:bg-muted/50 transition-colors">
+                            <td class="px-4 py-3 align-middle">
+                                <div class="font-medium">@item.Email</div>
+                                @if (!string.IsNullOrWhiteSpace(item.Phone))
+                                {
+                                    <div class="text-xs text-muted-foreground">@item.Phone</div>
+                                }
+                            </td>
+                            <td class="px-4 py-3 align-middle">@DisplayName(item)</td>
+                            <td class="px-4 py-3 align-middle">
+                                <BbBadge Variant="@(item.Role == "Owner" ? BadgeVariant.Default : BadgeVariant.Outline)">@RoleLabel(item.Role)</BbBadge>
+                            </td>
+                            <td class="px-4 py-3 align-middle">
+                                <BbBadge Variant="@(item.IsActive ? BadgeVariant.Secondary : BadgeVariant.Outline)">
+                                    @(item.IsActive ? "Đang hoạt động" : "Tạm khóa")
+                                </BbBadge>
+                            </td>
+                            <td class="px-4 py-3 text-right align-middle">
+                                <div class="flex items-center justify-end gap-1">
+                                    <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall"
+                                              AriaLabel="Sửa" OnClick="() => OpenEdit(item)">
+                                        <LucideIcon Name="pencil" Class="h-4 w-4" />
+                                    </BbButton>
+                                    <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall"
+                                              AriaLabel="Đổi trạng thái"
+                                              OnClick="() => ToggleStatusAsync(item)">
+                                        <LucideIcon Name="@(item.IsActive ? "user-x" : "user-check")" Class="h-4 w-4" />
+                                    </BbButton>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pt-1 flex items-center justify-between text-sm text-muted-foreground">
+            <span>Hiển thị @(_items.Count) / @_total nhân sự</span>
+            <div class="flex items-center gap-2">
+                <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small"
+                          Disabled="@(CurrentPage <= 1)" OnClick="() => GoToPageAsync(CurrentPage - 1)">Trước</BbButton>
+                @foreach (var page in VisiblePages)
+                {
+                    <BbButton Variant="@(page == CurrentPage ? ButtonVariant.Default : ButtonVariant.Outline)"
+                              Size="ButtonSize.Small"
+                              Disabled="@(page == CurrentPage)"
+                              OnClick="() => GoToPageAsync(page)">@(page)</BbButton>
+                }
+                <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small"
+                          Disabled="@(CurrentPage >= TotalPages)" OnClick="() => GoToPageAsync(CurrentPage + 1)">Sau</BbButton>
+            </div>
+        </div>
+    }
+</div>
+
+<FormDialog Open="@_showCreate"
+            OpenChanged="@(v => _showCreate = v)"
+            Title="Thêm nhân sự"
+            Description="Tạo tài khoản nhân sự với vai trò Owner hoặc Staff."
+            SubmitText="Lưu"
+            SubmitLoading="@_saving"
+            SubmitLoadingText="Đang lưu..."
+            SubmitDisabled="@(!CanSubmitForm)"
+            OnSubmit="CreateAsync">
+    <div class="space-y-1">
+        <BbLabel>Email <span class="text-destructive">*</span></BbLabel>
+        <BbInput @bind-Value="_formEmail" Type="InputType.Email" Placeholder="staff@goimon.vn" />
+    </div>
+    <div class="space-y-1">
+        <BbLabel>Số điện thoại</BbLabel>
+        <BbInput @bind-Value="_formPhone" Placeholder="098xxxxxxx" />
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div class="space-y-1">
+            <BbLabel>Tên</BbLabel>
+            <BbInput @bind-Value="_formFirstName" Placeholder="Tên" />
+        </div>
+        <div class="space-y-1">
+            <BbLabel>Họ</BbLabel>
+            <BbInput @bind-Value="_formLastName" Placeholder="Họ" />
+        </div>
+    </div>
+    <div class="space-y-1">
+        <BbLabel>Vai trò</BbLabel>
+        <BbSelect TValue="UserRole"
+                  Value="@_formRole"
+                  ValueChanged="OnRoleChanged"
+                  Options="RoleOptions"
+                  Class="w-full" />
+    </div>
+</FormDialog>
+
+<FormDialog Open="@_showEdit"
+            OpenChanged="@(v => _showEdit = v)"
+            Title="Sửa nhân sự"
+            Description="Cập nhật thông tin và vai trò nhân sự."
+            SubmitText="Cập nhật"
+            SubmitLoading="@_saving"
+            SubmitLoadingText="Đang cập nhật..."
+            SubmitDisabled="@(!CanSubmitForm)"
+            OnSubmit="UpdateAsync">
+    <div class="space-y-1">
+        <BbLabel>Email <span class="text-destructive">*</span></BbLabel>
+        <BbInput @bind-Value="_formEmail" Type="InputType.Email" Placeholder="staff@goimon.vn" />
+    </div>
+    <div class="space-y-1">
+        <BbLabel>Số điện thoại</BbLabel>
+        <BbInput @bind-Value="_formPhone" Placeholder="098xxxxxxx" />
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div class="space-y-1">
+            <BbLabel>Tên</BbLabel>
+            <BbInput @bind-Value="_formFirstName" Placeholder="Tên" />
+        </div>
+        <div class="space-y-1">
+            <BbLabel>Họ</BbLabel>
+            <BbInput @bind-Value="_formLastName" Placeholder="Họ" />
+        </div>
+    </div>
+    <div class="space-y-1">
+        <BbLabel>Vai trò</BbLabel>
+        <BbSelect TValue="UserRole"
+                  Value="@_formRole"
+                  ValueChanged="OnRoleChanged"
+                  Options="RoleOptions"
+                  Class="w-full" />
+    </div>
+</FormDialog>
+
+@code {
+    private List<EmployeeDto> _items = [];
+    private bool _loading;
+    private bool _saving;
+    private int _skip;
+    private int _take = 10;
+    private int _total;
+    private string _search = string.Empty;
+    private string _sortOption = "created_desc";
+    private string? _error;
+
+    private bool _showCreate;
+    private bool _showEdit;
+    private Guid? _editId;
+
+    private string _formEmail = string.Empty;
+    private string _formPhone = string.Empty;
+    private string _formFirstName = string.Empty;
+    private string _formLastName = string.Empty;
+    private UserRole _formRole = UserRole.Staff;
+
+    private bool CanSubmitForm => !string.IsNullOrWhiteSpace(_formEmail) && _formEmail.Contains('@');
+
+    private static readonly List<SelectOption<string>> SortOptions =
+    [
+        new("created_desc", "Mới nhất"),
+        new("created_asc", "Cũ nhất"),
+        new("email_asc", "Email A-Z"),
+        new("email_desc", "Email Z-A")
+    ];
+
+    private static readonly List<SelectOption<UserRole>> RoleOptions =
+    [
+        new(UserRole.Owner, "Owner"),
+        new(UserRole.Staff, "Staff")
+    ];
+
+    private int CurrentPage => (_skip / _take) + 1;
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling((double)_total / _take));
+    private IReadOnlyList<int> VisiblePages => Enumerable.Range(1, TotalPages).Take(7).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (TryRestoreState())
+        {
+            await LoadAsync(false);
+            return;
+        }
+
+        await LoadAsync(true);
+    }
+
+    private bool TryRestoreState()
+    {
+        var cache = State.Cache;
+        if (cache is null)
+        {
+            return false;
+        }
+
+        _search = cache.Search;
+        _skip = cache.Skip;
+        _take = cache.Take;
+        _total = cache.Total;
+        _sortOption = cache.SortOption;
+        _items = cache.Items
+            .Select(x => new EmployeeDto(
+                x.Id,
+                x.Email,
+                x.Phone,
+                x.FirstName,
+                x.LastName,
+                x.Role,
+                x.IsActive,
+                x.IsVerified,
+                x.CreatedAt,
+                x.UpdatedAt))
+            .ToList();
+
+        return true;
+    }
+
+    private Task PersistStateAsync()
+    {
+        var cache = new EmployeePageCache(
+            _search,
+            _skip,
+            _take,
+            _total,
+            _sortOption,
+            _items.Select(x => new EmployeeListItem(
+                x.Id,
+                x.Email,
+                x.Phone,
+                x.FirstName,
+                x.LastName,
+                x.Role,
+                x.IsActive,
+                x.IsVerified,
+                x.CreatedAt,
+                x.UpdatedAt)).ToList(),
+            []);
+
+        return UiStateWriter.UpdateAsync(state => state with { Cache = cache }, "cache.employees");
+    }
+
+    private async Task LoadAsync(bool showLoading)
+    {
+        _loading = showLoading;
+        _error = null;
+        if (showLoading)
+            StateHasChanged();
+
+        try
+        {
+            var where = BuildFilter();
+            var order = BuildOrder();
+            var result = await Client.GetEmployees.ExecuteAsync(_skip, _take, where, order);
+
+            if (result.Data?.Employees is { } data)
+            {
+                _items = data.Items?.Select(i => new EmployeeDto(
+                    i.Id,
+                    i.Email,
+                    i.Phone,
+                    i.FirstName,
+                    i.LastName,
+                    i.Role.ToString(),
+                    i.IsActive,
+                    i.IsVerified,
+                    i.CreatedAt,
+                    i.UpdatedAt)).ToList() ?? [];
+                _total = data.TotalCount;
+                await PersistStateAsync();
+            }
+            else if (result.Errors.Count > 0)
+            {
+                _error = GraphQLErrorFormatter.Format(result.Errors, "Không tải được danh sách nhân sự.");
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+
+        _loading = false;
+    }
+
+    private UserFilterInput? BuildFilter()
+    {
+        if (string.IsNullOrWhiteSpace(_search))
+            return null;
+
+        var keyword = _search.Trim();
+        var op = new StringOperationFilterInput { Contains = keyword };
+
+        return new UserFilterInput
+        {
+            Or =
+            [
+                new UserFilterInput { Email = op },
+                new UserFilterInput { FirstName = op },
+                new UserFilterInput { LastName = op }
+            ]
+        };
+    }
+
+    private List<UserSortInput>? BuildOrder()
+        => _sortOption switch
+        {
+            "created_asc" => [new UserSortInput { CreatedAt = SortEnumType.Asc }],
+            "email_asc" => [new UserSortInput { Email = SortEnumType.Asc }],
+            "email_desc" => [new UserSortInput { Email = SortEnumType.Desc }],
+            _ => [new UserSortInput { CreatedAt = SortEnumType.Desc }]
+        };
+
+    private async Task OnSearchChangedAsync(string value)
+    {
+        _search = value;
+        _skip = 0;
+
+        await DebounceManager.Debounce(
+            "employees.search",
+            async () =>
+            {
+                await InvokeAsync(async () =>
+                {
+                    await LoadAsync(true);
+                });
+            },
+            300);
+    }
+
+    private async Task OnSortChangedAsync(string value)
+    {
+        _sortOption = value;
+        _skip = 0;
+        await LoadAsync(true);
+    }
+
+    private async Task GoToPageAsync(int page)
+    {
+        page = Math.Clamp(page, 1, TotalPages);
+        _skip = (page - 1) * _take;
+        await LoadAsync(true);
+    }
+
+    private static string DisplayName(EmployeeDto item)
+    {
+        var fullName = $"{item.FirstName} {item.LastName}".Trim();
+        return string.IsNullOrWhiteSpace(fullName) ? "—" : fullName;
+    }
+
+    private static string RoleLabel(string role)
+        => string.Equals(role, "Owner", StringComparison.OrdinalIgnoreCase) ? "Owner" : "Staff";
+
+    private void OpenCreate()
+    {
+        ResetForm();
+        _showCreate = true;
+    }
+
+    private void OpenEdit(EmployeeDto item)
+    {
+        _editId = item.Id;
+        _formEmail = item.Email;
+        _formPhone = item.Phone ?? string.Empty;
+        _formFirstName = item.FirstName ?? string.Empty;
+        _formLastName = item.LastName ?? string.Empty;
+        _formRole = string.Equals(item.Role, "Owner", StringComparison.OrdinalIgnoreCase)
+            ? UserRole.Owner
+            : UserRole.Staff;
+        _showEdit = true;
+    }
+
+    private Task OnRoleChanged(UserRole role)
+    {
+        _formRole = role;
+        return Task.CompletedTask;
+    }
+
+    private async Task CreateAsync()
+    {
+        _saving = true;
+
+        var result = await Client.CreateEmployee.ExecuteAsync(
+            _formEmail.Trim(),
+            NormalizeOptional(_formPhone),
+            NormalizeOptional(_formFirstName),
+            NormalizeOptional(_formLastName),
+            _formRole);
+
+        _saving = false;
+
+        if (result.Errors.Count > 0)
+        {
+            ToastService.Error(GraphQLErrorFormatter.Format(result.Errors, "Không thể tạo nhân sự."));
+            return;
+        }
+
+        _showCreate = false;
+        ToastService.Success("Đã tạo nhân sự.");
+        await LoadAsync(true);
+    }
+
+    private async Task UpdateAsync()
+    {
+        if (!_editId.HasValue)
+            return;
+
+        _saving = true;
+
+        var result = await Client.UpdateEmployee.ExecuteAsync(
+            _editId.Value,
+            _formEmail.Trim(),
+            NormalizeOptional(_formPhone),
+            NormalizeOptional(_formFirstName),
+            NormalizeOptional(_formLastName),
+            _formRole);
+
+        _saving = false;
+
+        if (result.Errors.Count > 0)
+        {
+            ToastService.Error(GraphQLErrorFormatter.Format(result.Errors, "Không thể cập nhật nhân sự."));
+            return;
+        }
+
+        _showEdit = false;
+        _editId = null;
+        ToastService.Success("Đã cập nhật nhân sự.");
+        await LoadAsync(true);
+    }
+
+    private async Task ToggleStatusAsync(EmployeeDto item)
+    {
+        var result = await Client.ToggleEmployeeStatus.ExecuteAsync(item.Id, !item.IsActive);
+        if (result.Errors.Count > 0)
+        {
+            ToastService.Error(GraphQLErrorFormatter.Format(result.Errors, "Không thể cập nhật trạng thái."));
+            return;
+        }
+
+        ToastService.Success(item.IsActive ? "Đã tạm khóa nhân sự." : "Đã kích hoạt nhân sự.");
+        await LoadAsync(true);
+    }
+
+    private void ResetForm()
+    {
+        _formEmail = string.Empty;
+        _formPhone = string.Empty;
+        _formFirstName = string.Empty;
+        _formLastName = string.Empty;
+        _formRole = UserRole.Staff;
+        _editId = null;
+    }
+
+    private static string? NormalizeOptional(string value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private sealed record EmployeeDto(
+        Guid Id,
+        string Email,
+        string? Phone,
+        string? FirstName,
+        string? LastName,
+        string Role,
+        bool IsActive,
+        bool IsVerified,
+        DateTimeOffset CreatedAt,
+        DateTimeOffset UpdatedAt);
+}

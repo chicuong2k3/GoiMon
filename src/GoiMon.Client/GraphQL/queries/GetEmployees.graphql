@@ -1,0 +1,17 @@
+query GetEmployees($skip: Int, $take: Int, $where: UserFilterInput, $order: [UserSortInput!]) {
+  employees(skip: $skip, take: $take, where: $where, order: $order) {
+    items {
+      id
+      email
+      phone
+      firstName
+      lastName
+      role
+      isActive
+      isVerified
+      createdAt
+      updatedAt
+    }
+    totalCount
+  }
+}

@@ -32,7 +32,6 @@
         <div class="w-72">
             <BbInput Value="@_search"
                      ValueChanged="OnSearchChangedAsync"
-                     @oninput="OnSearchInputAsync"
                      Placeholder="Tìm kiếm danh mục..." />
         </div>
         <div class="w-56">
@@ -284,12 +283,6 @@
             "categories.search.load",
             async () => await InvokeAsync(async () => await LoadAsync()),
             300);
-    }
-
-    private Task OnSearchInputAsync(ChangeEventArgs args)
-    {
-        var value = args.Value?.ToString() ?? string.Empty;
-        return OnSearchChangedAsync(value);
     }
 
     private Task OnSortChangedAsync(string value)

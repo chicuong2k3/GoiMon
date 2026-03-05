@@ -53,5 +53,6 @@ builder.Services.AddScopedStoreWithUtilities(ProductsUiState.Initial, (store, _)
 builder.Services.AddScopedStoreWithUtilities(CombosUiState.Initial, (store, _) => store);
 builder.Services.AddScopedStoreWithUtilities(OrdersUiState.Initial, (store, _) => store);
 builder.Services.AddScopedStoreWithUtilities(CheckoutUiState.Initial, (store, _) => store);
+builder.Services.AddScopedStoreWithUtilities(EmployeesUiState.Initial, (store, _) => store);
 
 await builder.Build().RunAsync();

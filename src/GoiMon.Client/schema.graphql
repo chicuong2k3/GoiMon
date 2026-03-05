@@ -15,6 +15,7 @@ type Query {
   categoryById(id: UUID!): Category
   combos(skip: Int take: Int where: ProductComboFilterInput order: [ProductComboSortInput!]): CombosCollectionSegment
   comboById(id: UUID!): ProductCombo
+  employees(skip: Int take: Int where: UserFilterInput order: [UserSortInput!]): EmployeesCollectionSegment
 }
 
 type Mutation {
@@ -22,6 +23,15 @@ type Mutation {
   createProducts(inputs: [ProductInput!]!): [Product!]!
   updateProduct(input: UpdateProductInput! image: Upload): Product
   deleteProduct(id: UUID!): Boolean!
+  createProductVariant(productId: UUID! input: ProductVariantInput!): ProductVariant!
+  updateProductVariant(id: UUID! input: ProductVariantInput!): ProductVariant
+  deleteProductVariant(id: UUID!): Boolean!
+  createModifierGroup(productId: UUID! input: ModifierGroupInput!): ModifierGroup!
+  updateModifierGroup(id: UUID! input: ModifierGroupInput!): ModifierGroup
+  deleteModifierGroup(id: UUID!): Boolean!
+  createModifierOption(groupId: UUID! input: ModifierOptionInput!): ModifierOption!
+  updateModifierOption(id: UUID! input: ModifierOptionInput!): ModifierOption
+  deleteModifierOption(id: UUID!): Boolean!
   createOrder(input: CreateOrderInput!): CreateOrderPayload!
   completeOrder(orderId: UUID!): Order
   markOrderPaid(orderId: UUID!): Order
@@ -35,15 +45,9 @@ type Mutation {
   addComboItem(input: AddComboItemInput!): ProductCombo
   updateComboItem(input: UpdateComboItemInput!): ProductCombo
   removeComboItem(input: RemoveComboItemInput!): ProductCombo
-  createProductVariant(productId: UUID! input: ProductVariantInput!): ProductVariant!
-  updateProductVariant(id: UUID! input: ProductVariantInput!): ProductVariant
-  deleteProductVariant(id: UUID!): Boolean!
-  createModifierGroup(productId: UUID! input: ModifierGroupInput!): ModifierGroup!
-  updateModifierGroup(id: UUID! input: ModifierGroupInput!): ModifierGroup
-  deleteModifierGroup(id: UUID!): Boolean!
-  createModifierOption(groupId: UUID! input: ModifierOptionInput!): ModifierOption!
-  updateModifierOption(id: UUID! input: ModifierOptionInput!): ModifierOption
-  deleteModifierOption(id: UUID!): Boolean!
+  createEmployee(input: CreateEmployeeInput!): User!
+  updateEmployee(input: UpdateEmployeeInput!): User
+  toggleEmployeeStatus(input: ToggleEmployeeStatusInput!): User
   registerWithGoogle(input: RegisterWithOAuthInput!): AuthenticationPayload
   registerWithFacebook(input: RegisterWithOAuthInput!): AuthenticationPayload
   loginWithGoogle(input: LoginWithOAuthInput!): AuthenticationPayload
@@ -183,6 +187,50 @@ type CombosCollectionSegment {
   pageInfo: CollectionSegmentInfo!
   "A flattened list of the items."
   items: [ProductCombo!]
+  totalCount: Int!
+}
+
+input UserFilterInput {
+  and: [UserFilterInput!]
+  or: [UserFilterInput!]
+  id: UuidOperationFilterInput
+  email: StringOperationFilterInput
+  phone: StringOperationFilterInput
+  firstName: StringOperationFilterInput
+  lastName: StringOperationFilterInput
+  googleId: StringOperationFilterInput
+  facebookId: StringOperationFilterInput
+  photoUrl: StringOperationFilterInput
+  isVerified: BooleanOperationFilterInput
+  isActive: BooleanOperationFilterInput
+  role: UserRoleOperationFilterInput
+  createdAt: DateTimeOperationFilterInput
+  updatedAt: DateTimeOperationFilterInput
+  otpTokens: ListFilterInputTypeOfOtpTokenFilterInput
+}
+
+input UserSortInput {
+  id: SortEnumType
+  email: SortEnumType
+  phone: SortEnumType
+  firstName: SortEnumType
+  lastName: SortEnumType
+  googleId: SortEnumType
+  facebookId: SortEnumType
+  photoUrl: SortEnumType
+  isVerified: SortEnumType
+  isActive: SortEnumType
+  role: SortEnumType
+  createdAt: SortEnumType
+  updatedAt: SortEnumType
+}
+
+"A segment of a collection."
+type EmployeesCollectionSegment {
+  "Information to aid in pagination."
+  pageInfo: CollectionSegmentInfo!
+  "A flattened list of the items."
+  items: [User!]
   totalCount: Int!
 }
 
@@ -342,6 +390,42 @@ type ProductCombo {
   id: UUID!
 }
 
+input BooleanOperationFilterInput {
+  eq: Boolean
+  neq: Boolean
+}
+
+input UserRoleOperationFilterInput {
+  eq: UserRole
+  neq: UserRole
+  in: [UserRole!]
+  nin: [UserRole!]
+}
+
+input ListFilterInputTypeOfOtpTokenFilterInput {
+  all: OtpTokenFilterInput
+  none: OtpTokenFilterInput
+  some: OtpTokenFilterInput
+  any: Boolean
+}
+
+type User {
+  id: UUID!
+  email: String!
+  phone: String
+  firstName: String
+  lastName: String
+  googleId: String
+  facebookId: String
+  photoUrl: String
+  isVerified: Boolean!
+  isActive: Boolean!
+  role: UserRole!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  otpTokens: [OtpToken!]!
+}
+
 "The built-in `Decimal` scalar type."
 scalar Decimal
 
@@ -358,6 +442,8 @@ input OrderItemFilterInput {
   productId: UuidOperationFilterInput
   productName: StringOperationFilterInput
   unitName: StringOperationFilterInput
+  comboId: UuidOperationFilterInput
+  comboName: StringOperationFilterInput
   qty: IntOperationFilterInput
   unitPrice: DecimalOperationFilterInput
 }
@@ -368,7 +454,23 @@ input ProductComboItemFilterInput {
   id: UuidOperationFilterInput
   comboId: UuidOperationFilterInput
   productId: UuidOperationFilterInput
+  variantId: UuidOperationFilterInput
   qty: IntOperationFilterInput
+}
+
+input OtpTokenFilterInput {
+  and: [OtpTokenFilterInput!]
+  or: [OtpTokenFilterInput!]
+  id: UuidOperationFilterInput
+  userId: UuidOperationFilterInput
+  user: UserFilterInput
+  token: StringOperationFilterInput
+  deliveryMethod: OtpDeliveryMethodOperationFilterInput
+  expiresAt: DateTimeOperationFilterInput
+  isUsed: BooleanOperationFilterInput
+  createdAt: DateTimeOperationFilterInput
+  usedAt: DateTimeOperationFilterInput
+  failedAttempts: IntOperationFilterInput
 }
 
 input IntOperationFilterInput {
@@ -386,53 +488,15 @@ input IntOperationFilterInput {
   nlte: Int
 }
 
-input UpdateCategoryInput {
-  id: UUID!
-  name: String
+input OtpDeliveryMethodOperationFilterInput {
+  eq: OtpDeliveryMethod
+  neq: OtpDeliveryMethod
+  in: [OtpDeliveryMethod!]
+  nin: [OtpDeliveryMethod!]
 }
 
 input CreateCategoryInput {
   name: String!
-}
-
-type ModifierGroup {
-  id: UUID!
-  productId: UUID!
-  name: String!
-  selectionMode: ModifierSelectionMode!
-  minSelect: Int!
-  maxSelect: Int!
-  sortOrder: Int!
-  isRequired: Boolean!
-  isActive: Boolean!
-  options: [ModifierOption!]!
-}
-
-type ProductVariant {
-  id: UUID!
-  productId: UUID!
-  code: String!
-  name: String!
-  price: Decimal!
-  sortOrder: Int!
-  isActive: Boolean!
-}
-
-enum OrderStatus {
-  OPEN
-  COMPLETED
-  PAID
-  CANCELLED
-}
-
-type OrderItemModifier {
-  id: UUID!
-  orderItemId: UUID!
-  modifierOptionId: UUID
-  groupName: String!
-  optionName: String!
-  qty: Int!
-  unitDeltaPrice: Decimal!
 }
 
 type OrderItem {
@@ -448,6 +512,26 @@ type OrderItem {
   modifiers: [OrderItemModifier!]!
 }
 
+type OrderItemModifier {
+  id: UUID!
+  orderItemId: UUID!
+  modifierOptionId: UUID
+  groupName: String!
+  optionName: String!
+  qty: Int!
+  unitDeltaPrice: Decimal!
+}
+
+type ProductComboItem {
+  id: UUID!
+  comboId: UUID!
+  productId: UUID!
+  variantId: UUID
+  qty: Int!
+  product: Product
+  variant: ProductVariant
+}
+
 input CreateOrderInput {
   lines: [CreateOrderLineInput!]!
   comboLines: [CreateOrderComboLineInput!]
@@ -456,6 +540,67 @@ input CreateOrderInput {
 type CreateOrderPayload {
   order: Order
   errors: [CreateOrderValidationError!]!
+}
+
+input ModifierOptionInput {
+  name: String!
+  priceDelta: Decimal!
+  maxQty: Int! = 1
+  sortOrder: Int! = 0
+  isDefault: Boolean! = false
+  isActive: Boolean! = true
+}
+
+type ModifierOption {
+  id: UUID!
+  modifierGroupId: UUID!
+  name: String!
+  priceDelta: Decimal!
+  maxQty: Int!
+  sortOrder: Int!
+  isDefault: Boolean!
+  isActive: Boolean!
+}
+
+input ModifierGroupInput {
+  name: String!
+  selectionMode: ModifierSelectionMode!
+  minSelect: Int!
+  maxSelect: Int!
+  sortOrder: Int! = 0
+  isRequired: Boolean! = false
+  isActive: Boolean! = true
+}
+
+type ModifierGroup {
+  id: UUID!
+  productId: UUID!
+  name: String!
+  selectionMode: ModifierSelectionMode!
+  minSelect: Int!
+  maxSelect: Int!
+  sortOrder: Int!
+  isRequired: Boolean!
+  isActive: Boolean!
+  options: [ModifierOption!]!
+}
+
+input ProductVariantInput {
+  code: String!
+  name: String!
+  price: Decimal!
+  sortOrder: Int! = 0
+  isActive: Boolean! = true
+}
+
+type ProductVariant {
+  id: UUID!
+  productId: UUID!
+  code: String!
+  name: String!
+  price: Decimal!
+  sortOrder: Int!
+  isActive: Boolean!
 }
 
 input UpdateProductInput {
@@ -477,14 +622,21 @@ input ProductInput {
   unitName: String
 }
 
-type ProductComboItem {
+enum UserRole {
+  OWNER
+  STAFF
+}
+
+input UpdateCategoryInput {
   id: UUID!
-  comboId: UUID!
-  productId: UUID!
-  variantId: UUID
-  qty: Int!
-  product: Product
-  variant: ProductVariant
+  name: String
+}
+
+enum OrderStatus {
+  OPEN
+  COMPLETED
+  PAID
+  CANCELLED
 }
 
 input CreateComboInput {
@@ -519,6 +671,28 @@ input RemoveComboItemInput {
   itemId: UUID!
 }
 
+input CreateEmployeeInput {
+  email: String!
+  phone: String
+  firstName: String
+  lastName: String
+  role: UserRole!
+}
+
+input UpdateEmployeeInput {
+  id: UUID!
+  email: String!
+  phone: String
+  firstName: String
+  lastName: String
+  role: UserRole!
+}
+
+input ToggleEmployeeStatusInput {
+  id: UUID!
+  isActive: Boolean!
+}
+
 type AuthenticationPayload {
   user: UserDto!
   token: String
@@ -550,6 +724,21 @@ input VerifyOtpInput {
   otpToken: String!
 }
 
+type OtpToken {
+  isValid: Boolean!
+  isExpired: Boolean!
+  id: UUID!
+  userId: UUID!
+  user: User
+  token: String!
+  deliveryMethod: OtpDeliveryMethod!
+  expiresAt: DateTime!
+  isUsed: Boolean!
+  createdAt: DateTime!
+  usedAt: DateTime
+  failedAttempts: Int!
+}
+
 enum OtpDeliveryMethod {
   EMAIL
   SMS
@@ -571,10 +760,20 @@ input ComboItemInput {
   variantId: UUID
 }
 
+enum ModifierSelectionMode {
+  SINGLE
+  MULTIPLE
+}
+
 type CreateOrderValidationError {
   code: String!
   message: String!
   lineIndex: Int
+}
+
+input CreateOrderComboLineInput {
+  comboId: UUID!
+  quantity: Int!
 }
 
 input CreateOrderLineInput {
@@ -584,55 +783,7 @@ input CreateOrderLineInput {
   modifiers: [CreateOrderLineModifierInput!]
 }
 
-input CreateOrderComboLineInput {
-  comboId: UUID!
-  quantity: Int!
-}
-
-type ModifierOption {
-  id: UUID!
-  modifierGroupId: UUID!
-  name: String!
-  priceDelta: Decimal!
-  maxQty: Int!
-  sortOrder: Int!
-  isDefault: Boolean!
-  isActive: Boolean!
-}
-
-enum ModifierSelectionMode {
-  SINGLE
-  MULTIPLE
-}
-
 input CreateOrderLineModifierInput {
   optionId: UUID!
   quantity: Int!
-}
-
-input ProductVariantInput {
-  code: String!
-  name: String!
-  price: Decimal!
-  sortOrder: Int! = 0
-  isActive: Boolean! = true
-}
-
-input ModifierGroupInput {
-  name: String!
-  selectionMode: ModifierSelectionMode!
-  minSelect: Int!
-  maxSelect: Int!
-  sortOrder: Int! = 0
-  isRequired: Boolean! = false
-  isActive: Boolean! = true
-}
-
-input ModifierOptionInput {
-  name: String!
-  priceDelta: Decimal!
-  maxQty: Int! = 1
-  sortOrder: Int! = 0
-  isDefault: Boolean! = false
-  isActive: Boolean! = true
 }
