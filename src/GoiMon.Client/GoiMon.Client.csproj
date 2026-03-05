@@ -14,8 +14,8 @@
     <PackageReference Include="EasyAppDev.Blazor.Store" Version="2.0.11" />
     <PackageReference Include="StrawberryShake.Blazor" Version="15.*" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.*" />
-    <PackageReference Include="BlazorBlueprint.Components" Version="*" />
-    <PackageReference Include="BlazorBlueprint.Icons.Lucide" Version="*" />
+    <PackageReference Include="BlazorBlueprint.Components" Version="3.2.0" />
+    <PackageReference Include="BlazorBlueprint.Icons.Lucide" Version="2.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.*" />
   </ItemGroup>
 
