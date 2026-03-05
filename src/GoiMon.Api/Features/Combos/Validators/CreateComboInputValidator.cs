@@ -12,7 +12,8 @@ public class CreateComboInputValidator : AbstractValidator<CreateComboInput>
             .MustAsync(async (name, ct) =>
             {
                 using var db = dbFactory.CreateDbContext();
-                return !await db.ProductCombos.AnyAsync(c => c.Name == name.Trim().ToLowerInvariant(), ct);
+                var trimmedName = name.Trim();
+                return !await db.ProductCombos.AnyAsync(c => c.Name == trimmedName, ct);
             })
             .WithMessage("A combo with the same name already exists");
 

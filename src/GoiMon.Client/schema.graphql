@@ -16,6 +16,7 @@ type Query {
   combos(skip: Int take: Int where: ProductComboFilterInput order: [ProductComboSortInput!]): CombosCollectionSegment
   comboById(id: UUID!): ProductCombo
   employees(skip: Int take: Int where: UserFilterInput order: [UserSortInput!]): EmployeesCollectionSegment
+  tableSlots(skip: Int take: Int where: TableSlotFilterInput order: [TableSlotSortInput!]): TableSlotsCollectionSegment
 }
 
 type Mutation {
@@ -48,6 +49,13 @@ type Mutation {
   createEmployee(input: CreateEmployeeInput!): User!
   updateEmployee(input: UpdateEmployeeInput!): User
   toggleEmployeeStatus(input: ToggleEmployeeStatusInput!): User
+  createTableSlot(input: CreateTableSlotInput!): TableSlot!
+  updateTableSlot(input: UpdateTableSlotInput!): TableSlot
+  deactivateTableSlot(input: DeactivateTableSlotInput!): TableSlot
+  setTableState(input: SetTableStateInput!): TableSlot
+  mergeTableSlots(input: MergeTableSlotsInput!): Order
+  splitTableSlot(input: SplitTableSlotInput!): TableSlot
+  splitBill(input: SplitBillInput!): Order
   registerWithGoogle(input: RegisterWithOAuthInput!): AuthenticationPayload
   registerWithFacebook(input: RegisterWithOAuthInput!): AuthenticationPayload
   loginWithGoogle(input: LoginWithOAuthInput!): AuthenticationPayload
@@ -57,6 +65,7 @@ type Mutation {
 
 type Subscription {
   onOrderChanged: Order!
+  onTableSlotChanged: TableSlot!
 }
 
 "The `Upload` scalar type represents a file upload."
@@ -108,6 +117,7 @@ input OrderFilterInput {
   createdAt: DateTimeOperationFilterInput
   status: OrderStatusOperationFilterInput
   total: DecimalOperationFilterInput
+  tableSlotId: UuidOperationFilterInput
   items: ListFilterInputTypeOfOrderItemFilterInput
   id: UuidOperationFilterInput
 }
@@ -116,6 +126,7 @@ input OrderSortInput {
   createdAt: SortEnumType
   status: SortEnumType
   total: SortEnumType
+  tableSlotId: SortEnumType
   id: SortEnumType
 }
 
@@ -231,6 +242,39 @@ type EmployeesCollectionSegment {
   pageInfo: CollectionSegmentInfo!
   "A flattened list of the items."
   items: [User!]
+  totalCount: Int!
+}
+
+input TableSlotFilterInput {
+  and: [TableSlotFilterInput!]
+  or: [TableSlotFilterInput!]
+  code: StringOperationFilterInput
+  name: StringOperationFilterInput
+  capacity: IntOperationFilterInput
+  isActive: BooleanOperationFilterInput
+  currentState: TableServiceStateOperationFilterInput
+  createdAt: DateTimeOperationFilterInput
+  updatedAt: DateTimeOperationFilterInput
+  id: UuidOperationFilterInput
+}
+
+input TableSlotSortInput {
+  code: SortEnumType
+  name: SortEnumType
+  capacity: SortEnumType
+  isActive: SortEnumType
+  currentState: SortEnumType
+  createdAt: SortEnumType
+  updatedAt: SortEnumType
+  id: SortEnumType
+}
+
+"A segment of a collection."
+type TableSlotsCollectionSegment {
+  "Information to aid in pagination."
+  pageInfo: CollectionSegmentInfo!
+  "A flattened list of the items."
+  items: [TableSlot!]
   totalCount: Int!
 }
 
@@ -350,6 +394,7 @@ type Order {
   createdAt: DateTime!
   status: OrderStatus!
   total: Decimal!
+  tableSlotId: UUID
   items: [OrderItem!]!
   id: UUID!
 }
@@ -426,6 +471,39 @@ type User {
   otpTokens: [OtpToken!]!
 }
 
+input IntOperationFilterInput {
+  eq: Int
+  neq: Int
+  in: [Int]
+  nin: [Int]
+  gt: Int
+  ngt: Int
+  gte: Int
+  ngte: Int
+  lt: Int
+  nlt: Int
+  lte: Int
+  nlte: Int
+}
+
+input TableServiceStateOperationFilterInput {
+  eq: TableServiceState
+  neq: TableServiceState
+  in: [TableServiceState!]
+  nin: [TableServiceState!]
+}
+
+type TableSlot {
+  code: String!
+  name: String!
+  capacity: Int!
+  isActive: Boolean!
+  currentState: TableServiceState!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  id: UUID!
+}
+
 "The built-in `Decimal` scalar type."
 scalar Decimal
 
@@ -473,21 +551,6 @@ input OtpTokenFilterInput {
   failedAttempts: IntOperationFilterInput
 }
 
-input IntOperationFilterInput {
-  eq: Int
-  neq: Int
-  in: [Int]
-  nin: [Int]
-  gt: Int
-  ngt: Int
-  gte: Int
-  ngte: Int
-  lt: Int
-  nlt: Int
-  lte: Int
-  nlte: Int
-}
-
 input OtpDeliveryMethodOperationFilterInput {
   eq: OtpDeliveryMethod
   neq: OtpDeliveryMethod
@@ -495,8 +558,11 @@ input OtpDeliveryMethodOperationFilterInput {
   nin: [OtpDeliveryMethod!]
 }
 
-input CreateCategoryInput {
+input CreateComboInput {
   name: String!
+  price: Decimal!
+  items: [ComboItemInput!]
+  imageUrl: String
 }
 
 type OrderItem {
@@ -512,14 +578,13 @@ type OrderItem {
   modifiers: [OrderItemModifier!]!
 }
 
-type OrderItemModifier {
+input UpdateCategoryInput {
   id: UUID!
-  orderItemId: UUID!
-  modifierOptionId: UUID
-  groupName: String!
-  optionName: String!
-  qty: Int!
-  unitDeltaPrice: Decimal!
+  name: String
+}
+
+input CreateCategoryInput {
+  name: String!
 }
 
 type ProductComboItem {
@@ -532,9 +597,25 @@ type ProductComboItem {
   variant: ProductVariant
 }
 
+type OrderItemModifier {
+  id: UUID!
+  orderItemId: UUID!
+  modifierOptionId: UUID
+  groupName: String!
+  optionName: String!
+  qty: Int!
+  unitDeltaPrice: Decimal!
+}
+
+enum UserRole {
+  OWNER
+  STAFF
+}
+
 input CreateOrderInput {
   lines: [CreateOrderLineInput!]!
   comboLines: [CreateOrderComboLineInput!]
+  tableSlotId: UUID
 }
 
 type CreateOrderPayload {
@@ -622,30 +703,6 @@ input ProductInput {
   unitName: String
 }
 
-enum UserRole {
-  OWNER
-  STAFF
-}
-
-input UpdateCategoryInput {
-  id: UUID!
-  name: String
-}
-
-enum OrderStatus {
-  OPEN
-  COMPLETED
-  PAID
-  CANCELLED
-}
-
-input CreateComboInput {
-  name: String!
-  price: Decimal!
-  items: [ComboItemInput!]
-  imageUrl: String
-}
-
 input UpdateComboInput {
   id: UUID!
   name: String
@@ -671,6 +728,13 @@ input RemoveComboItemInput {
   itemId: UUID!
 }
 
+enum OrderStatus {
+  OPEN
+  COMPLETED
+  PAID
+  CANCELLED
+}
+
 input CreateEmployeeInput {
   email: String!
   phone: String
@@ -691,6 +755,45 @@ input UpdateEmployeeInput {
 input ToggleEmployeeStatusInput {
   id: UUID!
   isActive: Boolean!
+}
+
+input CreateTableSlotInput {
+  code: String!
+  name: String!
+  capacity: Int!
+}
+
+input UpdateTableSlotInput {
+  id: UUID!
+  code: String!
+  name: String!
+  capacity: Int!
+}
+
+input DeactivateTableSlotInput {
+  id: UUID!
+}
+
+input SetTableStateInput {
+  id: UUID!
+  state: TableServiceState!
+}
+
+input MergeTableSlotsInput {
+  sourceTableSlotId: UUID!
+  targetTableSlotId: UUID!
+}
+
+input SplitTableSlotInput {
+  sourceTableSlotId: UUID!
+  newCode: String!
+  newName: String!
+  capacity: Int!
+}
+
+input SplitBillInput {
+  orderId: UUID!
+  itemIds: [UUID!]!
 }
 
 type AuthenticationPayload {
@@ -739,6 +842,15 @@ type OtpToken {
   failedAttempts: Int!
 }
 
+enum TableServiceState {
+  AVAILABLE
+  OCCUPIED
+  PREPARING
+  READY_TO_SERVE
+  AWAITING_PAYMENT
+  PAID
+}
+
 enum OtpDeliveryMethod {
   EMAIL
   SMS
@@ -752,12 +864,6 @@ type UserDto {
   photoUrl: String
   isVerified: Boolean!
   createdAt: DateTime!
-}
-
-input ComboItemInput {
-  productId: UUID!
-  qty: Int!
-  variantId: UUID
 }
 
 enum ModifierSelectionMode {
@@ -781,6 +887,12 @@ input CreateOrderLineInput {
   variantId: UUID
   quantity: Int!
   modifiers: [CreateOrderLineModifierInput!]
+}
+
+input ComboItemInput {
+  productId: UUID!
+  qty: Int!
+  variantId: UUID
 }
 
 input CreateOrderLineModifierInput {

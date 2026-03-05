@@ -13,6 +13,15 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
             .HasConversion<string>()
             .IsRequired()
             .HasMaxLength(50);
+
+        builder.Property(o => o.TableSlotId)
+            .IsRequired(false);
+
+        builder.HasOne<TableSlot>()
+            .WithMany()
+            .HasForeignKey(o => o.TableSlotId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.HasMany(o => o.Items)
             .WithOne()
             .HasForeignKey(oi => oi.OrderId)

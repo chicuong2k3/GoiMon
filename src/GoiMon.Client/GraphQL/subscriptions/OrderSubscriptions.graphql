@@ -1,6 +1,7 @@
 subscription OnOrderChanged {
   onOrderChanged {
     id
+    tableSlotId
     status
     total
     createdAt

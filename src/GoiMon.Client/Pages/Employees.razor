@@ -10,7 +10,7 @@
 <header class="flex h-12 shrink-0 items-center gap-2 border-b px-4 py-1 md:px-5">
     <BbSidebarTrigger />
     <BbSeparator Orientation="SeparatorOrientation.Vertical" Class="h-3" />
-    <h1 class="text-xs font-semibold">Nhân sự</h1>
+    <h1 class="text-[10px] font-semibold">Nhân sự</h1>
     <div class="ml-auto flex items-center gap-2">
         <BbButton OnClick="OpenCreate" Size="ButtonSize.Small">
             <LucideIcon Name="plus" Class="h-4 w-4 mr-1" />
@@ -418,6 +418,31 @@
     private static string RoleLabel(string role)
         => string.Equals(role, "Owner", StringComparison.OrdinalIgnoreCase) ? "Owner" : "Staff";
 
+    private bool MatchesCurrentFilter(EmployeeDto item)
+    {
+        if (string.IsNullOrWhiteSpace(_search))
+            return true;
+
+        var keyword = _search.Trim();
+        return ContainsKeyword(item.Email, keyword)
+            || ContainsKeyword(item.FirstName, keyword)
+            || ContainsKeyword(item.LastName, keyword);
+    }
+
+    private static bool ContainsKeyword(string? source, string keyword)
+        => !string.IsNullOrWhiteSpace(source)
+            && source.Contains(keyword, StringComparison.OrdinalIgnoreCase);
+
+    private void ApplyLocalSortIfNeeded()
+    {
+        _items = _sortOption switch
+        {
+            "email_asc" => _items.OrderBy(x => x.Email, StringComparer.OrdinalIgnoreCase).ToList(),
+            "email_desc" => _items.OrderByDescending(x => x.Email, StringComparer.OrdinalIgnoreCase).ToList(),
+            _ => _items
+        };
+    }
+
     private void OpenCreate()
     {
         ResetForm();
@@ -462,9 +487,54 @@
             return;
         }
 
+        var created = result.Data?.CreateEmployee;
+        if (created is null)
+        {
+            ToastService.Error("Không nhận được dữ liệu nhân sự sau khi tạo.");
+            return;
+        }
+
+        var createdItem = new EmployeeDto(
+            created.Id,
+            created.Email,
+            created.Phone,
+            created.FirstName,
+            created.LastName,
+            created.Role.ToString(),
+            created.IsActive,
+            created.IsVerified,
+            created.CreatedAt,
+            created.UpdatedAt);
+
         _showCreate = false;
         ToastService.Success("Đã tạo nhân sự.");
-        await LoadAsync(true);
+
+        if (MatchesCurrentFilter(createdItem))
+        {
+            _total++;
+
+            if (_sortOption == "created_desc" && CurrentPage == 1)
+            {
+                _items.Insert(0, createdItem);
+                if (_items.Count > _take)
+                    _items.RemoveAt(_items.Count - 1);
+            }
+            else if (_sortOption == "created_asc" && CurrentPage == TotalPages)
+            {
+                _items.Add(createdItem);
+                if (_items.Count > _take)
+                    _items.RemoveAt(0);
+            }
+            else if (_sortOption is "email_asc" or "email_desc")
+            {
+                _items.Add(createdItem);
+                ApplyLocalSortIfNeeded();
+                if (_items.Count > _take)
+                    _items.RemoveAt(_items.Count - 1);
+            }
+        }
+
+        await PersistStateAsync();
     }
 
     private async Task UpdateAsync()
@@ -490,10 +560,58 @@
             return;
         }
 
+        var updated = result.Data?.UpdateEmployee;
+        if (updated is null)
+        {
+            ToastService.Error("Không nhận được dữ liệu nhân sự sau khi cập nhật.");
+            return;
+        }
+
+        var updatedItem = new EmployeeDto(
+            updated.Id,
+            updated.Email,
+            updated.Phone,
+            updated.FirstName,
+            updated.LastName,
+            updated.Role.ToString(),
+            updated.IsActive,
+            updated.IsVerified,
+            updated.CreatedAt,
+            updated.UpdatedAt);
+
         _showEdit = false;
         _editId = null;
         ToastService.Success("Đã cập nhật nhân sự.");
-        await LoadAsync(true);
+
+        var index = _items.FindIndex(x => x.Id == updatedItem.Id);
+        if (index >= 0)
+        {
+            if (MatchesCurrentFilter(updatedItem))
+            {
+                _items[index] = updatedItem;
+                ApplyLocalSortIfNeeded();
+                await PersistStateAsync();
+            }
+            else
+            {
+                _items.RemoveAt(index);
+                _total = Math.Max(0, _total - 1);
+
+                if (_items.Count == 0 && _skip > 0 && _total > 0)
+                {
+                    _skip = Math.Max(0, _skip - _take);
+                    await LoadAsync(true);
+                }
+                else
+                {
+                    await PersistStateAsync();
+                }
+            }
+        }
+        else
+        {
+            await PersistStateAsync();
+        }
     }
 
     private async Task ToggleStatusAsync(EmployeeDto item)
@@ -505,8 +623,26 @@
             return;
         }
 
+        var updated = result.Data?.ToggleEmployeeStatus;
+        if (updated is not null)
+        {
+            var index = _items.FindIndex(x => x.Id == updated.Id);
+            if (index >= 0)
+            {
+                var current = _items[index];
+                _items[index] = current with
+                {
+                    Email = updated.Email,
+                    Role = updated.Role.ToString(),
+                    IsActive = updated.IsActive,
+                    UpdatedAt = updated.UpdatedAt
+                };
+
+                await PersistStateAsync();
+            }
+        }
+
         ToastService.Success(item.IsActive ? "Đã tạm khóa nhân sự." : "Đã kích hoạt nhân sự.");
-        await LoadAsync(true);
     }
 
     private void ResetForm()

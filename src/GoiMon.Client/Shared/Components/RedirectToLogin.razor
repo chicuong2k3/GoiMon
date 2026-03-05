@@ -1,0 +1,21 @@
+@inject NavigationManager Navigation
+
+<div class="flex min-h-[40vh] items-center justify-center gap-2 text-sm text-muted-foreground">
+    <BbSpinner Class="h-4 w-4" />
+    <span>Đang chuyển đến trang đăng nhập...</span>
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        var relativePath = Navigation.ToBaseRelativePath(Navigation.Uri);
+
+        if (relativePath.StartsWith("authentication/login", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var encodedReturnUrl = Uri.EscapeDataString("/" + relativePath.TrimStart('/'));
+        Navigation.NavigateTo($"/authentication/login?returnUrl={encodedReturnUrl}", replace: true);
+    }
+}

@@ -24,6 +24,7 @@ public class AppDbContext : DbContext
     public DbSet<ModifierOption> ModifierOptions { get; set; } = null!;
     public DbSet<User> Users { get; set; } = null!;
     public DbSet<OtpToken> OtpTokens { get; set; } = null!;
+    public DbSet<TableSlot> TableSlots { get; set; } = null!;
     public DbSet<Infrastructure.Outbox.OutboxEvent> OutboxEvents { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

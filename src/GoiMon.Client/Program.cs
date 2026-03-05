@@ -46,6 +46,7 @@ builder.Services.AddBlazoredLocalStorage();
 builder.Services.AddScoped<ITokenStorageService, TokenStorageService>();
 builder.Services.AddScoped<IImageUploadService, ImageUploadService>();
 builder.Services.AddScoped<AuthenticationStateProvider, GoimonAuthenticationStateProvider>();
+builder.Services.AddAuthorizationCore();
 
 builder.Services.AddStoreUtilities();
 builder.Services.AddScopedStoreWithUtilities(CategoriesUiState.Initial, (store, _) => store);
@@ -54,5 +55,6 @@ builder.Services.AddScopedStoreWithUtilities(CombosUiState.Initial, (store, _) =
 builder.Services.AddScopedStoreWithUtilities(OrdersUiState.Initial, (store, _) => store);
 builder.Services.AddScopedStoreWithUtilities(CheckoutUiState.Initial, (store, _) => store);
 builder.Services.AddScopedStoreWithUtilities(EmployeesUiState.Initial, (store, _) => store);
+builder.Services.AddScopedStoreWithUtilities(TablesUiState.Initial, (store, _) => store);
 
 await builder.Build().RunAsync();

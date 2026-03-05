@@ -14,7 +14,7 @@
 <header class="flex h-12 shrink-0 items-center gap-2 border-b px-4 py-1 md:px-5">
     <BbSidebarTrigger />
     <BbSeparator Orientation="SeparatorOrientation.Vertical" Class="h-3" />
-    <h1 class="text-xs font-semibold">Quản lý đơn hàng</h1>
+    <h1 class="text-[10px] font-semibold">Quản lý đơn hàng</h1>
     <span class="ml-2 flex items-center gap-1 text-xs text-emerald-600 font-medium">
         <span class="h-2 w-2 rounded-full bg-emerald-500 inline-block"></span>
         Trực tuyến
@@ -146,7 +146,10 @@
                 OnClose="CloseDetail"
                 OnComplete="CompleteOrderAsync"
                 OnCancel="CancelOrderAsync"
-                OnPay="PayOrderAsync" />
+                OnPay="PayOrderAsync"
+                OnSetPreparing="SetPreparingAsync"
+                OnSetReadyToServe="SetReadyToServeAsync"
+                OnSetAwaitingPayment="SetAwaitingPaymentAsync" />
         </div>
     </div>
 }
@@ -259,6 +262,7 @@
                 {
                     _orders.AddRange(nodes.Select(n => new OrderListItem(
                         n.Id,
+                        n.TableSlotId,
                         NormalizeStatus(n.Status.ToString()),
                         (decimal)n.Total,
                         n.CreatedAt,
@@ -454,6 +458,49 @@
         }
     }
 
+    private Task SetPreparingAsync()
+        => SetTableStateForSelectedAsync(TableServiceState.Preparing, "preparing", "Bàn chuyển sang Đang chuẩn bị");
+
+    private Task SetReadyToServeAsync()
+        => SetTableStateForSelectedAsync(TableServiceState.ReadyToServe, "ready", "Bàn chuyển sang Sẵn sàng phục vụ");
+
+    private Task SetAwaitingPaymentAsync()
+        => SetTableStateForSelectedAsync(TableServiceState.AwaitingPayment, "awaiting", "Bàn chuyển sang Chờ thanh toán");
+
+    private async Task SetTableStateForSelectedAsync(TableServiceState state, string actionType, string successMessage)
+    {
+        if (_selectedOrder?.TableSlotId is null)
+        {
+            ToastService.Error("Đơn hàng chưa gắn bàn phục vụ.");
+            return;
+        }
+
+        _actionLoading = true;
+        _actionType = actionType;
+        try
+        {
+            var input = new SetTableStateInput
+            {
+                Id = _selectedOrder.TableSlotId.Value,
+                State = state
+            };
+
+            var result = await Client.SetTableState.ExecuteAsync(input);
+            if (result.IsErrorResult() || result.Data?.SetTableState is null)
+            {
+                ToastService.Error(GraphQLErrorFormatter.Format(result.Errors, "Không thể cập nhật trạng thái bàn"));
+                return;
+            }
+
+            ToastService.Success(successMessage);
+        }
+        finally
+        {
+            _actionLoading = false;
+            _actionType = null;
+        }
+    }
+
     private async Task PersistState()
     {
         await DebounceManager.Debounce(
@@ -533,6 +580,7 @@
     {
         var mapped = new OrderListItem(
             changed.Id,
+            changed.TableSlotId,
             NormalizeStatus(changed.Status.ToString()),
             changed.Total,
             changed.CreatedAt,

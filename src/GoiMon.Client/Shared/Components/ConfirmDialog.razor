@@ -30,6 +30,6 @@
     [Parameter] public bool ConfirmLoading { get; set; }
     [Parameter] public string ConfirmLoadingText { get; set; } = "Đang xử lý...";
     [Parameter] public bool ConfirmDisabled { get; set; }
-    [Parameter] public string ContentClass { get; set; } = "max-w-md";
+    [Parameter] public string ContentClass { get; set; } = "max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto";
     [Parameter] public EventCallback OnConfirm { get; set; }
 }

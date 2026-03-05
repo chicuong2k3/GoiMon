@@ -1,5 +1,7 @@
 using HotChocolate.Subscriptions;
 using GoiMon.Api.Features.Orders.Services;
+using GoiMon.Api.Domain.Enums;
+using GoiMon.Api.Features.Tables;
 
 namespace GoiMon.Api.Features.Orders;
 
@@ -27,6 +29,33 @@ public class OrderMutations
         var order = new Order(Guid.NewGuid());
         var selectedModifierCount = 0;
         var comboLines = input.ComboLines ?? [];
+        TableSlot? assignedTable = null;
+
+        if (input.TableSlotId.HasValue)
+        {
+            assignedTable = await db.TableSlots
+                .FirstOrDefaultAsync(x => x.Id == input.TableSlotId.Value && x.IsActive);
+
+            if (assignedTable is null)
+            {
+                errors.Add(new CreateOrderValidationError("TABLE_NOT_FOUND", "Table slot does not exist or is inactive."));
+            }
+            else
+            {
+                var alreadyOccupied = await db.Orders.AnyAsync(o =>
+                    o.TableSlotId == assignedTable.Id && o.Status != OrderStatus.Paid && o.Status != OrderStatus.Cancelled);
+
+                if (alreadyOccupied)
+                {
+                    errors.Add(new CreateOrderValidationError("TABLE_OCCUPIED", "Table slot already has an active order."));
+                }
+                else
+                {
+                    order.AssignTableSlot(assignedTable.Id);
+                    assignedTable.SetState(TableServiceState.Occupied);
+                }
+            }
+        }
 
         for (var index = 0; index < input.Lines.Count; index++)
         {
@@ -245,6 +274,10 @@ public class OrderMutations
         await db.SaveChangesAsync();
         _telemetry.TrackOrderCreated(input.Lines.Count + comboLines.Count, selectedModifierCount, order.Total);
         await eventSender.SendAsync(OrderSubscriptionTopics.OrderChanged, order);
+        if (assignedTable is not null)
+        {
+            await eventSender.SendAsync(TableSubscriptionTopics.TableSlotChanged, assignedTable);
+        }
         return new CreateOrderPayload(order, new List<CreateOrderValidationError>());
     }
 
@@ -257,8 +290,20 @@ public class OrderMutations
         var order = await db.Orders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == orderId);
         if (order is null) return null;
         order.MarkCompleted();
+
+        TableSlot? table = null;
+        if (order.TableSlotId.HasValue)
+        {
+            table = await db.TableSlots.FirstOrDefaultAsync(x => x.Id == order.TableSlotId.Value);
+            table?.SetState(TableServiceState.AwaitingPayment);
+        }
+
         await db.SaveChangesAsync();
         await eventSender.SendAsync(OrderSubscriptionTopics.OrderChanged, order);
+        if (table is not null)
+        {
+            await eventSender.SendAsync(TableSubscriptionTopics.TableSlotChanged, table);
+        }
         return order;
     }
 
@@ -271,8 +316,20 @@ public class OrderMutations
         var order = await db.Orders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == orderId);
         if (order is null) return null;
         order.MarkPaid();
+
+        TableSlot? table = null;
+        if (order.TableSlotId.HasValue)
+        {
+            table = await db.TableSlots.FirstOrDefaultAsync(x => x.Id == order.TableSlotId.Value);
+            table?.SetState(TableServiceState.Available);
+        }
+
         await db.SaveChangesAsync();
         await eventSender.SendAsync(OrderSubscriptionTopics.OrderChanged, order);
+        if (table is not null)
+        {
+            await eventSender.SendAsync(TableSubscriptionTopics.TableSlotChanged, table);
+        }
         return order;
     }
 
@@ -285,13 +342,25 @@ public class OrderMutations
         var order = await db.Orders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == orderId);
         if (order is null) return null;
         order.Cancel();
+
+        TableSlot? table = null;
+        if (order.TableSlotId.HasValue)
+        {
+            table = await db.TableSlots.FirstOrDefaultAsync(x => x.Id == order.TableSlotId.Value);
+            table?.SetState(TableServiceState.Available);
+        }
+
         await db.SaveChangesAsync();
         await eventSender.SendAsync(OrderSubscriptionTopics.OrderChanged, order);
+        if (table is not null)
+        {
+            await eventSender.SendAsync(TableSubscriptionTopics.TableSlotChanged, table);
+        }
         return order;
     }
 }
 
-public record CreateOrderInput(List<CreateOrderLineInput> Lines, List<CreateOrderComboLineInput>? ComboLines = null);
+public record CreateOrderInput(List<CreateOrderLineInput> Lines, List<CreateOrderComboLineInput>? ComboLines = null, Guid? TableSlotId = null);
 
 public record CreateOrderLineInput(
     Guid ProductId,

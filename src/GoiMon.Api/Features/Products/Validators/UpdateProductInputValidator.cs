@@ -13,7 +13,8 @@ public class UpdateProductInputValidator : AbstractValidator<UpdateProductInput>
             .MustAsync(async (input, name, ct) =>
             {
                 using var db = dbFactory.CreateDbContext();
-                return !await db.Products.AnyAsync(p => p.Id != input.Id && p.Name == name.Trim().ToLowerInvariant(), ct);
+                var trimmedName = name.Trim();
+                return !await db.Products.AnyAsync(p => p.Id != input.Id && p.Name == trimmedName, ct);
             })
             .WithMessage("Another product with the same name already exists");
 

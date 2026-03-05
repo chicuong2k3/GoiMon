@@ -1,0 +1,559 @@
+@page "/tables"
+@inherits StoreComponentWithUtilities<TablesUiState>
+@inject IGoiMonClient Client
+@inject ToastService ToastService
+@inject IStateWriter<TablesUiState> UiStateWriter
+@implements IAsyncDisposable
+
+@using EasyAppDev.Blazor.Store.Core
+@using GoiMon.Client.State
+
+<header class="flex h-12 shrink-0 items-center gap-2 border-b px-4 py-1 md:px-5">
+    <BbSidebarTrigger />
+    <BbSeparator Orientation="SeparatorOrientation.Vertical" Class="h-3" />
+    <h1 class="text-[10px] font-semibold">Bàn phục vụ</h1>
+    <div class="ml-auto flex items-center gap-2">
+        <BbButton OnClick="OpenCreate" Size="ButtonSize.Small">
+            <LucideIcon Name="plus" Class="h-4 w-4 mr-1" />
+            Thêm bàn
+        </BbButton>
+    </div>
+</header>
+
+<div class="p-4 md:p-5 space-y-4">
+    <div class="grid grid-cols-2 md:grid-cols-6 gap-2">
+        @foreach (var state in StateCounters)
+        {
+            <BbCard>
+                <BbCardContent Class="p-3">
+                    <p class="text-xs text-muted-foreground">@StateLabel(state.Key)</p>
+                    <p class="text-base font-semibold">@state.Value</p>
+                </BbCardContent>
+            </BbCard>
+        }
+    </div>
+
+    <div class="mb-1 flex flex-wrap items-center gap-3">
+        <div class="w-72">
+            <BbInput Value="@_search"
+                     ValueChanged="OnSearchChangedAsync"
+                     Placeholder="Tìm mã bàn hoặc tên bàn..." />
+        </div>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="space-y-2">
+            @for (int i = 0; i < 6; i++)
+            {
+                <BbSkeleton Height="48px" Class="w-full" />
+            }
+        </div>
+    }
+    else if (_error is not null)
+    {
+        <BbAlert Variant="AlertVariant.Danger">
+            <BbAlertDescription>@_error</BbAlertDescription>
+        </BbAlert>
+    }
+    else
+    {
+        <div class="rounded-md border">
+            <table class="w-full text-sm">
+                <thead class="border-b bg-muted/50">
+                    <tr>
+                        <th class="h-10 px-4 text-left font-medium text-muted-foreground align-middle">Mã bàn</th>
+                        <th class="h-10 px-4 text-left font-medium text-muted-foreground align-middle">Tên bàn</th>
+                        <th class="h-10 px-4 text-left font-medium text-muted-foreground align-middle">Sức chứa</th>
+                        <th class="h-10 px-4 text-left font-medium text-muted-foreground align-middle">Trạng thái</th>
+                        <th class="h-10 px-4 text-left font-medium text-muted-foreground align-middle">Kích hoạt</th>
+                        <th class="h-10 px-4 text-right font-medium text-muted-foreground align-middle w-44">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (FilteredItems.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="6" class="p-8 text-center text-muted-foreground">Không có bàn phù hợp.</td>
+                        </tr>
+                    }
+                    @foreach (var item in FilteredItems)
+                    {
+                        <tr class="border-b last:border-0 hover:bg-muted/50 transition-colors">
+                            <td class="px-4 py-3 align-middle font-medium">@item.Code</td>
+                            <td class="px-4 py-3 align-middle">@item.Name</td>
+                            <td class="px-4 py-3 align-middle">@item.Capacity người</td>
+                            <td class="px-4 py-3 align-middle">
+                                <BbBadge Variant="BadgeVariant.Outline">@StateLabel(item.CurrentState)</BbBadge>
+                            </td>
+                            <td class="px-4 py-3 align-middle">
+                                <BbBadge Variant="@(item.IsActive ? BadgeVariant.Secondary : BadgeVariant.Outline)">
+                                    @(item.IsActive ? "Đang dùng" : "Ngừng dùng")
+                                </BbBadge>
+                            </td>
+                            <td class="px-4 py-3 text-right align-middle">
+                                <div class="flex items-center justify-end gap-1">
+                                    <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall"
+                                              AriaLabel="Sửa" OnClick="() => OpenEdit(item)">
+                                        <LucideIcon Name="pencil" Class="h-4 w-4" />
+                                    </BbButton>
+                                    <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall"
+                                              AriaLabel="Trạng thái" OnClick="() => OpenStateDialog(item)">
+                                        <LucideIcon Name="refresh-cw" Class="h-4 w-4" />
+                                    </BbButton>
+                                    <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.IconSmall"
+                                              Disabled="@(!item.IsActive)"
+                                              AriaLabel="Ngưng bàn" OnClick="() => DeactivateAsync(item)">
+                                        <LucideIcon Name="power" Class="h-4 w-4" />
+                                    </BbButton>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+<FormDialog Open="@_showCreate"
+            OpenChanged="@(v => _showCreate = v)"
+            Title="Thêm bàn"
+            Description="Tạo bàn phục vụ mới cho mô hình dine-in."
+            SubmitText="Lưu"
+            SubmitLoading="@_saving"
+            SubmitLoadingText="Đang lưu..."
+            SubmitDisabled="@(!CanSubmitForm)"
+            OnSubmit="CreateAsync">
+    <div class="space-y-1">
+        <BbLabel>Mã bàn <span class="text-destructive">*</span></BbLabel>
+        <BbInput @bind-Value="_formCode" Placeholder="A1" />
+    </div>
+    <div class="space-y-1">
+        <BbLabel>Tên bàn <span class="text-destructive">*</span></BbLabel>
+        <BbInput @bind-Value="_formName" Placeholder="Bàn A1" />
+    </div>
+    <div class="space-y-1">
+        <BbLabel>Sức chứa</BbLabel>
+        <BbInput @bind-Value="_formCapacityText" Type="InputType.Number" Placeholder="4" />
+    </div>
+</FormDialog>
+
+<FormDialog Open="@_showEdit"
+            OpenChanged="@(v => _showEdit = v)"
+            Title="Sửa bàn"
+            Description="Cập nhật thông tin bàn phục vụ."
+            SubmitText="Cập nhật"
+            SubmitLoading="@_saving"
+            SubmitLoadingText="Đang cập nhật..."
+            SubmitDisabled="@(!CanSubmitForm)"
+            OnSubmit="UpdateAsync">
+    <div class="space-y-1">
+        <BbLabel>Mã bàn <span class="text-destructive">*</span></BbLabel>
+        <BbInput @bind-Value="_formCode" Placeholder="A1" />
+    </div>
+    <div class="space-y-1">
+        <BbLabel>Tên bàn <span class="text-destructive">*</span></BbLabel>
+        <BbInput @bind-Value="_formName" Placeholder="Bàn A1" />
+    </div>
+    <div class="space-y-1">
+        <BbLabel>Sức chứa</BbLabel>
+        <BbInput @bind-Value="_formCapacityText" Type="InputType.Number" Placeholder="4" />
+    </div>
+</FormDialog>
+
+<FormDialog Open="@_showStateDialog"
+            OpenChanged="@(v => _showStateDialog = v)"
+            Title="Cập nhật trạng thái bàn"
+            Description="Chuyển trạng thái phục vụ theo tiến trình bếp/thanh toán."
+            SubmitText="Lưu trạng thái"
+            SubmitLoading="@_saving"
+            SubmitLoadingText="Đang lưu..."
+            SubmitDisabled="@(!_selectedState.HasValue || _stateTargetId is null)"
+            OnSubmit="SetStateAsync">
+    <div class="space-y-1">
+        <BbLabel>Trạng thái</BbLabel>
+        <BbSelect TValue="TableServiceState"
+                  Value="@(_selectedState ?? TableServiceState.Available)"
+                  ValueChanged="OnStateChanged"
+                  Options="StateOptions"
+                  Class="w-full" />
+    </div>
+</FormDialog>
+
+@code {
+    private const int InitialTableSlotsPageSize = 100;
+
+    private List<TableSlotDto> _items = [];
+    private bool _loading;
+    private bool _saving;
+    private string _search = string.Empty;
+    private string? _error;
+
+    private bool _showCreate;
+    private bool _showEdit;
+    private bool _showStateDialog;
+    private Guid? _editId;
+    private Guid? _stateTargetId;
+
+    private string _formCode = string.Empty;
+    private string _formName = string.Empty;
+    private string _formCapacityText = "4";
+    private TableServiceState? _selectedState;
+
+    private IDisposable? _tableChangedSubscription;
+
+    private bool CanSubmitForm
+        => !string.IsNullOrWhiteSpace(_formCode)
+           && !string.IsNullOrWhiteSpace(_formName)
+           && int.TryParse(_formCapacityText, out var capacity)
+           && capacity > 0;
+
+    private IReadOnlyList<TableSlotDto> FilteredItems => _items
+        .Where(x => string.IsNullOrWhiteSpace(_search)
+            || x.Code.Contains(_search, StringComparison.OrdinalIgnoreCase)
+            || x.Name.Contains(_search, StringComparison.OrdinalIgnoreCase))
+        .OrderBy(x => x.Code)
+        .ToList();
+
+    private IReadOnlyDictionary<string, int> StateCounters => new Dictionary<string, int>
+    {
+        ["Available"] = _items.Count(x => x.IsActive && x.CurrentState == "Available"),
+        ["Occupied"] = _items.Count(x => x.IsActive && x.CurrentState == "Occupied"),
+        ["Preparing"] = _items.Count(x => x.IsActive && x.CurrentState == "Preparing"),
+        ["ReadyToServe"] = _items.Count(x => x.IsActive && x.CurrentState == "ReadyToServe"),
+        ["AwaitingPayment"] = _items.Count(x => x.IsActive && x.CurrentState == "AwaitingPayment"),
+        ["Paid"] = _items.Count(x => x.IsActive && x.CurrentState == "Paid")
+    };
+
+    private static readonly List<SelectOption<TableServiceState>> StateOptions =
+    [
+        new(TableServiceState.Available, "Sẵn sàng"),
+        new(TableServiceState.Occupied, "Có khách"),
+        new(TableServiceState.Preparing, "Đang chuẩn bị"),
+        new(TableServiceState.ReadyToServe, "Sẵn sàng phục vụ"),
+        new(TableServiceState.AwaitingPayment, "Chờ thanh toán"),
+        new(TableServiceState.Paid, "Đã thanh toán")
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync(true);
+        StartRealtimeSubscription();
+    }
+
+    private async Task LoadAsync(bool showLoading)
+    {
+        _loading = showLoading;
+        _error = null;
+
+        if (showLoading)
+            StateHasChanged();
+
+        try
+        {
+            var where = new TableSlotFilterInput();
+            var order = new List<TableSlotSortInput> { new() { Code = SortEnumType.Asc } };
+            var pageSize = InitialTableSlotsPageSize;
+            const int minPageSize = 1;
+
+            while (true)
+            {
+                var result = await Client.GetTableSlots.ExecuteAsync(0, pageSize, where, order);
+
+                if (result.Data?.TableSlots is { } data)
+                {
+                    _items = data.Items?.Select(i => new TableSlotDto(
+                        i.Id,
+                        i.Code,
+                        i.Name,
+                        i.Capacity,
+                        i.IsActive,
+                        i.CurrentState.ToString(),
+                        i.UpdatedAt)).ToList() ?? [];
+
+                    await PersistStateAsync(pageSize);
+                    break;
+                }
+
+                if (result.Errors.Count > 0)
+                {
+                    var message = string.Join(" ", result.Errors.Select(e => e.Message));
+                    if (IsPageSizeExceededError(message) && pageSize > minPageSize)
+                    {
+                        pageSize = Math.Max(minPageSize, pageSize / 2);
+                        continue;
+                    }
+
+                    _error = GraphQLErrorFormatter.Format(result.Errors, "Không tải được danh sách bàn.");
+                }
+
+                break;
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+
+        _loading = false;
+    }
+
+    private static bool IsPageSizeExceededError(string message)
+        => message.Contains("maximum allowed items per page", StringComparison.OrdinalIgnoreCase)
+           || message.Contains("HC0051", StringComparison.OrdinalIgnoreCase)
+           || message.Contains("take", StringComparison.OrdinalIgnoreCase);
+
+    private async Task PersistStateAsync(int pageSize)
+    {
+        var cache = new TablePageCache(
+            _search,
+            0,
+            pageSize,
+            _items.Count,
+            _items.Select(x => new TableSlotListItem(
+                x.Id,
+                x.Code,
+                x.Name,
+                x.Capacity,
+                x.IsActive,
+                x.CurrentState,
+                x.UpdatedAt)).ToList());
+
+        await UiStateWriter.UpdateAsync(state => state with { Cache = cache }, "cache.tables");
+    }
+
+    private Task OnSearchChangedAsync(string value)
+    {
+        _search = value;
+        return Task.CompletedTask;
+    }
+
+    private void OpenCreate()
+    {
+        ResetForm();
+        _showCreate = true;
+    }
+
+    private void OpenEdit(TableSlotDto item)
+    {
+        _editId = item.Id;
+        _formCode = item.Code;
+        _formName = item.Name;
+        _formCapacityText = item.Capacity.ToString();
+        _showEdit = true;
+    }
+
+    private void OpenStateDialog(TableSlotDto item)
+    {
+        _stateTargetId = item.Id;
+        _selectedState = ParseState(item.CurrentState);
+        _showStateDialog = true;
+    }
+
+    private void OnStateChanged(TableServiceState state)
+    {
+        _selectedState = state;
+    }
+
+    private async Task CreateAsync()
+    {
+        if (!CanSubmitForm)
+            return;
+
+        _saving = true;
+        try
+        {
+            var input = new CreateTableSlotInput
+            {
+                Code = _formCode.Trim(),
+                Name = _formName.Trim(),
+                Capacity = int.Parse(_formCapacityText)
+            };
+
+            var result = await Client.CreateTableSlot.ExecuteAsync(input);
+            if (result.IsErrorResult() || result.Data?.CreateTableSlot is null)
+            {
+                ToastService.Error(GraphQLErrorFormatter.Format(result.Errors, "Không thể tạo bàn."));
+                return;
+            }
+
+            _showCreate = false;
+            ToastService.Success("Đã tạo bàn mới");
+            await LoadAsync(false);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task UpdateAsync()
+    {
+        if (!CanSubmitForm || !_editId.HasValue)
+            return;
+
+        _saving = true;
+        try
+        {
+            var input = new UpdateTableSlotInput
+            {
+                Id = _editId.Value,
+                Code = _formCode.Trim(),
+                Name = _formName.Trim(),
+                Capacity = int.Parse(_formCapacityText)
+            };
+
+            var result = await Client.UpdateTableSlot.ExecuteAsync(input);
+            if (result.IsErrorResult() || result.Data?.UpdateTableSlot is null)
+            {
+                ToastService.Error(GraphQLErrorFormatter.Format(result.Errors, "Không thể cập nhật bàn."));
+                return;
+            }
+
+            _showEdit = false;
+            ToastService.Success("Đã cập nhật bàn");
+            await LoadAsync(false);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task SetStateAsync()
+    {
+        if (_stateTargetId is null || !_selectedState.HasValue)
+            return;
+
+        _saving = true;
+        try
+        {
+            var input = new SetTableStateInput
+            {
+                Id = _stateTargetId.Value,
+                State = _selectedState.Value
+            };
+
+            var result = await Client.SetTableState.ExecuteAsync(input);
+            if (result.IsErrorResult() || result.Data?.SetTableState is null)
+            {
+                ToastService.Error(GraphQLErrorFormatter.Format(result.Errors, "Không thể cập nhật trạng thái bàn."));
+                return;
+            }
+
+            _showStateDialog = false;
+            ToastService.Success("Đã cập nhật trạng thái bàn");
+            await LoadAsync(false);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task DeactivateAsync(TableSlotDto item)
+    {
+        if (!item.IsActive)
+            return;
+
+        _saving = true;
+        try
+        {
+            var input = new DeactivateTableSlotInput { Id = item.Id };
+            var result = await Client.DeactivateTableSlot.ExecuteAsync(input);
+            if (result.IsErrorResult() || result.Data?.DeactivateTableSlot is null)
+            {
+                ToastService.Error(GraphQLErrorFormatter.Format(result.Errors, "Không thể ngưng bàn."));
+                return;
+            }
+
+            ToastService.Success("Đã ngưng bàn");
+            await LoadAsync(false);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void StartRealtimeSubscription()
+    {
+        _tableChangedSubscription?.Dispose();
+        _tableChangedSubscription = Client.OnTableSlotChanged
+            .Watch()
+            .Subscribe(result =>
+            {
+                if (result.IsErrorResult() || result.Data?.OnTableSlotChanged is not { } changed)
+                {
+                    return;
+                }
+
+                _ = InvokeAsync(() =>
+                {
+                    var mapped = new TableSlotDto(
+                        changed.Id,
+                        changed.Code,
+                        changed.Name,
+                        changed.Capacity,
+                        changed.IsActive,
+                        changed.CurrentState.ToString(),
+                        changed.UpdatedAt);
+
+                    var index = _items.FindIndex(x => x.Id == mapped.Id);
+                    if (index >= 0)
+                    {
+                        _items[index] = mapped;
+                    }
+                    else
+                    {
+                        _items.Insert(0, mapped);
+                    }
+
+                    StateHasChanged();
+                    return Task.CompletedTask;
+                });
+            });
+    }
+
+    private static TableServiceState ParseState(string state)
+        => Enum.TryParse<TableServiceState>(state, true, out var parsed)
+            ? parsed
+            : TableServiceState.Available;
+
+    private static string StateLabel(string state)
+        => state switch
+        {
+            "Available" => "Sẵn sàng",
+            "Occupied" => "Có khách",
+            "Preparing" => "Đang chuẩn bị",
+            "ReadyToServe" => "Sẵn sàng phục vụ",
+            "AwaitingPayment" => "Chờ thanh toán",
+            "Paid" => "Đã thanh toán",
+            _ => state
+        };
+
+    private void ResetForm()
+    {
+        _editId = null;
+        _formCode = string.Empty;
+        _formName = string.Empty;
+        _formCapacityText = "4";
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        _tableChangedSubscription?.Dispose();
+        _tableChangedSubscription = null;
+        return ValueTask.CompletedTask;
+    }
+
+    private sealed record TableSlotDto(
+        Guid Id,
+        string Code,
+        string Name,
+        int Capacity,
+        bool IsActive,
+        string CurrentState,
+        DateTimeOffset UpdatedAt);
+}

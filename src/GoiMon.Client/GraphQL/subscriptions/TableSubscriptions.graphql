@@ -1,0 +1,11 @@
+subscription OnTableSlotChanged {
+  onTableSlotChanged {
+    id
+    code
+    name
+    capacity
+    isActive
+    currentState
+    updatedAt
+  }
+}

@@ -1,6 +1,6 @@
 # 💳 Dev Story: Mark Order as Paid (Cashier Flow)
 
-**Status:** Ready  
+**Status:** In Review  
 **Date Created:** 2026-03-03  
 **Owner:** Mary (Business Analyst)  
 **User:** Chicuong  
@@ -30,14 +30,14 @@ This avoids schema explosion now and solves the immediate cashier UX gap.
 
 ## Acceptance Criteria
 
-- [ ] **AC1**: API exposes mutation `markOrderPaid(orderId: UUID!): Order`  
-- [ ] **AC2**: Mutation rule: only orders in `Completed` status can be marked paid  
-- [ ] **AC3**: Mutation rejects invalid transitions (`Open -> Paid`, `Cancelled -> Paid`) with clear error message  
-- [ ] **AC4**: Orders UI shows a visible payment marker (badge/state) for paid orders  
-- [ ] **AC5**: Orders detail panel has action button `Đánh dấu đã thanh toán` when status is `Completed`  
-- [ ] **AC6**: After marking paid, order list and detail refresh immediately (including realtime subscription path)  
-- [ ] **AC7**: Tabs/counts correctly include paid orders (current completed bucket may remain merged in MVP)  
-- [ ] **AC8**: Build succeeds with zero compile errors for API + Client
+- [x] **AC1**: API exposes mutation `markOrderPaid(orderId: UUID!): Order`  
+- [x] **AC2**: Mutation rule: only orders in `Completed` status can be marked paid  
+- [x] **AC3**: Mutation rejects invalid transitions (`Open -> Paid`, `Cancelled -> Paid`) with clear error message  
+- [x] **AC4**: Orders UI shows a visible payment marker (badge/state) for paid orders  
+- [x] **AC5**: Orders detail panel has action button `Đánh dấu đã thanh toán` when status is `Completed`  
+- [x] **AC6**: After marking paid, order list and detail refresh immediately (including realtime subscription path)  
+- [x] **AC7**: Tabs/counts correctly include paid orders (current completed bucket may remain merged in MVP)  
+- [x] **AC8**: Build succeeds with zero compile errors for API + Client
 
 ---
 
@@ -45,10 +45,10 @@ This avoids schema explosion now and solves the immediate cashier UX gap.
 
 ### TASK 1 — Domain: Add pay transition on aggregate (AC: #2, #3)
 
-- Add method `MarkPaid()` on `Order` aggregate
-- Guard clause: allow only when `Status == OrderStatus.Completed`
-- Set `Status = OrderStatus.Paid`
-- Raise domain event `OrderPaidEvent` (optional but recommended for telemetry/outbox consistency)
+- [x] Add method `MarkPaid()` on `Order` aggregate
+- [x] Guard clause: allow only when `Status == OrderStatus.Completed`
+- [x] Set `Status = OrderStatus.Paid`
+- [x] Raise domain event `OrderPaidEvent` (optional but recommended for telemetry/outbox consistency)
 
 **Files:**
 - `src/GoiMon.Api/Domain/Entities/Order.cs`
@@ -58,12 +58,12 @@ This avoids schema explosion now and solves the immediate cashier UX gap.
 
 ### TASK 2 — API: GraphQL mutation (AC: #1, #2, #3)
 
-- Add mutation method in `OrderMutations`:
+- [x] Add mutation method in `OrderMutations`:
   - `public async Task<Order?> MarkOrderPaid(Guid orderId, ...)`
-- Load order + validate existence
-- Execute `order.MarkPaid()` and persist
-- Publish order-changed topic for client refresh
-- Return updated order
+- [x] Load order + validate existence
+- [x] Execute `order.MarkPaid()` and persist
+- [x] Publish order-changed topic for client refresh
+- [x] Return updated order
 
 **Files:**
 - `src/GoiMon.Api/Features/Orders/OrderMutations.cs`
@@ -72,10 +72,10 @@ This avoids schema explosion now and solves the immediate cashier UX gap.
 
 ### TASK 3 — Client GraphQL operations (AC: #1, #6)
 
-- Add mutation operation:
+- [x] Add mutation operation:
   - `mutation MarkOrderPaid($orderId: UUID!) { markOrderPaid(orderId: $orderId) { id status } }`
-- Ensure query/subscription already includes `status` (if yes, keep)
-- Regenerate StrawberryShake client via build
+- [x] Ensure query/subscription already includes `status` (if yes, keep)
+- [x] Regenerate StrawberryShake client via build
 
 **Files:**
 - `src/GoiMon.Client/GraphQL/mutations/OrderMutations.graphql`
@@ -85,15 +85,15 @@ This avoids schema explosion now and solves the immediate cashier UX gap.
 
 ### TASK 4 — Orders UI action + marker (AC: #4, #5, #6, #7)
 
-- In Orders detail actions:
+- [x] In Orders detail actions:
   - show button `Đánh dấu đã thanh toán` only when selected order status is `COMPLETED`
-- On click:
+- [x] On click:
   - call `Client.MarkOrderPaid.ExecuteAsync(orderId)`
   - show success/error toast
   - refresh list state (or rely on subscription + local patch)
-- In list item and detail header:
+- [x] In list item and detail header:
   - show badge for `PAID` state (e.g. `Đã thanh toán`)
-- Keep MVP tab behavior:
+- [x] Keep MVP tab behavior:
   - `completed` bucket includes both `COMPLETED` and `PAID` (matches current code path)
 
 **Files:**
@@ -135,8 +135,22 @@ GPT-5.3-Codex
 
 ### Completion Notes List
 
-- Story drafted from current domain and UI behavior to minimize refactor risk.
+- Domain transition `Completed -> Paid` implemented with `Order.MarkPaid()` and invalid-transition guard.
+- API mutation `markOrderPaid(orderId)` is implemented and publishes order-changed event for realtime updates.
+- Client mutation call, paid status marker, and paid tab/count behavior are implemented in Orders UI.
+- Build verification completed successfully (`dotnet build GoiMon.sln`).
 
 ### File List
 
-- `_bmad-output/implementation-artifacts/dev-story-order-payment.md`
+- `src/GoiMon.Api/Domain/Entities/Order.cs`
+- `src/GoiMon.Api/Domain/Events/Events.cs`
+- `src/GoiMon.Api/Features/Orders/OrderMutations.cs`
+- `src/GoiMon.Client/GraphQL/mutations/OrderMutations.graphql`
+- `src/GoiMon.Client/Pages/Orders.razor`
+- `src/GoiMon.Client/Features/Orders/Components/OrderDetailPanel.razor`
+- `src/GoiMon.Client/schema.graphql`
+- `_bmad-output/implementation-artifacts/stories/ready/dev-story-order-payment.md`
+
+### Change Log
+
+- 2026-03-05 — Story status moved `Ready -> In Review`; acceptance criteria and task checklist updated based on implemented code and successful solution build.

@@ -1,5 +1,5 @@
 <BbDialog Open="@Open" OpenChanged="@OpenChanged">
-    <BbDialogContent Class="@ContentClass">
+    <BbDialogContent Class="@DialogContentClass">
         <BbDialogHeader>
             <BbDialogTitle>@Title</BbDialogTitle>
             @if (!string.IsNullOrWhiteSpace(Description))
@@ -7,8 +7,10 @@
                 <BbDialogDescription>@Description</BbDialogDescription>
             }
         </BbDialogHeader>
-        <div class="@BodyClass">
-            @ChildContent
+        <div class="@DialogBodyWrapperClass">
+            <div class="@DialogBodyClass">
+                @ChildContent
+            </div>
         </div>
         <BbDialogFooter>
             <BbDialogClose>
@@ -33,8 +35,14 @@
     [Parameter] public bool SubmitLoading { get; set; }
     [Parameter] public string SubmitLoadingText { get; set; } = "Đang lưu...";
     [Parameter] public bool SubmitDisabled { get; set; }
-    [Parameter] public string ContentClass { get; set; } = "max-w-md max-h-[90dvh] overflow-y-auto";
-    [Parameter] public string BodyClass { get; set; } = "space-y-3 py-4 pr-1 max-h-[60vh] overflow-y-auto";
+    [Parameter] public string ContentClass { get; set; } = string.Empty;
+    [Parameter] public string BodyClass { get; set; } = string.Empty;
     [Parameter, EditorRequired] public RenderFragment ChildContent { get; set; } = default!;
     [Parameter] public EventCallback OnSubmit { get; set; }
+
+    private string DialogContentClass => $"w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-hidden flex flex-col min-h-0 {ContentClass}";
+
+    private string DialogBodyWrapperClass => "flex-1 min-h-0 overflow-hidden";
+
+    private string DialogBodyClass => $"{BodyClass} h-full min-h-0 space-y-3 py-4 pr-1 overflow-y-auto overscroll-contain";
 }

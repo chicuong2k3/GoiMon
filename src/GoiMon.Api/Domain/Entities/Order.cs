@@ -34,6 +34,11 @@ public class Order : AggregateRoot
     public decimal Total { get; private set; }
 
     /// <summary>
+    /// Optional table slot assignment. Null means takeaway/no-table.
+    /// </summary>
+    public Guid? TableSlotId { get; private set; }
+
+    /// <summary>
     /// Mutable list used internally to store order items. Exposed as read-only in contracts.
     /// </summary>
     public List<OrderItem> Items { get; private set; }
@@ -107,6 +112,11 @@ public class Order : AggregateRoot
         if (Status != OrderStatus.Open) throw new InvalidOperationException("Only open orders can be cancelled.");
         Status = OrderStatus.Cancelled;
         AddDomainEvent(new Events.OrderCancelledEvent(Id));
+    }
+
+    public void AssignTableSlot(Guid? tableSlotId)
+    {
+        TableSlotId = tableSlotId;
     }
 
     private void RecalculateTotal()

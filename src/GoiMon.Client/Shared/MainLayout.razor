@@ -1,8 +1,6 @@
 @inherits LayoutComponentBase
 @using BlazorBlueprint.Primitives.Services
-@inject NavigationManager Navigation
 @inject IJSRuntime JS
-@implements IDisposable
 
 <BbSidebarProvider>
     <BbSidebar>
@@ -20,37 +18,43 @@
                 <BbSidebarGroupLabel Class="group-data-[collapsible=icon]:hidden">Quản lý</BbSidebarGroupLabel>
                 <BbSidebarMenu>
                     <BbSidebarMenuItem>
-                        <BbSidebarMenuButton Href="/categories" Match="NavLinkMatch.All" Tooltip="Danh mục">
+                        <BbSidebarMenuButton Href="/categories" Match="NavLinkMatch.Prefix" Tooltip="Danh mục">
                             <LucideIcon Name="tag" Class="h-4 w-4" />
                             <span class="truncate group-data-[collapsible=icon]:hidden">Danh mục</span>
                         </BbSidebarMenuButton>
                     </BbSidebarMenuItem>
                     <BbSidebarMenuItem>
-                        <BbSidebarMenuButton Href="/products" Match="NavLinkMatch.All" Tooltip="Sản phẩm">
+                        <BbSidebarMenuButton Href="/products" Match="NavLinkMatch.Prefix" Tooltip="Sản phẩm">
                             <LucideIcon Name="package" Class="h-4 w-4" />
                             <span class="truncate group-data-[collapsible=icon]:hidden">Sản phẩm</span>
                         </BbSidebarMenuButton>
                     </BbSidebarMenuItem>
                     <BbSidebarMenuItem>
-                        <BbSidebarMenuButton Href="/checkout" Match="NavLinkMatch.All" Tooltip="Đặt món">
+                        <BbSidebarMenuButton Href="/checkout" Match="NavLinkMatch.Prefix" Tooltip="Đặt món">
                             <LucideIcon Name="shopping-cart" Class="h-4 w-4" />
                             <span class="truncate group-data-[collapsible=icon]:hidden">Đặt món</span>
                         </BbSidebarMenuButton>
                     </BbSidebarMenuItem>
                     <BbSidebarMenuItem>
-                        <BbSidebarMenuButton Href="/orders" Match="NavLinkMatch.All" Tooltip="Đơn hàng">
+                        <BbSidebarMenuButton Href="/orders" Match="NavLinkMatch.Prefix" Tooltip="Đơn hàng">
                             <LucideIcon Name="clipboard-list" Class="h-4 w-4" />
                             <span class="truncate group-data-[collapsible=icon]:hidden">Đơn hàng</span>
                         </BbSidebarMenuButton>
                     </BbSidebarMenuItem>
                     <BbSidebarMenuItem>
-                        <BbSidebarMenuButton Href="/combos" Match="NavLinkMatch.All" Tooltip="Combo">
+                        <BbSidebarMenuButton Href="/tables" Match="NavLinkMatch.Prefix" Tooltip="Bàn phục vụ">
+                            <LucideIcon Name="table-2" Class="h-4 w-4" />
+                            <span class="truncate group-data-[collapsible=icon]:hidden">Bàn phục vụ</span>
+                        </BbSidebarMenuButton>
+                    </BbSidebarMenuItem>
+                    <BbSidebarMenuItem>
+                        <BbSidebarMenuButton Href="/combos" Match="NavLinkMatch.Prefix" Tooltip="Combo">
                             <LucideIcon Name="layers" Class="h-4 w-4" />
                             <span class="truncate group-data-[collapsible=icon]:hidden">Combo</span>
                         </BbSidebarMenuButton>
                     </BbSidebarMenuItem>
                     <BbSidebarMenuItem>
-                        <BbSidebarMenuButton Href="/employees" Match="NavLinkMatch.All" Tooltip="Nhân sự">
+                        <BbSidebarMenuButton Href="/employees" Match="NavLinkMatch.Prefix" Tooltip="Nhân sự">
                             <LucideIcon Name="users" Class="h-4 w-4" />
                             <span class="truncate group-data-[collapsible=icon]:hidden">Nhân sự</span>
                         </BbSidebarMenuButton>
@@ -100,11 +104,6 @@
 @code {
     private bool _isDarkMode;
 
-    protected override void OnInitialized()
-    {
-        Navigation.LocationChanged += OnLocationChanged;
-    }
-
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender)
@@ -120,15 +119,5 @@
     {
         _isDarkMode = isDarkMode;
         await JS.InvokeVoidAsync("goiMonTheme.setDarkMode", _isDarkMode);
-    }
-
-    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
-    {
-        InvokeAsync(StateHasChanged);
-    }
-
-    public void Dispose()
-    {
-        Navigation.LocationChanged -= OnLocationChanged;
     }
 }

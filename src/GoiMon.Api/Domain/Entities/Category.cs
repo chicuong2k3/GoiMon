@@ -9,7 +9,7 @@ public class Category : AggregateRoot
     public Category(Guid id, string name)
     {
         Id = id;
-        Name = name?.Trim().ToLowerInvariant() ?? throw new ArgumentNullException(nameof(name));
+        Name = name?.Trim() ?? throw new ArgumentNullException(nameof(name));
     }
 
     public string Name { get; private set; } = string.Empty;
@@ -18,6 +18,6 @@ public class Category : AggregateRoot
     {
         if (string.IsNullOrEmpty(name))
             throw new ArgumentException("Name cannot be empty", nameof(name));
-        Name = name.Trim().ToLowerInvariant();
+        Name = name.Trim();
     }
 }

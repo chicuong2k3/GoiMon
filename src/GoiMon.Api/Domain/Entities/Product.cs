@@ -10,7 +10,7 @@ public class Product : AggregateRoot
     public Product(Guid id, string name, decimal price, Guid? categoryId = null, string? description = null)
     {
         Id = id;
-        Name = name?.Trim().ToLowerInvariant() ?? throw new ArgumentNullException(nameof(name));
+        Name = name?.Trim() ?? throw new ArgumentNullException(nameof(name));
         Price = price;
         CategoryId = categoryId;
         Description = description?.Trim();
@@ -28,7 +28,7 @@ public class Product : AggregateRoot
     public void Rename(string newName)
     {
         if (string.IsNullOrWhiteSpace(newName)) throw new ArgumentException("Name cannot be empty", nameof(newName));
-        Name = newName.Trim().ToLowerInvariant();
+        Name = newName.Trim();
     }
 
     public void ChangePrice(decimal newPrice)

@@ -13,7 +13,7 @@
     <BbSidebarTrigger />
     <BbSeparator Orientation="SeparatorOrientation.Vertical" Class="h-3" />
     <div>
-        <h1 class="text-xs font-semibold">Đặt món tại quầy</h1>
+        <h1 class="text-[10px] font-semibold">Đặt món tại quầy</h1>
         <p class="text-xs text-muted-foreground">Chọn món, cấu hình size / topping, rồi xác nhận đơn.</p>
     </div>
 </header>
@@ -91,7 +91,7 @@
                                     <div class="mb-1 space-y-3.5">
                                         <div class="mb-1 flex items-center justify-between">
                                             <div class="flex items-center gap-2">
-                                                <h3 class="text-xs font-semibold">@group.CategoryName</h3>
+                                                <h3 class="text-[10px] font-semibold">@group.CategoryName</h3>
                                                 <BbBadge Variant="BadgeVariant.Outline">@group.Products.Count món</BbBadge>
                                             </div>
                                         </div>
@@ -250,6 +250,28 @@
                                 <span>Tổng tạm tính</span>
                                 <span>@FormatCurrency(CartTotal)</span>
                             </div>
+                                    <div class="space-y-2">
+                                        <BbRadioGroup TValue="string" Value="@_serviceMode" ValueChanged="OnServiceModeChangedAsync" Class="flex gap-4">
+                                            <div class="flex items-center gap-2">
+                                                <BbRadioGroupItem TValue="string" Value="@TakeawayMode" Id="service-takeaway" />
+                                                <BbLabel For="service-takeaway">Mang đi</BbLabel>
+                                            </div>
+                                            <div class="flex items-center gap-2">
+                                                <BbRadioGroupItem TValue="string" Value="@DineInMode" Id="service-dinein" />
+                                                <BbLabel For="service-dinein">Tại bàn</BbLabel>
+                                            </div>
+                                        </BbRadioGroup>
+
+                                        @if (_serviceMode == DineInMode)
+                                        {
+                                            <BbSelect TValue="Guid?"
+                                                      Value="@_selectedTableSlotId"
+                                                      ValueChanged="OnSelectedTableChangedAsync"
+                                                      Options="TableSlotOptions"
+                                                      Placeholder="Chọn bàn phục vụ"
+                                                      Class="w-full" />
+                                        }
+                                    </div>
                             <div class="flex gap-2">
                                 <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Large" OnClick="ClearCartAsync">Xóa đơn</BbButton>
                                 <BbButton Size="ButtonSize.Large" Class="flex-1" OnClick="PlaceOrderAsync"
@@ -427,7 +449,10 @@
     private bool _placingOrder;
     private const string ProductMode = "product";
     private const string ComboMode = "combo";
+    private const string TakeawayMode = "takeaway";
+    private const string DineInMode = "dinein";
     private string _mode = ProductMode;
+    private string _serviceMode = TakeawayMode;
     private string _search = string.Empty;
     private const string AllCategoriesValue = "__ALL__";
     private string _selectedCategory = AllCategoriesValue;
@@ -442,6 +467,8 @@
     private readonly Dictionary<Guid, int> _selectedOptionQuantities = new();
     private List<ProductListItem> _products = [];
     private List<ComboMenuItemDto> _combos = [];
+    private List<TableSlotOptionDto> _tableSlots = [];
+    private Guid? _selectedTableSlotId;
     private Guid? _selectedComboId;
     private ComboMenuItemDto? _selectedCombo;
     private int _comboQty = 1;
@@ -498,9 +525,16 @@
     && IsCurrentSelectionValid()
     && (!_selectedProduct.Variants.Any(v => v.IsActive) || _selectedVariantId.HasValue);
 
-    private bool CanPlaceOrder => _cart.Count > 0 && !_placingOrder;
+    private bool CanPlaceOrder => _cart.Count > 0 && !_placingOrder && HasValidTableSelection;
+
+    private bool HasValidTableSelection => _serviceMode == TakeawayMode || _selectedTableSlotId.HasValue;
 
     private decimal CartTotal => _cart.Sum(l => l.UnitPrice * l.Quantity);
+
+    private List<SelectOption<Guid?>> TableSlotOptions =>
+        [new SelectOption<Guid?>(null, "Chọn bàn"), .. _tableSlots
+            .Where(x => x.IsActive)
+            .Select(x => new SelectOption<Guid?>(x.Id, $"{x.Code} - {x.Name} ({x.CurrentState})"))];
 
     private static string FormatCurrency(decimal amount)
         => string.Concat(amount.ToString("N0", VnCulture), "đ");
@@ -511,13 +545,13 @@
         {
             if (_products.Count == 0 || _combos.Count == 0)
             {
-                await Task.WhenAll(LoadProductsAsync(), LoadCombosAsync());
+                await Task.WhenAll(LoadProductsAsync(), LoadCombosAsync(), LoadTableSlotsAsync());
             }
 
             return;
         }
 
-        await Task.WhenAll(LoadProductsAsync(), LoadCombosAsync());
+        await Task.WhenAll(LoadProductsAsync(), LoadCombosAsync(), LoadTableSlotsAsync());
     }
 
     private bool TryRestoreState()
@@ -529,6 +563,8 @@
         }
 
         _mode = cached.Mode is ComboMode ? ComboMode : ProductMode;
+        _serviceMode = cached.ServiceMode is DineInMode ? DineInMode : TakeawayMode;
+        _selectedTableSlotId = cached.TableSlotId;
         _search = cached.Search;
         _selectedCategory = string.IsNullOrWhiteSpace(cached.SelectedCategory) ? AllCategoriesValue : cached.SelectedCategory;
 
@@ -623,7 +659,9 @@
                     modifier.OptionId,
                     modifier.OptionName,
                     modifier.Qty,
-                    modifier.PriceDelta)).ToList())).ToList());
+                    modifier.PriceDelta)).ToList())).ToList(),
+            _serviceMode,
+            _selectedTableSlotId);
 
         return UiStateWriter.UpdateAsync(state => state with { Cache = snapshot }, "cache.checkout");
     }
@@ -664,6 +702,23 @@
     private async Task SelectCategoryAsync(string category)
     {
         _selectedCategory = category;
+        await PersistStateAsync();
+    }
+
+    private async Task OnServiceModeChangedAsync(string mode)
+    {
+        _serviceMode = mode == DineInMode ? DineInMode : TakeawayMode;
+        if (_serviceMode == TakeawayMode)
+        {
+            _selectedTableSlotId = null;
+        }
+
+        await PersistStateAsync();
+    }
+
+    private async Task OnSelectedTableChangedAsync(Guid? tableSlotId)
+    {
+        _selectedTableSlotId = tableSlotId;
         await PersistStateAsync();
     }
 
@@ -710,6 +765,28 @@
         finally
         {
             _loadingCombos = false;
+        }
+    }
+
+    private async Task LoadTableSlotsAsync()
+    {
+        var order = new List<TableSlotSortInput> { new() { Code = SortEnumType.Asc } };
+        var result = await Client.GetTableSlots.ExecuteAsync(0, 100, null, order);
+        if (result.Data?.TableSlots is { } tableData)
+        {
+            _tableSlots = tableData.Items?
+                .Select(x => new TableSlotOptionDto(
+                    x.Id,
+                    x.Code,
+                    x.Name,
+                    x.IsActive,
+                    x.CurrentState.ToString()))
+                .ToList() ?? [];
+
+            if (_serviceMode == DineInMode && _selectedTableSlotId.HasValue && _tableSlots.All(x => x.Id != _selectedTableSlotId.Value || !x.IsActive))
+            {
+                _selectedTableSlotId = null;
+            }
         }
     }
 
@@ -1165,7 +1242,7 @@
 
     private async Task PlaceOrderAsync()
     {
-        if (!CanPlaceOrder) return;
+        if (!CanPlaceOrder || !HasValidTableSelection) return;
 
         _placingOrder = true;
         try
@@ -1191,7 +1268,8 @@
                     {
                         ComboId = item.ComboId!.Value,
                         Quantity = item.Quantity
-                    }).ToList()
+                    }).ToList(),
+                TableSlotId = _serviceMode == DineInMode ? _selectedTableSlotId : null
             };
 
             var result = await Client.CreateOrder.ExecuteAsync(input);
@@ -1223,6 +1301,10 @@
 
             ToastService.Success($"Đặt hàng thành công: #{payload.Order.Id.ToString("N")[..6].ToUpper()}");
             _cart.Clear();
+            if (_serviceMode == DineInMode)
+            {
+                _selectedTableSlotId = null;
+            }
             await PersistStateAsync();
             Navigation.NavigateTo("/orders");
         }
@@ -1301,6 +1383,13 @@
         Guid? VariantId,
         string? VariantName,
         int Qty);
+
+    private sealed record TableSlotOptionDto(
+        Guid Id,
+        string Code,
+        string Name,
+        bool IsActive,
+        string CurrentState);
 
     private sealed record CartModifierDto(Guid OptionId, string OptionName, int Qty, decimal PriceDelta);
 }

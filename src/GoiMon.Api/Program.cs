@@ -13,6 +13,9 @@ using GoiMon.Api.Features.Orders;
 using GoiMon.Api.Features.Combos;
 using GoiMon.Api.Features.Employees.Queries;
 using GoiMon.Api.Features.Employees.Mutations;
+using GoiMon.Api.Features.Tables.Queries;
+using GoiMon.Api.Features.Tables.Mutations;
+using GoiMon.Api.Features.Tables.Subscriptions;
 using CloudinaryDotNet;
 using GoiMon.Api.Features.ImageUpload.Services;
 
@@ -128,6 +131,9 @@ builder.Services
     .AddTypeExtension<ProductComboItemResolvers>()
     .AddTypeExtension<EmployeeQueries>()
     .AddTypeExtension<EmployeeMutations>()
+    .AddTypeExtension<TableQueries>()
+    .AddTypeExtension<TableMutations>()
+    .AddTypeExtension<TableSubscriptions>()
     .AddTypeExtension<AuthenticationMutations>()
     .AddErrorFilter<GoiMon.Api.Infrastructure.Validation.FluentValidationErrorFilter>()
     // Validate input objects via FluentValidation middleware

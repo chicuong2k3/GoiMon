@@ -1,0 +1,75 @@
+mutation CreateTableSlot($input: CreateTableSlotInput!) {
+  createTableSlot(input: $input) {
+    id
+    code
+    name
+    capacity
+    isActive
+    currentState
+    updatedAt
+  }
+}
+
+mutation UpdateTableSlot($input: UpdateTableSlotInput!) {
+  updateTableSlot(input: $input) {
+    id
+    code
+    name
+    capacity
+    isActive
+    currentState
+    updatedAt
+  }
+}
+
+mutation DeactivateTableSlot($input: DeactivateTableSlotInput!) {
+  deactivateTableSlot(input: $input) {
+    id
+    isActive
+    currentState
+    updatedAt
+  }
+}
+
+mutation SetTableState($input: SetTableStateInput!) {
+  setTableState(input: $input) {
+    id
+    currentState
+    updatedAt
+  }
+}
+
+mutation MergeTableSlots($input: MergeTableSlotsInput!) {
+  mergeTableSlots(input: $input) {
+    id
+    tableSlotId
+    status
+    total
+  }
+}
+
+mutation SplitTableSlot($input: SplitTableSlotInput!) {
+  splitTableSlot(input: $input) {
+    id
+    code
+    name
+    capacity
+    isActive
+    currentState
+  }
+}
+
+mutation SplitBill($input: SplitBillInput!) {
+  splitBill(input: $input) {
+    id
+    tableSlotId
+    status
+    total
+    items {
+      id
+      productName
+      qty
+      unitPrice
+    }
+  }
+}

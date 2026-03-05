@@ -13,8 +13,8 @@ public class ProductInputListValidator : AbstractValidator<List<ProductInput>>
         RuleFor(x => x)
             .Must(inputs =>
             {
-                var normalized = inputs.Select(i => i.Name.Trim().ToLowerInvariant()).ToList();
-                return normalized.Count == normalized.Distinct().Count();
+                var trimmedNames = inputs.Select(i => i.Name.Trim()).ToList();
+                return trimmedNames.Count == trimmedNames.Distinct().Count();
             })
             .WithMessage("Duplicate product names in the input list");
 
@@ -22,9 +22,9 @@ public class ProductInputListValidator : AbstractValidator<List<ProductInput>>
         RuleFor(x => x)
             .MustAsync(async (inputs, ct) =>
             {
-                var normalized = inputs.Select(i => i.Name.Trim().ToLowerInvariant()).ToList();
+                var trimmedNames = inputs.Select(i => i.Name.Trim()).ToList();
                 using var db = dbFactory.CreateDbContext();
-                return !await db.Products.AnyAsync(p => normalized.Contains(p.Name), ct);
+                return !await db.Products.AnyAsync(p => trimmedNames.Contains(p.Name), ct);
             })
             .WithMessage("One or more product names already exist in the database");
 

@@ -1,6 +1,6 @@
 # 🍽️ Dev Story: Table Management Core (Virtual Slots + Service/Payment Tracking)
 
-**Status:** Ready  
+**Status:** In Progress  
 **Date Created:** 2026-03-05  
 **Owner:** Mary (Business Analyst)  
 **User:** Chicuong  
@@ -58,11 +58,11 @@ so that **I can know which table needs food delivery and which table is ready fo
 
 ## Acceptance Criteria
 
-- [ ] **AC1**: System supports `TableSlot` list/create/update/deactivate operations.
-- [ ] **AC2**: Order can be created/updated with optional `TableSlotId` (`null` for takeaway).
-- [ ] **AC3**: Dine-in orders enforce one active order per table slot.
-- [ ] **AC4**: Table/order states support kitchen-progress and payment milestones (`Preparing`, `ReadyToServe`, `AwaitingPayment`, `Paid`).
-- [ ] **AC5**: UI provides table board view showing status counts and slot-level quick actions.
+- [x] **AC1**: System supports `TableSlot` list/create/update/deactivate operations.
+- [x] **AC2**: Order can be created/updated with optional `TableSlotId` (`null` for takeaway).
+- [x] **AC3**: Dine-in orders enforce one active order per table slot.
+- [x] **AC4**: Table/order states support kitchen-progress and payment milestones (`Preparing`, `ReadyToServe`, `AwaitingPayment`, `Paid`).
+- [x] **AC5**: UI provides table board view showing status counts and slot-level quick actions.
 - [ ] **AC6**: Staff can execute split bill, merge table, and split table from active order context.
 - [ ] **AC7**: Realtime updates reflect status changes without manual refresh.
 - [ ] **AC8**: API + Client builds pass and end-to-end mixed dine-in/takeaway flow is manually verified.
@@ -72,10 +72,10 @@ so that **I can know which table needs food delivery and which table is ready fo
 ## Task Breakdown
 
 ### TASK 1 — Domain + Persistence (AC: #1, #2, #3, #4)
-- [ ] Add `TableSlot` aggregate/entity and persistence mapping.
-- [ ] Add nullable `TableSlotId` relation on order.
-- [ ] Add invariant enforcement for one active order per slot.
-- [ ] Add migration(s) and backfill-safe defaults.
+- [x] Add `TableSlot` aggregate/entity and persistence mapping.
+- [x] Add nullable `TableSlotId` relation on order.
+- [x] Add invariant enforcement for one active order per slot.
+- [x] Add migration(s) and backfill-safe defaults.
 
 **Files:**
 - `src/GoiMon.Api/Domain/Entities/TableSlot.cs`
@@ -84,9 +84,9 @@ so that **I can know which table needs food delivery and which table is ready fo
 - `src/GoiMon.Api/Infrastructure/Persistence/Migrations/*`
 
 ### TASK 2 — API GraphQL: Tables Feature (AC: #1, #2, #3, #4, #6)
-- [ ] Create `Features/Tables` with queries/mutations/types.
-- [ ] Implement service transitions and action endpoints (merge/split/split-bill orchestration).
-- [ ] Add validators and clear error semantics for slot conflicts.
+- [x] Create `Features/Tables` with queries/mutations/types.
+- [x] Implement service transitions and action endpoints (merge/split/split-bill orchestration).
+- [x] Add validators and clear error semantics for slot conflicts.
 
 **Files:**
 - `src/GoiMon.Api/Features/Tables/Queries/*`
@@ -95,9 +95,9 @@ so that **I can know which table needs food delivery and which table is ready fo
 - `src/GoiMon.Api/Features/Tables/Validators/*`
 
 ### TASK 3 — Client GraphQL + State (AC: #1, #2, #4, #7)
-- [ ] Add `.graphql` operations for table slots and service actions.
-- [ ] Generate StrawberryShake client contracts for tables feature.
-- [ ] Add `TablesUiState` store and integrate with orders state sync.
+- [x] Add `.graphql` operations for table slots and service actions.
+- [x] Generate StrawberryShake client contracts for tables feature.
+- [x] Add `TablesUiState` store and integrate with orders state sync.
 
 **Files:**
 - `src/GoiMon.Client/GraphQL/Tables/*.graphql`
@@ -105,9 +105,9 @@ so that **I can know which table needs food delivery and which table is ready fo
 - `src/GoiMon.Client/Program.cs` (store registration)
 
 ### TASK 4 — Client UI: Table Board + Flow Integration (AC: #2, #5, #6, #7)
-- [ ] Add `Tables` page with board/status counters/filters.
-- [ ] Add slot selector for dine-in in checkout flow.
-- [ ] Add quick status/actions in order detail context.
+- [x] Add `Tables` page with board/status counters/filters.
+- [x] Add slot selector for dine-in in checkout flow.
+- [x] Add quick status/actions in order detail context.
 
 **Files:**
 - `src/GoiMon.Client/Pages/Tables.razor`
@@ -120,6 +120,10 @@ so that **I can know which table needs food delivery and which table is ready fo
 - [ ] Validate conflict handling (slot already occupied).
 - [ ] Validate transition consistency and realtime reflection across screens.
 
+### Review Follow-ups (AI)
+- [ ] [AI-Review][HIGH] Dialog does not consistently show vertical scroll when form content is very tall (e.g., large image upload sections), causing overflow outside viewport. Reproduce and enforce inner content scrolling container behavior in shared form dialog usage and CSS constraints. [src/GoiMon.Client/Shared/Components/FormDialog.razor:8-43]
+- [ ] [AI-Review][MEDIUM] Sidebar item active highlight is unreliable because route matching uses strict equality; query strings/trailing/nested paths can fail active state for selected page. Normalize route matching or use prefix-aware matching policy where appropriate. [src/GoiMon.Client/Shared/MainLayout.razor:20-70,143-149]
+
 **Files:**
 - `tests/GoiMon.Api.Tests/Features/Tables/*`
 - `tests/GoiMon.Client.Tests/Features/Tables/*` (if matching current test style)
@@ -128,7 +132,7 @@ so that **I can know which table needs food delivery and which table is ready fo
 
 ## Verification Plan
 
-- [ ] Build command(s):
+- [x] Build command(s):
   - `dotnet build src/GoiMon.Api/GoiMon.Api.csproj`
   - `dotnet build src/GoiMon.Client/GoiMon.Client.csproj`
 - [ ] Manual scenario(s):
@@ -156,7 +160,7 @@ so that **I can know which table needs food delivery and which table is ready fo
 ## Definition of Done (DoD)
 
 - [ ] All ACs completed
-- [ ] Build passes on impacted projects
+- [x] Build passes on impacted projects
 - [ ] Manual validation completed
 - [ ] Story status/folder updated to match state
 - [ ] Story board row updated
@@ -185,3 +189,24 @@ so that **I can know which table needs food delivery and which table is ready fo
 ## Change Log
 
 - 2026-03-05 — Story created in `ready/` from finalized brainstorming blueprint by Mary (Business Analyst)
+- 2026-03-06 — Moved to `in-progress/`; implemented core API + client table board + checkout table assignment + realtime subscriptions; solution builds passing.
+- 2026-03-06 — Added order-detail table state quick actions (Preparing/ReadyToServe/AwaitingPayment).
+- 2026-03-06 — Code review logged 2 UI bugs as AI follow-up items (dialog overflow scroll + sidebar active highlight).
+
+## Senior Developer Review (AI)
+
+### Outcome
+Changes Requested
+
+### Findings
+1. **[HIGH] Dialog overflow/scroll regression risk**
+  - Shared form dialog currently relies on wrapper constraints that do not guarantee inner scroll behavior in all tall-content scenarios (notably image-heavy forms), and user-observed behavior indicates viewport overflow without visible vertical scrollbar.
+  - Evidence: `FormDialog` layout stack and scroll container behavior in `DialogContentClass`/`DialogBodyClass`.
+
+2. **[MEDIUM] Sidebar active highlight mismatch**
+  - Active state logic depends on exact string equality between current route and item href. This is brittle for query strings, trailing slash variants, and nested routes; selected item may appear inactive.
+  - Evidence: `IsActiveRoute` comparison implementation and menu button `IsActive` bindings.
+
+### Recommendation
+- Fix HIGH issue first (dialog accessibility and usability).
+- Then harden sidebar active route logic with normalized/prefix-aware matching rules.

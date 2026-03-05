@@ -1,0 +1,15 @@
+query GetTableSlots($skip: Int, $take: Int, $where: TableSlotFilterInput, $order: [TableSlotSortInput!]) {
+  tableSlots(skip: $skip, take: $take, where: $where, order: $order) {
+    items {
+      id
+      code
+      name
+      capacity
+      isActive
+      currentState
+      createdAt
+      updatedAt
+    }
+    totalCount
+  }
+}

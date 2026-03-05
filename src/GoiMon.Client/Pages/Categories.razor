@@ -10,7 +10,7 @@
 <header class="flex h-12 shrink-0 items-center gap-2 border-b px-4 py-1 md:px-5">
     <BbSidebarTrigger />
     <BbSeparator Orientation="SeparatorOrientation.Vertical" Class="h-3" />
-    <h1 class="text-xs font-semibold">Danh mục</h1>
+    <h1 class="text-[10px] font-semibold">Danh mục</h1>
     <div class="ml-auto flex items-center gap-2">
         @if (_selectedIds.Count > 0)
         {
@@ -44,43 +44,46 @@
         </div>
     </div>
 
-    @if (_loading)
-    {
-        <div class="space-y-2">
-            @for (int i = 0; i < 5; i++)
-            {
-                <BbSkeleton Height="48px" Class="w-full" />
-            }
-        </div>
-    }
-    else if (_error is not null)
+    @if (_error is not null)
     {
         <div class="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             @_error
         </div>
     }
-    else
-    {
-        <div class="rounded-md border">
-            <table class="w-full text-sm">
-                <thead class="border-b bg-muted/50">
-                    <tr>
-                        <th class="h-10 w-10 px-3 align-middle">
-                            <BbCheckbox Checked="@AllSelected" CheckedChanged="@ToggleSelectAll" />
-                        </th>
-                        <th class="h-10 px-4 text-left font-medium text-muted-foreground align-middle">Tên danh mục</th>
-                        <th class="h-10 px-4 text-right font-medium text-muted-foreground w-32 align-middle">Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @if (_items.Count == 0)
+
+    <div class="rounded-md border">
+        <table class="w-full text-sm">
+            <thead class="border-b bg-muted/50">
+                <tr>
+                    <th class="h-10 w-10 px-3 align-middle">
+                        <BbCheckbox Checked="@AllSelected" CheckedChanged="@ToggleSelectAll" />
+                    </th>
+                    <th class="h-10 px-4 text-left font-medium text-muted-foreground align-middle">Tên danh mục</th>
+                    <th class="h-10 px-4 text-right font-medium text-muted-foreground w-32 align-middle">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (_loading)
+                {
+                    @for (int i = 0; i < 5; i++)
                     {
-                        <tr>
-                            <td colspan="3" class="p-8 text-center text-muted-foreground">
-                                Không tìm thấy danh mục nào.
+                        <tr class="border-b last:border-0">
+                            <td colspan="3" class="px-4 py-2 align-middle">
+                                <BbSkeleton Height="34px" Class="w-full" />
                             </td>
                         </tr>
                     }
+                }
+                else if (_items.Count == 0)
+                {
+                    <tr>
+                        <td colspan="3" class="p-8 text-center text-muted-foreground">
+                            Không tìm thấy danh mục nào.
+                        </td>
+                    </tr>
+                }
+                else
+                {
                     @foreach (var item in _items)
                     {
                         <tr class="border-b last:border-0 hover:bg-muted/50 transition-colors @(_selectedIds.Contains(item.Id) ? "bg-muted/30" : "")">
@@ -104,27 +107,27 @@
                             </td>
                         </tr>
                     }
-                </tbody>
-            </table>
-        </div>
-
-        <div class="pt-1 flex items-center justify-between text-sm text-muted-foreground">
-            <span>Hiển thị @(_items.Count) / @_total danh mục</span>
-            <div class="flex items-center gap-2">
-                <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small"
-                          Disabled="@(CurrentPage <= 1)" OnClick="() => GoToPageAsync(CurrentPage - 1)">Trước</BbButton>
-                @foreach (var page in VisiblePages)
-                {
-                    <BbButton Variant="@(page == CurrentPage ? ButtonVariant.Default : ButtonVariant.Outline)"
-                              Size="ButtonSize.Small"
-                              Disabled="@(page == CurrentPage)"
-                              OnClick="() => GoToPageAsync(page)">@(page)</BbButton>
                 }
-                <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small"
-                          Disabled="@(CurrentPage >= TotalPages)" OnClick="() => GoToPageAsync(CurrentPage + 1)">Sau</BbButton>
-            </div>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="pt-1 flex items-center justify-between text-sm text-muted-foreground">
+        <span>Hiển thị @(_items.Count) / @_total danh mục</span>
+        <div class="flex items-center gap-2">
+            <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small"
+                      Disabled="@(_loading || CurrentPage <= 1)" OnClick="() => GoToPageAsync(CurrentPage - 1)">Trước</BbButton>
+            @foreach (var page in VisiblePages)
+            {
+                <BbButton Variant="@(page == CurrentPage ? ButtonVariant.Default : ButtonVariant.Outline)"
+                          Size="ButtonSize.Small"
+                          Disabled="@(_loading || page == CurrentPage)"
+                          OnClick="() => GoToPageAsync(page)">@(page)</BbButton>
+            }
+            <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small"
+                      Disabled="@(_loading || CurrentPage >= TotalPages)" OnClick="() => GoToPageAsync(CurrentPage + 1)">Sau</BbButton>
         </div>
-    }
+    </div>
 </div>
 
 <!-- Create Dialog -->

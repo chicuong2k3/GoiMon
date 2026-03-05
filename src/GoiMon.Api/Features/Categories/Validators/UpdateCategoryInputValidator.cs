@@ -16,7 +16,8 @@ public class UpdateCategoryInputValidator : AbstractValidator<UpdateCategoryInpu
             {
                 if (string.IsNullOrWhiteSpace(name)) return true;
                 using var db = dbFactory.CreateDbContext();
-                return !await db.Categories.AnyAsync(c => c.Id != input.Id && c.Name == name.Trim().ToLowerInvariant(), ct);
+                var trimmedName = name.Trim();
+                return !await db.Categories.AnyAsync(c => c.Id != input.Id && c.Name == trimmedName, ct);
             })
             .WithMessage("Another category with the same name already exists");
     }

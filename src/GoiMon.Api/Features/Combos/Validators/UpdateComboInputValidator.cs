@@ -16,7 +16,8 @@ public class UpdateComboInputValidator : AbstractValidator<UpdateComboInput>
             {
                 if (string.IsNullOrWhiteSpace(name)) return true;
                 using var db = dbFactory.CreateDbContext();
-                return !await db.ProductCombos.AnyAsync(c => c.Id != input.Id && c.Name == name.Trim().ToLowerInvariant(), ct);
+                var trimmedName = name.Trim();
+                return !await db.ProductCombos.AnyAsync(c => c.Id != input.Id && c.Name == trimmedName, ct);
             })
             .WithMessage("Another combo with the same name already exists")
             .When(x => x.Name is not null);

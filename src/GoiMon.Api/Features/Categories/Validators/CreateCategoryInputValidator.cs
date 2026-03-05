@@ -12,7 +12,8 @@ public class CreateCategoryInputValidator : AbstractValidator<CreateCategoryInpu
             .MustAsync(async (name, ct) =>
             {
                 using var db = dbFactory.CreateDbContext();
-                return !await db.Categories.AnyAsync(c => c.Name == name.Trim().ToLowerInvariant(), ct);
+                var trimmedName = name.Trim();
+                return !await db.Categories.AnyAsync(c => c.Name == trimmedName, ct);
             })
             .WithMessage("A category with the same name already exists");
     }

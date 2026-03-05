@@ -13,7 +13,7 @@ public class ProductCombo : AggregateRoot
     public ProductCombo(Guid id, string name, decimal price)
     {
         Id = id;
-        Name = name?.Trim().ToLowerInvariant();
+        Name = name?.Trim();
         Price = price;
         Items = new List<ProductComboItem>();
     }
@@ -37,7 +37,7 @@ public class ProductCombo : AggregateRoot
     public void UpdateName(string name)
     {
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Name cannot be empty", nameof(name));
-        Name = name.Trim().ToLowerInvariant();
+        Name = name.Trim();
     }
 
     /// <summary>

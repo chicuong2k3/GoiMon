@@ -2,6 +2,7 @@ mutation CreateOrder($input: CreateOrderInput!) {
   createOrder(input: $input) {
     order {
       id
+      tableSlotId
       status
       total
       createdAt
@@ -33,6 +34,7 @@ mutation CreateOrder($input: CreateOrderInput!) {
 mutation CompleteOrder($orderId: UUID!) {
   completeOrder(orderId: $orderId) {
     id
+    tableSlotId
     status
     total
   }
@@ -41,6 +43,7 @@ mutation CompleteOrder($orderId: UUID!) {
 mutation CancelOrder($orderId: UUID!) {
   cancelOrder(orderId: $orderId) {
     id
+    tableSlotId
     status
     total
   }
@@ -49,6 +52,7 @@ mutation CancelOrder($orderId: UUID!) {
 mutation MarkOrderPaid($orderId: UUID!) {
   markOrderPaid(orderId: $orderId) {
     id
+    tableSlotId
     status
     total
   }

@@ -75,6 +75,32 @@ public class GoimonAuthenticationStateProvider : AuthenticationStateProvider
         NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(principal)));
     }
 
+    public async Task LoginWithTokenAsync(string token)
+    {
+        await _tokenStorage.SetTokenAsync(token);
+
+        var claims = ParseJwtClaims(token);
+        var identity = claims.Count > 0
+            ? new ClaimsIdentity(claims, "jwt")
+            : new ClaimsIdentity();
+        var principal = new ClaimsPrincipal(identity);
+
+        var email = principal.FindFirst(ClaimTypes.Email)?.Value
+            ?? principal.FindFirst("email")?.Value
+            ?? "unknown@goimon.local";
+
+        _currentUser = new AuthenticationUser
+        {
+            Email = email,
+            DisplayName = principal.FindFirst(ClaimTypes.Name)?.Value ?? email,
+            IsVerified = string.Equals(principal.FindFirst("verified")?.Value, "true", StringComparison.OrdinalIgnoreCase)
+        };
+
+        _logger.LogInformation("User logged in with token: {Email}", email);
+
+        NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(principal)));
+    }
+
     /// <summary>
     /// Marks user as unauthenticated (logout).
     /// </summary>

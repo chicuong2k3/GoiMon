@@ -30,6 +30,11 @@ public record EmployeesUiState(EmployeePageCache? Cache)
     public static EmployeesUiState Initial => new((EmployeePageCache?)null);
 }
 
+public record TablesUiState(TablePageCache? Cache)
+{
+    public static TablesUiState Initial => new((TablePageCache?)null);
+}
+
 public record CategoryPageCache(
     string Search,
     int Skip,
@@ -89,6 +94,7 @@ public record OrderPageState(
 
 public record OrderListItem(
     Guid Id,
+    Guid? TableSlotId,
     string Status,
     decimal Total,
     DateTimeOffset CreatedAt,
@@ -126,7 +132,25 @@ public record CheckoutPageState(
     string SelectedCategory,
     IReadOnlyList<CheckoutProductListItem> Products,
     IReadOnlyList<CheckoutComboListItem> Combos,
-    IReadOnlyList<CheckoutCartLineItem> Cart);
+    IReadOnlyList<CheckoutCartLineItem> Cart,
+    string ServiceMode = "takeaway",
+    Guid? TableSlotId = null);
+
+public record TablePageCache(
+    string Search,
+    int Skip,
+    int Take,
+    int Total,
+    IReadOnlyList<TableSlotListItem> Items);
+
+public record TableSlotListItem(
+    Guid Id,
+    string Code,
+    string Name,
+    int Capacity,
+    bool IsActive,
+    string CurrentState,
+    DateTimeOffset UpdatedAt);
 
 public record CheckoutProductListItem(
     Guid Id,
