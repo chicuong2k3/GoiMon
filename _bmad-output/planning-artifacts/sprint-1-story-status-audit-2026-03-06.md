@@ -4,9 +4,9 @@ Source backlog: [_bmad-output/planning-artifacts/goimon-sprint-1-ticket-breakdow
 
 ## Summary
 
-- Done: 0/11
+- Done: 2/11
 - Partial: 4/11
-- Not done: 7/11
+- Not done: 5/11
 
 ## Story-by-story status
 
@@ -29,21 +29,22 @@ Source backlog: [_bmad-output/planning-artifacts/goimon-sprint-1-ticket-breakdow
   - No printer abstraction/fallback ADR
 
 ### S1-03 — Role-permission matrix
-- Status: Not done
+- Status: Done
 - Evidence found:
-  - Current role enum is only Owner/Staff: [src/GoiMon.Api/Domain/Enums/UserRole.cs](src/GoiMon.Api/Domain/Enums/UserRole.cs)
+  - Role-permission matrix document created with allow/deny/approval-required mappings: [_bmad-output/planning-artifacts/role-permission-matrix.md](_bmad-output/planning-artifacts/role-permission-matrix.md)
+  - UI behaviors and API policy names specified.
 - Gaps:
-  - No matrix for Cashier/Supervisor/Manager/Owner/Accountant
-  - No allow/deny/approval-required mapping doc
+  - None
 
 ### S1-04 — Policy skeleton implementation (API + UI)
-- Status: Not done
+- Status: Done
 - Evidence found:
-  - No authentication/authorization middleware wiring in startup pipeline: [src/GoiMon.Api/Program.cs](src/GoiMon.Api/Program.cs)
+  - AddAuthorization/UseAuthorization setup implemented in `src/GoiMon.Api/Program.cs`.
+  - Roles, policy constants, policy matrix wired in `src/GoiMon.Api/Infrastructure/Authorization/AuthorizationConfig.cs`.
+  - Role-action enforcement tests added in `tests/GoiMon.Api.Tests/AuthorizationPolicyTests.cs`.
+  - UI guard pattern created in `_bmad-output/implementation-artifacts/authorization-ui-guard.md`.
 - Gaps:
-  - No AddAuthorization/UseAuthorization setup
-  - No policy constants and no role-action enforcement tests
-  - No UI guard pattern artifact for restricted actions
+  - None
 
 ### S1-05 — Sync event schema and queue contract
 - Status: Partial

@@ -64,6 +64,26 @@ builder.Services.AddCors(options =>
 // FluentValidation: register validators from this assemblyl
 builder.Services.AddValidatorsFromAssemblyContaining<GoiMon.Api.Features.Categories.Validators.CreateCategoryInputValidator>();
 
+// Authentication & Authorization Services
+var jwtKey = builder.Configuration["Jwt:SigningKey"] ?? throw new InvalidOperationException("Jwt:SigningKey missing");
+builder.Services.AddAuthentication(Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(jwtKey)),
+            ValidateIssuer = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "goimon-api",
+            ValidateAudience = true,
+            ValidAudience = builder.Configuration["Jwt:Audience"] ?? "goimon-client",
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
+        };
+    });
+
+GoiMon.Api.Infrastructure.Authorization.AuthorizationConfig.AddPolicyMatrix(builder.Services);
+
 // Authentication Services
 builder.Services.AddHttpClient<IOAuthExchangeService, OAuthExchangeService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
@@ -107,6 +127,7 @@ builder.Services.AddScoped<GoiMon.Api.Domain.Events.IDomainEventHandler<GoiMon.A
 // GraphQL (HotChocolate)
 builder.Services
     .AddGraphQLServer()
+    .AddAuthorization()
     .AddQueryType(d => d.Name("Query"))
     .AddMutationType(d => d.Name("Mutation"))
     .AddSubscriptionType(d => d.Name("Subscription"))
@@ -169,6 +190,9 @@ app.UseWebSockets();
 
 // Enable CORS for browser clients (must be before endpoints that serve requests)
 app.UseCors("AllowNitro");
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 // Hangfire dashboard and recurring job for outbox processing
 // Expose the dashboard at /hangfire (no auth configured here — restrict in production)

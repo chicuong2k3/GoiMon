@@ -24,7 +24,7 @@ public class JwtTokenService : IJwtTokenService
     }
 
     /// <inheritdoc />
-    public string GenerateToken(Guid userId, string email, bool isVerified = true)
+    public string GenerateToken(Guid userId, string email, string role, bool isVerified = true)
     {
         var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_signingKey));
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
@@ -34,7 +34,8 @@ public class JwtTokenService : IJwtTokenService
             new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
             new Claim(ClaimTypes.Email, email),
             new Claim("verified", isVerified.ToString().ToLower()),
-            new Claim("iat", DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString())
+            new Claim("iat", DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString()),
+            new Claim(ClaimTypes.Role, role)
         };
 
         var token = new JwtSecurityToken(
@@ -54,7 +55,7 @@ public class JwtTokenService : IJwtTokenService
     }
 
     /// <inheritdoc />
-    public (bool IsValid, Guid? UserId, string? Email, bool IsVerified) ValidateToken(string token)
+    public (bool IsValid, Guid? UserId, string? Email, bool IsVerified, string? Role) ValidateToken(string token)
     {
         try
         {
@@ -80,24 +81,25 @@ public class JwtTokenService : IJwtTokenService
             if (!Guid.TryParse(userIdClaim, out var userId))
             {
                 _logger.LogWarning("Token validation failed: Invalid userId claim");
-                return (false, null, null, false);
+                return (false, null, null, false, null);
             }
 
             var isVerified = bool.TryParse(verifiedClaim, out var verified) && verified;
+            var roleClaim = principal.FindFirst(ClaimTypes.Role)?.Value;
 
             _logger.LogInformation("JWT token validated for UserId={UserId}", userId);
 
-            return (true, userId, emailClaim, isVerified);
+            return (true, userId, emailClaim, isVerified, roleClaim);
         }
         catch (SecurityTokenException ex)
         {
             _logger.LogWarning(ex, "Token validation failed: {Message}", ex.Message);
-            return (false, null, null, false);
+            return (false, null, null, false, null);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Token validation error: {Message}", ex.Message);
-            return (false, null, null, false);
+            return (false, null, null, false, null);
         }
     }
 }
