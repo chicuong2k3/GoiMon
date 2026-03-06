@@ -61,6 +61,7 @@ Establish a production-ready foundation for POS MVP by closing architecture ambi
 
 ### Story S1-03: Define role-permission matrix for critical POS actions
 
+- Status: **Done** (Artifact created: `role-permission-matrix.md`)
 - Story points: 8
 - Owner: PM/BA + Engineer
 - User story: As a business owner, I need role-based control so risky operations are restricted and auditable.
@@ -79,6 +80,7 @@ Establish a production-ready foundation for POS MVP by closing architecture ambi
 
 ### Story S1-04: Policy skeleton implementation (API + UI guard)
 
+- Status: **Done** (Artifacts created: `AuthorizationConfig.cs`, `authorization-ui-guard.md`)
 - Story points: 5
 - Owner: Engineers
 - User story: As a developer team, we need a policy skeleton to enforce permissions consistently from Sprint 2 onward.

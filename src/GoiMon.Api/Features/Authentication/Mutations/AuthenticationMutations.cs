@@ -193,7 +193,7 @@ public class AuthenticationMutations
             // If user is verified, issue JWT token immediately
             if (user.IsVerified)
             {
-                var token = jwtService.GenerateToken(user.Id, user.Email, true);
+                var token = jwtService.GenerateToken(user.Id, user.Email, user.Role.ToString(), true);
                 _logger.LogInformation("User logged in with Google: {Email}", user.Email);
 
                 return new AuthenticationPayload
@@ -269,7 +269,7 @@ public class AuthenticationMutations
             // If user is verified, issue JWT token immediately
             if (user.IsVerified)
             {
-                var token = jwtService.GenerateToken(user.Id, user.Email, true);
+                var token = jwtService.GenerateToken(user.Id, user.Email, user.Role.ToString(), true);
                 _logger.LogInformation("User logged in with Facebook: {Email}", user.Email);
 
                 return new AuthenticationPayload
@@ -355,7 +355,7 @@ public class AuthenticationMutations
             await context.SaveChangesAsync();
 
             // Generate JWT token
-            var token = jwtService.GenerateToken(user.Id, user.Email, true);
+            var token = jwtService.GenerateToken(user.Id, user.Email, user.Role.ToString(), true);
 
             _logger.LogInformation("OTP verified for user: {Email}", user.Email);
 
