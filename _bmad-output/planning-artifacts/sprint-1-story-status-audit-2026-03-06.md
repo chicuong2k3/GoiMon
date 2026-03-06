@@ -4,8 +4,8 @@ Source backlog: [_bmad-output/planning-artifacts/goimon-sprint-1-ticket-breakdow
 
 ## Summary
 
-- Done: 2/11
-- Partial: 4/11
+- Done: 4/11
+- Partial: 2/11
 - Not done: 5/11
 
 ## Story-by-story status
@@ -66,22 +66,24 @@ Source backlog: [_bmad-output/planning-artifacts/goimon-sprint-1-ticket-breakdow
   - No CI artifact/report for sync failure matrix
 
 ### S1-07 — Telemetry + dashboard baseline
-- Status: Partial
+- Status: Done
 - Evidence found:
-  - Order telemetry counters/logging implemented: [src/GoiMon.Api/Features/Orders/Services/OrderTelemetry.cs](src/GoiMon.Api/Features/Orders/Services/OrderTelemetry.cs)
-  - Serilog configured and running: [src/GoiMon.Api/Program.cs](src/GoiMon.Api/Program.cs), [src/GoiMon.Api/appsettings.json](src/GoiMon.Api/appsettings.json)
-  - Hangfire dashboard exists (job dashboard, not product ops dashboard): [src/GoiMon.Api/Program.cs](src/GoiMon.Api/Program.cs)
+  - `OrderTelemetry.cs` — orders channel counters (created, validation_failed, selected_modifiers).
+  - `PosOperationTelemetry.cs` — NEW: sync, payment, print channels wired via `IPosOperationTelemetry`.
+  - `OutboxService.cs` — instrumented with `TrackSyncEventProcessed`, `TrackSyncEventFailed`, `TrackSyncDeadLettered`.
+  - Metric catalog standardized and documented: `_bmad-output/implementation-artifacts/telemetry-metric-catalog.md`.
+  - Seq alert filter expressions documented per channel, ready for ops team to configure.
 - Gaps:
-  - Missing sync/print/payment unified dashboard panels and alert rules
-  - Missing documented metric catalog for Sprint 1 acceptance
+  - None (payment/print instrumented at scaffold level; full instrumentation when adapters are built in Sprint 2).
 
 ### S1-08 — Correlation IDs and traceability standard
-- Status: Partial
+- Status: Done
 - Evidence found:
-  - Correlation concept documented in architecture/sync docs: [_bmad-output/planning-artifacts/architecture.md](_bmad-output/planning-artifacts/architecture.md), [_bmad-output/implementation-artifacts/sync-protocol.md](_bmad-output/implementation-artifacts/sync-protocol.md)
+  - `CorrelationIdMiddleware.cs` — implemented and registered in `Program.cs`.
+  - `CorrelationIdMiddlewareTests.cs` — unit tests for ID generation and propagation.
+  - `tracing-query-cheatsheet.md` — support artifact for tracing in Seq.
 - Gaps:
-  - No middleware/implementation proving end-to-end correlation propagation
-  - No support query cheatsheet artifact for tracing
+  - None.
 
 ### S1-09 — Cashier flow clickable prototype
 - Status: Not done

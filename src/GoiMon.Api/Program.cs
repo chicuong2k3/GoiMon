@@ -2,6 +2,8 @@ using Hangfire;
 using Hangfire.PostgreSql;
 using GoiMon.Api.Infrastructure.Outbox;
 using GoiMon.Api.Infrastructure.Services;
+using GoiMon.Api.Infrastructure.Telemetry;
+using GoiMon.Api.Infrastructure.Middleware;
 using GoiMon.Api.Features.Authentication.Mutations;
 using Microsoft.Extensions.ObjectPool;
 using Serilog;
@@ -97,6 +99,7 @@ var cloudinaryAccount = new Account(
 builder.Services.AddSingleton(new Cloudinary(cloudinaryAccount));
 builder.Services.AddScoped<IImageUploadService, CloudinaryImageUploadService>();
 builder.Services.AddSingleton<GoiMon.Api.Features.Orders.Services.IOrderTelemetry, GoiMon.Api.Features.Orders.Services.OrderTelemetry>();
+builder.Services.AddSingleton<GoiMon.Api.Infrastructure.Telemetry.IPosOperationTelemetry, GoiMon.Api.Infrastructure.Telemetry.PosOperationTelemetry>();
 
 // MediatR removed — validation is handled via FluentValidation middleware and error filter
 
@@ -187,6 +190,7 @@ using (var scope = app.Services.CreateScope())
 app.MapGet("/health", () => Results.Ok("ok"));
 
 app.UseWebSockets();
+app.UseCorrelationId();
 
 // Enable CORS for browser clients (must be before endpoints that serve requests)
 app.UseCors("AllowNitro");

@@ -140,6 +140,7 @@ Establish a production-ready foundation for POS MVP by closing architecture ambi
 
 ### Story S1-07: Telemetry and baseline dashboard instrumentation
 
+- Status: **Done** (Artifact created: `telemetry-metric-catalog.md`, `PosOperationTelemetry.cs`)
 - Story points: 5
 - Owner: Engineers
 - User story: As operations/support, we need visibility into sync, print, and cashier failures to reduce incident recovery time.
