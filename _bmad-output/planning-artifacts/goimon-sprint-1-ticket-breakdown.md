@@ -117,6 +117,8 @@ Establish a production-ready foundation for POS MVP by closing architecture ambi
   - Contract test validates required fields and schema version
   - Replay test shows duplicate events are idempotent
 
+- Status: Done — see ADR: [_bmad-output/implementation-artifacts/adrs/ADR-005-sync-event-schema.md](_bmad-output/implementation-artifacts/adrs/ADR-005-sync-event-schema.md)
+
 ### Story S1-06: Build sync simulator and failure scenarios
 
 - Story points: 5
