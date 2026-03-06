@@ -71,18 +71,18 @@ so that **customers bring in new customers with minimal ad spend**.
 - [ ] Add viral metrics card section on owner dashboard.
 
 **Files:**
-- `src/GoiMon.Client/Pages/Growth.razor`
-- `src/GoiMon.Client/Features/Growth/Components/*`
-- `src/GoiMon.Client/Pages/Checkout.razor` or receipt-related component
+- `src/GoiMon.Staff/Pages/Growth.razor`
+- `src/GoiMon.Staff/Features/Growth/Components/*`
+- `src/GoiMon.Staff/Pages/Checkout.razor` or receipt-related component
 
 ### TASK 3 — GraphQL + State (AC: #1, #3, #4, #5)
 - [ ] Add GraphQL operations for growth settings, referral, streak, and metrics.
 - [ ] Add `GrowthUiState` store and register it in client startup.
 
 **Files:**
-- `src/GoiMon.Client/GraphQL/Growth/*.graphql`
-- `src/GoiMon.Client/State/GrowthUiState.cs`
-- `src/GoiMon.Client/Program.cs`
+- `src/GoiMon.Staff/GraphQL/Growth/*.graphql`
+- `src/GoiMon.Staff/State/GrowthUiState.cs`
+- `src/GoiMon.Staff/Program.cs`
 
 ### TASK 4 — Validation/Tests (AC: #6)
 - [ ] Add API tests for referral redemption idempotency and streak threshold logic.
@@ -98,7 +98,7 @@ so that **customers bring in new customers with minimal ad spend**.
 
 - [ ] Build command(s):
   - `dotnet build src/GoiMon.Api/GoiMon.Api.csproj`
-  - `dotnet build src/GoiMon.Client/GoiMon.Client.csproj`
+  - `dotnet build src/GoiMon.Staff/GoiMon.Staff.csproj`
 - [ ] Manual test scenario(s):
   - Existing customer shares receipt link, new customer opens link, applies referral code, completes order, conversion is counted.
   - Returning customer reaches streak threshold and receives configured reward.

@@ -323,7 +323,7 @@ To Create:
 Updated in Session 1:
 - [x] `src/GoiMon.Client/wwwroot/index.html` - Added Google & Facebook SDK scripts
 - [x] `src/GoiMon.Client/Program.cs` - Registered authentication services (TokenStorageService, AuthenticationStateProvider, LocalStorage)
-- [x] `src/GoiMon.Client/GoiMon.Client.csproj` - Added NuGet packages (Blazored.LocalStorage, Microsoft.AspNetCore.Components.Authorization)
+- [x] `src/GoiMon.Staff/GoiMon.Staff.csproj` - Added NuGet packages (Blazored.LocalStorage, Microsoft.AspNetCore.Components.Authorization)
 - [x] `src/GoiMon.Client/_Imports.razor` - Not updated (inherits from Program.cs service registrations)
 
 Pending Update:

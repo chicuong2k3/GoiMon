@@ -1,4 +1,4 @@
-# GoiMon.Client — Dialog Componentization Guide
+# GoiMon.Staff — Dialog Componentization Guide
 
 This guide defines when and how to extract dialogs into reusable components.
 

@@ -87,7 +87,7 @@ so that **customers create social proof and organically bring new visitors**.
 
 - [ ] Build command(s):
   - `dotnet build src/GoiMon.Api/GoiMon.Api.csproj`
-  - `dotnet build src/GoiMon.Client/GoiMon.Client.csproj`
+  - `dotnet build src/GoiMon.Staff/GoiMon.Staff.csproj`
 - [ ] Manual scenario(s):
   - Owner creates campaign, customer submits photo, staff approves, entry appears in gallery, winner share card generated.
 - [ ] Edge case(s):

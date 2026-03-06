@@ -208,10 +208,10 @@ so that **I can know which table needs food delivery and which table is ready fo
 
 - `src/GoiMon.Api/Features/Tables/*`
 - `src/GoiMon.Api/Domain/Entities/TableSlot.cs`
-- `src/GoiMon.Client/Pages/Tables.razor`
-- `src/GoiMon.Client/GraphQL/Tables/*.graphql`
-- `src/GoiMon.Client/State/TablesUiState.cs`
-- `src/GoiMon.Client/Pages/Checkout.razor` (slot selection)
-- `src/GoiMon.Client/Pages/Orders.razor` / order detail component (status actions)
+- `src/GoiMon.Staff/Pages/Tables.razor`
+- `src/GoiMon.Staff/GraphQL/Tables/*.graphql`
+- `src/GoiMon.Staff/State/TablesUiState.cs`
+- `src/GoiMon.Staff/Pages/Checkout.razor` (slot selection)
+- `src/GoiMon.Staff/Pages/Orders.razor` / order detail component (status actions)
 
 

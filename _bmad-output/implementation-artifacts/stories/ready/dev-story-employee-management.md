@@ -122,7 +122,7 @@ so that **my restaurant team can operate with least-privilege access and clear a
 
 - [ ] Build command(s):
   - `dotnet build src/GoiMon.Api/GoiMon.Api.csproj`
-  - `dotnet build src/GoiMon.Client/GoiMon.Client.csproj`
+  - `dotnet build src/GoiMon.Staff/GoiMon.Staff.csproj`
 - [ ] Manual scenario(s):
   - Owner creates staff, edits role, deactivates staff, confirms staff access blocked.
 - [ ] Edge case(s):

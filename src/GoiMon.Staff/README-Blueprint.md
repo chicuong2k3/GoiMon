@@ -1,6 +1,6 @@
 # Blazor Blueprint — Integration Guide
 
-This file shows how to enable Blazor Blueprint in the `GoiMon.Client` project.
+This file shows how to enable Blazor Blueprint in the `GoiMon.Staff` project.
 
 Quick (safe) setup — placeholder only
 - A lightweight placeholder CSS and a sample component were added so you can preview Blueprint-like styles without installing any NuGet packages:
@@ -11,7 +11,7 @@ Full integration (recommended)
 1. Install the official NuGet package (example package id — replace with the exact package if it differs):
 
 ```bash
-cd /home/chicuong/Desktop/code/GoiMon/src/GoiMon.Client
+cd /home/chicuong/Desktop/code/GoiMon/src/GoiMon.Staff
 dotnet add package BlazorBlueprintUI
 ```
 

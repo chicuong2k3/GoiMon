@@ -1,1 +1,1 @@
-// Project-level global usings for GoiMon.Client
+// Project-level global usings for GoiMon.Staff

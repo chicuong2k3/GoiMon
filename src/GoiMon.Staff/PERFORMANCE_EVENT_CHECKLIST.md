@@ -1,4 +1,4 @@
-# GoiMon.Client — High-Frequency Event Checklist
+# GoiMon.Staff — High-Frequency Event Checklist
 
 Last updated: 2026-03-04
 

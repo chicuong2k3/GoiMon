@@ -59,7 +59,7 @@ Source backlog: [_bmad-output/planning-artifacts/goimon-sprint-1-ticket-breakdow
 - Status: Not done
 - Evidence found:
   - No simulator artifact in tests or tooling folders
-  - Existing tests are unrelated to sync simulator: [tests/GoiMon.Client.Tests/Features/Authentication/TokenStorageServiceTests.cs](tests/GoiMon.Client.Tests/Features/Authentication/TokenStorageServiceTests.cs)
+  - Existing tests are unrelated to sync simulator: [tests/GoiMon.Staff.Tests/Features/Authentication/TokenStorageServiceTests.cs](tests/GoiMon.Staff.Tests/Features/Authentication/TokenStorageServiceTests.cs)
 - Gaps:
   - No automated offline/reconnect/duplicate/out-of-order scenarios
   - No CI artifact/report for sync failure matrix

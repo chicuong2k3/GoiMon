@@ -9,7 +9,7 @@
     }
   },
   "profiles": {
-    "GoiMon.Client": {
+    "GoiMon.Staff": {
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": true,

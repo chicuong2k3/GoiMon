@@ -134,7 +134,7 @@ so that **I can know which table needs food delivery and which table is ready fo
 
 - [x] Build command(s):
   - `dotnet build src/GoiMon.Api/GoiMon.Api.csproj`
-  - `dotnet build src/GoiMon.Client/GoiMon.Client.csproj`
+  - `dotnet build src/GoiMon.Staff/GoiMon.Staff.csproj`
 - [ ] Manual scenario(s):
   - Create takeaway order (no table) and dine-in order (with table) in parallel.
   - Move dine-in through `Preparing -> ReadyToServe -> AwaitingPayment -> Paid`.
