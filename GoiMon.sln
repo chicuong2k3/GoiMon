@@ -4,7 +4,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GoiMon.Api", "src\GoiMon.Api\GoiMon.Api.csproj", "{C81BA02F-F4D7-47F1-8936-2E7A2588ADA3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GoiMon.Client", "src\GoiMon.Client\GoiMon.Client.csproj", "{7BE18E94-5E53-4326-8958-DF5F0E3CBC8B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GoiMon.Staff", "src\GoiMon.Staff\GoiMon.Staff.csproj", "{7BE18E94-5E53-4326-8958-DF5F0E3CBC8B}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
 EndProject

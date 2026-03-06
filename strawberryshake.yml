@@ -5,9 +5,9 @@ schema:
   - http://localhost:5000/graphql
 
 documents:
-  - src/GoiMon.Client/GraphQL/**/*.graphql
+  - src/GoiMon.Staff/GraphQL/**/*.graphql
 
 # Generated client settings
 name: GoiMonClient
-namespace: GoiMon.Client.GraphQL
-output: src/GoiMon.Client/Generated
+namespace: GoiMon.Staff.GraphQL
+output: src/GoiMon.Staff/Generated

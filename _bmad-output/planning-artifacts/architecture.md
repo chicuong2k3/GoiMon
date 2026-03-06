@@ -473,3 +473,107 @@ If you'd like, I can now:
 
 Reply with which handoff action you'd like next (draft sync spec / scaffold solution / create PR / nothing).
 
+
+## Sprint 1: Bounded Context Definitions (S1-01)
+
+### Decision
+We have formally defined the bounded contexts for the domain to ensure separation of concerns and clear ownership boundaries.
+
+### Key Contexts
+1.  **Catalog Context**: Source of truth for products, menus, and pricing.
+2.  **Order Context**: Manages the lifecycle of customer transactions.
+3.  **Table Context**: Manages physical resources (tables) and status.
+4.  **Payment Context**: Handles monetary transactions and reconciliation.
+5.  **Invoice Context**: Generates receipts and tax documents.
+6.  **Inventory-lite Context**: Tracks stock counts.
+
+### Artifacts Created
+-   [Bounded Context Definitions](bounded-contexts.md)
+-   [Context Map & Data Flow](context-map.md)
+
+## Strategy Decisions (SaaS & Devices)
+
+### Decision: Multi-tenant SaaS Architecture
+-   **Why**: Enables data backup/recovery ("insurance" for users), remote management for owners, and zero-upfront-cost business model.
+-   **Implication**:
+    -   Database must support **Multi-tenancy**.
+    -   Strategy: **TenantId column in all operational tables** (Shared Database, Shared Schema) for cost efficiency.
+    -   Authentication must resolve User -> Tenant context.
+
+### Decision: Device Strategy (BYOD - Bring Your Own Device)
+-   **Why**: Target segment (micro-merchants) is extremely price-sensitive and cannot afford dedicated hardware (3-10M VND).
+-   **Approach**:
+    -   Primary Interface: Mobile Web (PWA) / Mobile App.
+    -   Hardware support: Consumer grade Android/iOS phones.
+    -   Peripheral support: Generic Bluetooth Thermal Printers (ESC/POS standard) - cheap and widely available.
+    -   **No proprietary hardware requirement.**
+
+
+## Application Architecture Decisions (S1-01 Addendum)
+
+### Decision: PWA (Progressive Web App) over Native
+-   **Choice**: **Blazor WebAssembly PWA**.
+-   **Why**:
+    1.  **Development Velocity**: Fits the current Linux environment; avoids App Store review bottlenecks.
+    2.  **Compatibility**: Runs on any smartphone (Android/iOS) with a browser.
+    3.  **Offline Capability**: 100% Offline supported via Service Workers.
+-   **Trade-off accepted**: Advanced hardware access (Bluetooth printing on iOS) is limited. Strategy is to prioritize Android for printing stations or use network printers.
+
+### Decision: App Segmentation
+1.  **Staff/Merchant App (Aggregated)**:
+    -   **Code Name**: `GoiMon.Staff` (formerly `GoiMon.Client`)
+    -   Combines **POS (Order)** and **Admin (Management)** features.
+    -   Feature flags/Role-based UI hides Admin features for normal staff.
+    -   *Why*: Micro-merchant owners often act as cashiers; switching apps is friction.
+2.  **Customer App (Separate)**:
+    -   **Code Name**: `GoiMon.Diner` (Planned Phase 2)
+    -   Lightweight Web/PWA (QR Code entry).
+    -   No login required for basic view.
+    -   *Why*: Optimised for speed (<3s load) and conversion.
+
+### Decision: Offline Data Strategy
+-   **Technology**: **SQLite-Wasm** with **Entity Framework Core**.
+-   **Why**:
+    -   Provides a real Relational Database in the browser (SQL capabilities).
+    -   Superior to **LocalStorage** (Key-Value) for complex queries (filtering orders, inventory).
+    -   allows sharing data models/logic with the server backend.
+
+## Sprint 1: Architecture Decisions (S1-02)
+
+### Decision
+We have made critical technical decisions regarding Offline Sync, Payment Abstraction, and Printer Integation to support the GoiMon MVP.
+
+### Key Decisions
+1.  **Offline Sync (ADR-001)**:
+    -   **Approach**: Local-First with Background Sync Queue.
+    -   **Idempotency**: Client-generated UUIDs + Server deduplication.
+    -   **Conflict Resolution**: Last-Write-Wins (LWW) for simple fields; FSM for status.
+2.  **Payment Abstraction (ADR-002)**:
+    -   **Pattern**: Provider Adapter Pattern (IPaymentProcessor).
+    -   **MVP**: QR Code (VietQR / MoMo) generated on Server, displayed on Client.
+    -   **Verification**: Webhook callback / Polling.
+3.  **Printer Abstraction (ADR-003)**:
+    -   **Primary (Android/Desktop)**: Web Bluetooth API (ESC/POS) for direct thermal printing.
+    -   **Secondary (iOS)**: System Print Dialog (HTML/CSS) via AirPrint.
+    -   **Why**: Zero-install (no native app required), cost-effective hardware.
+
+### Artifacts Created
+-   [ADR-001: Offline Sync & Idempotency](adrs/ADR-001-offline-sync.md)
+-   [ADR-002: Payment Abstraction](adrs/ADR-002-payment-abstraction.md)
+-   [ADR-003: Printer Abstraction](adrs/ADR-003-printer-abstraction.md)
+
+### Decision: Offline Data implementation with Bit.Besql
+-   **Library**: **Bit.Besql**.
+-   **Rationale**:
+    -   Simplifies SQLite integration with Blazor WASM.
+    -   Provides EF Core DbContext factory support out of the box.
+    -   Persists data to IndexedDB via browser filesystem API.
+-   **Implementation**: Add package , register factory in DI.
+
+### Decision: Offline Data implementation with Bit.Besql
+-   **Library**: **Bit.Besql**.
+-   **Rationale**:
+    -   Simplifies SQLite integration with Blazor WASM.
+    -   Provides EF Core DbContext factory support out of the box.
+    -   Persists data to IndexedDB via browser filesystem API.
+-   **Implementation**: Add package **Bit.Besql**, register factory in DI.

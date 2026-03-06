@@ -7,6 +7,72 @@ Prerequisites
 - PostgreSQL available and the connection string set in `appsettings.json` or environment variable `ConnectionStrings__DefaultConnection`
 - (optional) `dotnet-ef` tools: `dotnet tool install --global dotnet-ef`
 
+Serilog + Seq (local log server)
+
+This API already uses Serilog in `Program.cs`. To ship logs to Seq locally:
+
+1) Start Seq with Docker
+
+```bash
+sudo docker run -d \
+  --name seq \
+  -e ACCEPT_EULA=Y \
+  -e SEQ_FIRSTRUN_ADMINPASSWORD=YourStrongPassword123 \
+  -p 5341:80 \
+  -v seq-data:/data \
+  datalust/seq
+```
+
+Open Seq at `http://localhost:5341` and sign in with `admin` + the password above.
+
+2) Install Seq sink package (if not already present)
+
+```bash
+dotnet add src/GoiMon.Api package Serilog.Sinks.Seq
+```
+
+3) Add Seq sink config in `src/GoiMon.Api/appsettings.json`
+
+```json
+{
+  "Serilog": {
+    "Using": [ "Serilog.Sinks.Seq" ],
+    "MinimumLevel": {
+      "Default": "Information",
+      "Override": {
+        "Microsoft": "Warning",
+        "System": "Warning",
+        "HotChocolate": "Debug"
+      }
+    },
+    "WriteTo": [
+      {
+        "Name": "Seq",
+        "Args": {
+          "serverUrl": "http://localhost:5341"
+        }
+      }
+    ]
+  }
+}
+```
+
+Optional: if you configure an API key in Seq, add `"apiKey": "<your-key>"` under `Args`.
+
+4) Run API and verify logs
+
+```bash
+ASPNETCORE_URLS=http://localhost:5000 dotnet run --project src/GoiMon.Api -c Debug
+```
+
+Then call:
+
+```bash
+curl http://localhost:5000/health
+```
+
+You should see the request and application logs in Seq (`http://localhost:5341`).
+
 Run the API locally
 
 Start the API on http://localhost:5000:
