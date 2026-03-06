@@ -1,3 +1,4 @@
+using System;
 using GoiMon.Api.Infrastructure.Middleware;
 using Microsoft.AspNetCore.Http;
 using Moq;
@@ -20,10 +21,11 @@ public class CorrelationIdMiddlewareTests
         // Act
         await middleware.InvokeAsync(context);
 
-        // Assert
-        Assert.True(context.Request.Headers.ContainsKey(CorrelationIdHeaderName));
-        Assert.False(string.IsNullOrWhiteSpace(context.Request.Headers[CorrelationIdHeaderName]));
-        Assert.True(Guid.TryParse(context.Request.Headers[CorrelationIdHeaderName], out _));
+        // Assert — middleware generates a GUID and stores it in HttpContext.Items
+        Assert.True(context.Items.ContainsKey("CorrelationId"));
+        var correlationId = context.Items["CorrelationId"]?.ToString();
+        Assert.False(string.IsNullOrWhiteSpace(correlationId));
+        Assert.True(Guid.TryParse(correlationId, out _));
     }
 
     [Fact]

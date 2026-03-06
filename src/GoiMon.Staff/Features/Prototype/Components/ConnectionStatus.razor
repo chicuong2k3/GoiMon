@@ -1,0 +1,23 @@
+@using BlazorBlueprint.Components
+@inject NavigationManager Nav
+
+<div class="flex items-center gap-2 p-1 px-3 rounded-full @(IsOffline ? "bg-destructive/10 text-destructive border-destructive/20" : "bg-primary/10 text-primary border-primary/20") border transition-all duration-300">
+    <div class="w-2 h-2 rounded-full @(IsOffline ? "bg-destructive animate-pulse" : "bg-primary")"></div>
+    <div class="flex flex-col">
+        <div class="flex items-center gap-2">
+            <span class="text-xs font-bold uppercase tracking-wider">@(IsOffline ? "Chế độ Ngoại tuyến" : "Trực tuyến")</span>
+            <BbSwitch Checked="@(!IsOffline)" CheckedChanged="OnToggleConnection" />
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool IsOffline { get; set; }
+    [Parameter] public EventCallback<bool> IsOfflineChanged { get; set; }
+
+    private async Task OnToggleConnection(bool isOnline)
+    {
+        IsOffline = !isOnline;
+        await IsOfflineChanged.InvokeAsync(IsOffline);
+    }
+}

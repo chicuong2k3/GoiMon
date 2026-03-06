@@ -1,0 +1,59 @@
+@inherits LayoutComponentBase
+@using BlazorBlueprint.Components
+@using GoiMon.Staff.Features.Prototype.Components
+
+<BbSidebarProvider>
+    <div class="flex flex-col h-screen w-full bg-background overflow-hidden">
+        <!-- Top Status Bar -->
+        <header class="flex items-center justify-between px-6 h-16 border-b bg-card/50 backdrop-blur-md z-30">
+            <div class="flex items-center gap-4">
+                <a href="/" class="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground hover:opacity-80 transition-opacity">
+                    <LucideIcon Name="arrow-left" Class="h-4 w-4" />
+                </a>
+                <div>
+                    <h1 class="text-lg font-bold leading-none mb-1">POS Prototype</h1>
+                    <p class="text-[10px] text-muted-foreground uppercase tracking-widest leading-none">Sprint 1 • Cashier Flow</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <ConnectionStatus @bind-IsOffline="_isOffline" />
+                
+                <div class="flex items-center gap-2 pl-4 border-l">
+                    <BbAvatar Size="AvatarSize.Small">
+                        <BbAvatarFallback>AD</BbAvatarFallback>
+                    </BbAvatar>
+                    <div class="hidden sm:flex flex-col">
+                        <span class="text-xs font-bold leading-none">Admin</span>
+                        <span class="text-[10px] text-muted-foreground">Nhà hàng Deli</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="relative flex-1 overflow-auto bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-background to-background">
+            @if (_isOffline)
+            {
+                <div class="sticky top-0 left-0 right-0 bg-destructive/20 backdrop-blur-sm border-b border-destructive/30 py-1 text-center z-50 animate-in slide-in-from-top duration-300">
+                    <span class="text-[10px] font-bold text-destructive uppercase tracking-widest flex items-center justify-center gap-2">
+                        <LucideIcon Name="wifi-off" Class="h-3 w-3" />
+                        Mất kết nối — Đơn hàng sẽ được lưu tạm tại thiết bị
+                    </span>
+                </div>
+            }
+
+            <CascadingValue Value="_isOffline" Name="IsOffline">
+                @Body
+            </CascadingValue>
+        </main>
+    </div>
+</BbSidebarProvider>
+
+<BbToastProvider Position="ToastPosition.BottomRight" />
+<BbDialogProvider />
+<BbPortalHost />
+
+@code {
+    private bool _isOffline = false;
+}

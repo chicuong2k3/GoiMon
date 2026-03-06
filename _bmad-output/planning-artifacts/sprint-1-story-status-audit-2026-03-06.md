@@ -4,9 +4,9 @@ Source backlog: [_bmad-output/planning-artifacts/goimon-sprint-1-ticket-breakdow
 
 ## Summary
 
-- Done: 4/11
+- Done: 5/11
 - Partial: 2/11
-- Not done: 5/11
+- Not done: 4/11
 
 ## Story-by-story status
 
@@ -86,11 +86,13 @@ Source backlog: [_bmad-output/planning-artifacts/goimon-sprint-1-ticket-breakdow
   - None.
 
 ### S1-09 — Cashier flow clickable prototype
-- Status: Not done
+- Status: Done
 - Evidence found:
-  - Planning expectations exist only: [_bmad-output/planning-artifacts/goimon-sprint-1-ticket-breakdown.md](_bmad-output/planning-artifacts/goimon-sprint-1-ticket-breakdown.md)
+  - Interactive prototype implemented at `/prototype/cashier`.
+  - Glassmorphic `PrototypeLayout.razor` with `ConnectionStatus` toggle.
+  - `TableGridView.razor` and `OrderingView.razor` provide full interactive flow.
 - Gaps:
-  - No prototype deliverable file/link and no approval evidence
+  - None (Prototypes meet ACs).
 
 ### S1-10 — UX handoff package for Sprint 2
 - Status: Not done
