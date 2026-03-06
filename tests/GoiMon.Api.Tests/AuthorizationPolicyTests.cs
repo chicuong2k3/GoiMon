@@ -4,6 +4,7 @@ using GoiMon.Api.Infrastructure.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
+using System.Threading.Tasks;
 
 namespace GoiMon.Api.Tests.Authorization;
 
@@ -18,7 +19,7 @@ public class AuthorizationPolicyTests
         services.AddOptions();
         services.AddAuthorizationCore();
         services.AddPolicyMatrix();
-        
+
         var provider = services.BuildServiceProvider();
         _authorizationService = provider.GetRequiredService<IAuthorizationService>();
     }
