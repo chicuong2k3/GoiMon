@@ -10,6 +10,18 @@ jobs:
 
         steps:
             - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Filter changed paths
+              id: filter
+              uses: dorny/paths-filter@v2
+              with:
+                  filters: |
+                      publish_client:
+                        - 'src/GoiMon.Staff/**'
+                      nginx_only:
+                        - 'nginx/**'
 
             - name: Setup .NET
               uses: actions/setup-dotnet@v4
@@ -17,12 +29,15 @@ jobs:
                   dotnet-version: "10.0.x"
 
             - name: Restore
+              if: steps.filter.outputs.publish_client == 'true'
               run: dotnet restore src/GoiMon.Staff/GoiMon.Staff.csproj
 
             - name: Publish
+              if: steps.filter.outputs.publish_client == 'true'
               run: dotnet publish src/GoiMon.Staff/GoiMon.Staff.csproj -c Release -o publish
 
             - name: Prepare deploy directory
+              if: steps.filter.outputs.publish_client == 'true'
               uses: appleboy/ssh-action@v1.0.3
               with:
                   host: ${{ secrets.SSH_HOST }}
@@ -33,6 +48,7 @@ jobs:
                       sudo chown $USER:$USER /var/www/goimon-client
 
             - name: Deploy via SCP
+              if: steps.filter.outputs.publish_client == 'true'
               uses: appleboy/scp-action@v0.1.7
               with:
                   host: ${{ secrets.SSH_HOST }}
@@ -43,6 +59,7 @@ jobs:
                   strip_components: 2
 
             - name: Deploy nginx config
+              if: steps.filter.outputs.nginx_only == 'true' || steps.filter.outputs.publish_client == 'true'
               uses: appleboy/scp-action@v0.1.7
               with:
                   host: ${{ secrets.SSH_HOST }}
@@ -53,6 +70,7 @@ jobs:
                   strip_components: 1
 
             - name: Reload web server
+              if: steps.filter.outputs.nginx_only == 'true' || steps.filter.outputs.publish_client == 'true'
               uses: appleboy/ssh-action@v1.0.3
               with:
                   host: ${{ secrets.SSH_HOST }}
