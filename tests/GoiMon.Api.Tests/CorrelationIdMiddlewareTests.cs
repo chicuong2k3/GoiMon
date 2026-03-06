@@ -1,6 +1,7 @@
 using GoiMon.Api.Infrastructure.Middleware;
 using Microsoft.AspNetCore.Http;
 using Moq;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace GoiMon.Api.Tests;
