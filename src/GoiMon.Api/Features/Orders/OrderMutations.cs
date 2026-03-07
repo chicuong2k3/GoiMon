@@ -1,7 +1,12 @@
 using HotChocolate.Subscriptions;
+using Microsoft.EntityFrameworkCore;
+using System.Linq;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using GoiMon.Api.Features.Orders.Services;
 using GoiMon.Api.Domain.Enums;
 using GoiMon.Api.Features.Tables;
+using GoiMon.Api.Infrastructure.Services;
 
 namespace GoiMon.Api.Features.Orders;
 
@@ -23,12 +28,14 @@ public class OrderMutations
     public async Task<CreateOrderPayload> CreateOrder(
         CreateOrderInput input,
         [Service(ServiceKind.Pooled)] AppDbContext db,
-        [Service] ITopicEventSender eventSender)
+        [Service] ITopicEventSender eventSender,
+        [Service] ITenantProvider tenantProvider)
     {
         var errors = new List<CreateOrderValidationError>();
-        var order = new Order(Guid.NewGuid());
+        var tenantId = tenantProvider.GetTenantId();
+        var order = new Order(Guid.NewGuid(), tenantId);
         var selectedModifierCount = 0;
-        var comboLines = input.ComboLines ?? [];
+        var comboLines = input.ComboLines ?? new List<CreateOrderComboLineInput>();
         TableSlot? assignedTable = null;
 
         if (input.TableSlotId.HasValue)
@@ -219,6 +226,7 @@ public class OrderMutations
                 selectedModifierCount += modifier.Quantity;
                 db.OrderItemModifiers.Add(new OrderItemModifier(
                     Guid.NewGuid(),
+                    tenantId,
                     orderItem.Id,
                     selected.Option.Id,
                     selected.Group.Name,

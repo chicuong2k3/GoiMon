@@ -679,8 +679,8 @@
     private static string FormatCurrency(decimal amount)
         => string.Concat(FormatNumber(amount), "đ");
 
-    private List<ProductDto> _items = [];
-    private List<CategoryItem> _allCategories = [];
+    private List<ProductDto> _items = new List<ProductDto>();
+    private List<CategoryItem> _allCategories = new List<CategoryItem>();
     private bool _loading, _saving;
     private int _skip, _take = 5, _total;
     private string _search = "";
@@ -707,7 +707,7 @@
     private bool HasImage => DisplayImageUrl is not null;
     private bool _showDeleteConfirm;
     private Guid? _pendingDeleteId;
-    private HashSet<Guid> _selectedIds = [];
+    private HashSet<Guid> _selectedIds = new HashSet<Guid>();
     private bool _showBulkDeleteConfirm;
     private bool _bulkDeleting;
 
@@ -995,7 +995,7 @@
                         i.ImageUrl,
                         i.Variants.Count(v => v.IsActive),
                         i.ModifierGroups.Count(g => g.IsActive)
-                    )).ToList() ?? [];
+                    )).ToList() ?? new List<ProductDto>();
                     _total = data.TotalCount;
                     await PersistStateAsync();
                 }
@@ -1435,7 +1435,7 @@
     private bool _loadingConfig;
 
     // Variants
-    private List<VariantRowDto> _variants = [];
+    private List<VariantRowDto> _variants = new List<VariantRowDto>();
     private bool _showVariantForm;
     private Guid? _editVariantId;
     private string _vCode = "", _vName = "", _vPriceStr = "", _vSortStr = "0";
@@ -1443,7 +1443,7 @@
     private bool _savingVariant;
 
     // Modifier Groups
-    private List<ModifierGroupRowDto> _modifierGroups = [];
+    private List<ModifierGroupRowDto> _modifierGroups = new List<ModifierGroupRowDto>();
     private bool _showGroupForm;
     private Guid? _editGroupId;
     private string _gName = "", _gMinStr = "0", _gMaxStr = "1", _gSortStr = "0";

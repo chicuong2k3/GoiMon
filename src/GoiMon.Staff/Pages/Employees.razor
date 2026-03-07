@@ -203,7 +203,7 @@
 </FormDialog>
 
 @code {
-    private List<EmployeeDto> _items = [];
+    private List<EmployeeDto> _items = new List<EmployeeDto>();
     private bool _loading;
     private bool _saving;
     private int _skip;
@@ -333,7 +333,7 @@
                     i.IsActive,
                     i.IsVerified,
                     i.CreatedAt,
-                    i.UpdatedAt)).ToList() ?? [];
+                    i.UpdatedAt)).ToList() ?? new List<EmployeeDto>();
                 _total = data.TotalCount;
                 await PersistStateAsync();
             }

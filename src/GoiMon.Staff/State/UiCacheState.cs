@@ -110,7 +110,7 @@ public record OrderItemSnapshot(
     decimal UnitPrice,
     IReadOnlyList<OrderItemModifierSnapshot>? Modifiers = null)
 {
-    public IReadOnlyList<OrderItemModifierSnapshot> SafeModifiers => Modifiers ?? [];
+    public IReadOnlyList<OrderItemModifierSnapshot> SafeModifiers => Modifiers ?? System.Array.Empty<OrderItemModifierSnapshot>();
 }
 
 public record OrderItemModifierSnapshot(

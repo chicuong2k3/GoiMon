@@ -1,4 +1,5 @@
 using GoiMon.Api.Features.ImageUpload.Services;
+using GoiMon.Api.Infrastructure.Services;
 
 namespace GoiMon.Api.Features.Combos;
 
@@ -10,9 +11,11 @@ public class ComboMutations
         CreateComboInput input,
         [GraphQLType(typeof(UploadType))] IFile? image,
         [Service(ServiceKind.Pooled)] AppDbContext db,
-        [Service] IImageUploadService imageUpload)
+        [Service] IImageUploadService imageUpload,
+        [Service] ITenantProvider tenantProvider)
     {
-        var combo = new ProductCombo(Guid.NewGuid(), input.Name, input.Price);
+        var tenantId = tenantProvider.GetTenantId();
+        var combo = new ProductCombo(Guid.NewGuid(), tenantId, input.Name, input.Price);
         if (input.Items is not null)
         {
             foreach (var item in input.Items)

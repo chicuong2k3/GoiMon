@@ -1,3 +1,5 @@
+using GoiMon.Api.Infrastructure.Services;
+
 namespace GoiMon.Api.Features.Products;
 
 [ExtendObjectType("Mutation")]
@@ -9,10 +11,11 @@ public class ProductVariantMutations
     public async Task<ProductVariant> CreateProductVariant(
         Guid productId,
         ProductVariantInput input,
-        [Service(ServiceKind.Pooled)] AppDbContext db)
+        [Service(ServiceKind.Pooled)] AppDbContext db,
+        [Service] ITenantProvider tenantProvider)
     {
         var variant = new ProductVariant(
-            Guid.NewGuid(), productId,
+            Guid.NewGuid(), tenantProvider.GetTenantId(), productId,
             input.Code, input.Name, input.Price,
             input.SortOrder, input.IsActive);
         db.ProductVariants.Add(variant);
@@ -55,10 +58,11 @@ public class ProductVariantMutations
     public async Task<ModifierGroup> CreateModifierGroup(
         Guid productId,
         ModifierGroupInput input,
-        [Service(ServiceKind.Pooled)] AppDbContext db)
+        [Service(ServiceKind.Pooled)] AppDbContext db,
+        [Service] ITenantProvider tenantProvider)
     {
         var group = new ModifierGroup(
-            Guid.NewGuid(), productId,
+            Guid.NewGuid(), tenantProvider.GetTenantId(), productId,
             input.Name, input.SelectionMode,
             input.MinSelect, input.MaxSelect,
             input.SortOrder, input.IsRequired, input.IsActive);
@@ -103,10 +107,11 @@ public class ProductVariantMutations
     public async Task<ModifierOption> CreateModifierOption(
         Guid groupId,
         ModifierOptionInput input,
-        [Service(ServiceKind.Pooled)] AppDbContext db)
+        [Service(ServiceKind.Pooled)] AppDbContext db,
+        [Service] ITenantProvider tenantProvider)
     {
         var option = new ModifierOption(
-            Guid.NewGuid(), groupId,
+            Guid.NewGuid(), tenantProvider.GetTenantId(), groupId,
             input.Name, input.PriceDelta,
             input.MaxQty, input.SortOrder,
             input.IsDefault, input.IsActive);

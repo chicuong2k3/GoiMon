@@ -366,8 +366,8 @@
     private static string FormatCurrency(decimal amount)
         => string.Concat(FormatNumber(amount), "đ");
 
-    private List<ComboDto> _items = [];
-    private List<ProductItem> _allProducts = [];
+    private List<ComboDto> _items = new List<ComboDto>();
+    private List<ProductItem> _allProducts = new List<ProductItem>();
     private bool _loading, _saving, _savingItem;
     private int _skip, _take = 5, _total;
     private string _search = "";
@@ -391,7 +391,7 @@
     private bool HasImage => DisplayImageUrl is not null;
     private bool _showDeleteConfirm;
     private Guid? _pendingDeleteId;
-    private HashSet<Guid> _selectedIds = [];
+    private HashSet<Guid> _selectedIds = new HashSet<Guid>();
     private bool _showBulkDeleteConfirm;
     private bool _bulkDeleting;
 
@@ -466,7 +466,7 @@
             .OrderBy(v => v.SortOrder)
             .Select(v => new SelectOption<Guid?>(v.Id, $"{v.Name} ({v.Price:#,##0}đ)"))
             .ToList()
-        ?? [];
+            ?? new List<SelectOption<Guid?>>();
 
     protected override async Task OnInitializedAsync()
     {
@@ -709,7 +709,7 @@
                         c.Id, c.Name, c.Price,
                         c.Items.Select(ci => new ComboItemDto(ci.Id, ci.ProductId, ci.Product?.Name, ci.VariantId, ci.Variant?.Name, ci.Qty)).ToList(),
                         c.ImageUrl
-                    )).ToList() ?? [];
+                    )).ToList() ?? new List<ComboDto>();
                     _total = data.TotalCount;
                     await PersistStateAsync();
                 }

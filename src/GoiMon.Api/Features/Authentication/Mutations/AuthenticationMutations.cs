@@ -22,7 +22,8 @@ public class AuthenticationMutations
         RegisterWithOAuthInput input,
         [Service] IOAuthExchangeService oauthService,
         [Service] IDbContextFactory<AppDbContext> contextFactory,
-        [Service] IOtpService otpService)
+        [Service] IOtpService otpService,
+        [Service] ITenantProvider tenantProvider)
     {
         try
         {
@@ -46,8 +47,10 @@ public class AuthenticationMutations
 
             // Create new user
             var userId = Guid.NewGuid();
+            var tenantId = tenantProvider.GetTenantId();
             var user = User.CreateFromOAuth(
                 id: userId,
+                tenantId: tenantId,
                 email: oauthUser.Email,
                 firstName: oauthUser.FirstName,
                 lastName: oauthUser.LastName,
@@ -94,7 +97,8 @@ public class AuthenticationMutations
         RegisterWithOAuthInput input,
         [Service] IOAuthExchangeService oauthService,
         [Service] IDbContextFactory<AppDbContext> contextFactory,
-        [Service] IOtpService otpService)
+        [Service] IOtpService otpService,
+        [Service] ITenantProvider tenantProvider)
     {
         try
         {
@@ -118,8 +122,10 @@ public class AuthenticationMutations
 
             // Create new user
             var userId = Guid.NewGuid();
+            var tenantId = tenantProvider.GetTenantId();
             var user = User.CreateFromOAuth(
                 id: userId,
+                tenantId: tenantId,
                 email: oauthUser.Email,
                 firstName: oauthUser.FirstName,
                 lastName: oauthUser.LastName,
@@ -193,7 +199,7 @@ public class AuthenticationMutations
             // If user is verified, issue JWT token immediately
             if (user.IsVerified)
             {
-                var token = jwtService.GenerateToken(user.Id, user.Email, user.Role.ToString(), true);
+                var token = jwtService.GenerateToken(user.Id, user.TenantId, user.Email, user.Role.ToString(), true);
                 _logger.LogInformation("User logged in with Google: {Email}", user.Email);
 
                 return new AuthenticationPayload
@@ -269,7 +275,7 @@ public class AuthenticationMutations
             // If user is verified, issue JWT token immediately
             if (user.IsVerified)
             {
-                var token = jwtService.GenerateToken(user.Id, user.Email, user.Role.ToString(), true);
+                var token = jwtService.GenerateToken(user.Id, user.TenantId, user.Email, user.Role.ToString(), true);
                 _logger.LogInformation("User logged in with Facebook: {Email}", user.Email);
 
                 return new AuthenticationPayload
@@ -355,7 +361,7 @@ public class AuthenticationMutations
             await context.SaveChangesAsync();
 
             // Generate JWT token
-            var token = jwtService.GenerateToken(user.Id, user.Email, user.Role.ToString(), true);
+            var token = jwtService.GenerateToken(user.Id, user.TenantId, user.Email, user.Role.ToString(), true);
 
             _logger.LogInformation("OTP verified for user: {Email}", user.Email);
 

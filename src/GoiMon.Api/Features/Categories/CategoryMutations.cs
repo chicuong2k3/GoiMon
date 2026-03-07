@@ -1,12 +1,15 @@
+using GoiMon.Api.Infrastructure.Services;
+
 namespace GoiMon.Api.Features.Categories;
 
 [ExtendObjectType("Mutation")]
 public class CategoryMutations
 {
     [UseDbContext(typeof(AppDbContext))]
-    public async Task<Category> CreateCategory(CreateCategoryInput input, [Service(ServiceKind.Pooled)] AppDbContext db)
+    public async Task<Category> CreateCategory(CreateCategoryInput input, [Service(ServiceKind.Pooled)] AppDbContext db, [Service] ITenantProvider tenantProvider)
     {
-        var c = new Category(Guid.NewGuid(), input.Name);
+        var tenantId = tenantProvider.GetTenantId();
+        var c = new Category(Guid.NewGuid(), tenantId, input.Name);
         db.Categories.Add(c);
         await db.SaveChangesAsync();
         return c;

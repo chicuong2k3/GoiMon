@@ -184,7 +184,7 @@
 @code {
     private const int InitialTableSlotsPageSize = 100;
 
-    private List<TableSlotDto> _items = [];
+    private List<TableSlotDto> _items = new List<TableSlotDto>();
     private bool _loading;
     private bool _saving;
     private string _search = string.Empty;
@@ -270,7 +270,7 @@
                         i.Capacity,
                         i.IsActive,
                         i.CurrentState.ToString(),
-                        i.UpdatedAt)).ToList() ?? [];
+                        i.UpdatedAt)).ToList() ?? new List<TableSlotDto>();
 
                     await PersistStateAsync(pageSize);
                     break;

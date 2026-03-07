@@ -175,7 +175,7 @@
 </FormDialog>
 
 @code {
-    private List<CategoryDto> _items = [];
+    private List<CategoryDto> _items = new List<CategoryDto>();
     private bool _loading, _saving;
     private int _skip, _take = 5, _total;
     private string _search = "";
@@ -187,7 +187,7 @@
     private string _formName = "";
     private bool _showDeleteConfirm;
     private Guid? _pendingDeleteId;
-    private HashSet<Guid> _selectedIds = [];
+    private HashSet<Guid> _selectedIds = new HashSet<Guid>();
     private bool _showBulkDeleteConfirm;
     private bool _bulkDeleting;
 
@@ -317,7 +317,7 @@
             var result = await Client.GetCategories.ExecuteAsync(_skip, _take, BuildFilter(), BuildOrder());
             if (result.Data?.CategoriesOffset is { } data)
             {
-                _items = data.Items?.Select(i => new CategoryDto(i.Id, i.Name)).ToList() ?? [];
+                _items = data.Items?.Select(i => new CategoryDto(i.Id, i.Name)).ToList() ?? new List<CategoryDto>();
                 _total = data.TotalCount;
                 await PersistStateAsync();
             }

@@ -456,7 +456,7 @@
     private string _search = string.Empty;
     private const string AllCategoriesValue = "__ALL__";
     private string _selectedCategory = AllCategoriesValue;
-    private List<CartLineItemDto> _cart = [];
+    private List<CartLineItemDto> _cart = new List<CartLineItemDto>();
 
     private bool _productModalOpen;
     private bool _comboModalOpen;
@@ -465,9 +465,9 @@
     private Guid? _selectedVariantId;
     private int _lineQty = 1;
     private readonly Dictionary<Guid, int> _selectedOptionQuantities = new();
-    private List<ProductListItem> _products = [];
-    private List<ComboMenuItemDto> _combos = [];
-    private List<TableSlotOptionDto> _tableSlots = [];
+    private List<ProductListItem> _products = new List<ProductListItem>();
+    private List<ComboMenuItemDto> _combos = new List<ComboMenuItemDto>();
+    private List<TableSlotOptionDto> _tableSlots = new List<TableSlotOptionDto>();
     private Guid? _selectedTableSlotId;
     private Guid? _selectedComboId;
     private ComboMenuItemDto? _selectedCombo;
@@ -781,7 +781,7 @@
                     x.Name,
                     x.IsActive,
                     x.CurrentState.ToString()))
-                .ToList() ?? [];
+                .ToList() ?? new List<TableSlotOptionDto>();
 
             if (_serviceMode == DineInMode && _selectedTableSlotId.HasValue && _tableSlots.All(x => x.Id != _selectedTableSlotId.Value || !x.IsActive))
             {

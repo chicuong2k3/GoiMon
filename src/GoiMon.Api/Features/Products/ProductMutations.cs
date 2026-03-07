@@ -1,4 +1,5 @@
 using GoiMon.Api.Features.ImageUpload.Services;
+using GoiMon.Api.Infrastructure.Services;
 
 namespace GoiMon.Api.Features.Products;
 
@@ -10,9 +11,11 @@ public class ProductMutations
         ProductInput input,
         [GraphQLType(typeof(UploadType))] IFile? image,
         [Service(ServiceKind.Pooled)] AppDbContext db,
-        [Service] IImageUploadService imageUpload)
+        [Service] IImageUploadService imageUpload,
+        [Service] ITenantProvider tenantProvider)
     {
-        var p = new Product(Guid.NewGuid(), input.Name, input.Price, input.CategoryId, input.Description);
+        var tenantId = tenantProvider.GetTenantId();
+        var p = new Product(Guid.NewGuid(), tenantId, input.Name, input.Price, input.CategoryId, input.Description);
 
         if (image is not null)
         {
@@ -31,12 +34,12 @@ public class ProductMutations
     }
 
     [UseDbContext(typeof(AppDbContext))]
-    public async Task<List<Product>> CreateProducts(List<ProductInput> inputs, [Service(ServiceKind.Pooled)] AppDbContext db)
+    public async Task<List<Product>> CreateProducts(List<ProductInput> inputs, [Service(ServiceKind.Pooled)] AppDbContext db, [Service] ITenantProvider tenantProvider)
     {
         var created = new List<Product>();
         foreach (var i in inputs)
         {
-            var p = new Product(Guid.NewGuid(), i.Name, i.Price, i.CategoryId, i.Description);
+            var p = new Product(Guid.NewGuid(), tenantProvider.GetTenantId(), i.Name, i.Price, i.CategoryId, i.Description);
             db.Products.Add(p);
             created.Add(p);
         }
