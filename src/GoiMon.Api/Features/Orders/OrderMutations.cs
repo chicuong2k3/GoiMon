@@ -28,12 +28,10 @@ public class OrderMutations
     public async Task<CreateOrderPayload> CreateOrder(
         CreateOrderInput input,
         [Service(ServiceKind.Pooled)] AppDbContext db,
-        [Service] ITopicEventSender eventSender,
-        [Service] ITenantProvider tenantProvider)
+        [Service] ITopicEventSender eventSender)
     {
         var errors = new List<CreateOrderValidationError>();
-        var tenantId = tenantProvider.GetTenantId();
-        var order = new Order(Guid.NewGuid(), tenantId);
+        var order = new Order(Guid.NewGuid());
         var selectedModifierCount = 0;
         var comboLines = input.ComboLines ?? new List<CreateOrderComboLineInput>();
         TableSlot? assignedTable = null;
@@ -226,7 +224,6 @@ public class OrderMutations
                 selectedModifierCount += modifier.Quantity;
                 db.OrderItemModifiers.Add(new OrderItemModifier(
                     Guid.NewGuid(),
-                    tenantId,
                     orderItem.Id,
                     selected.Option.Id,
                     selected.Group.Name,

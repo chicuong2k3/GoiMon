@@ -10,7 +10,7 @@ public class ProductCombo : AggregateRoot, IMultiTenant
 {
     private ProductCombo() { Items = new List<ProductComboItem>(); }
 
-    public ProductCombo(Guid id, Guid tenantId, string name, decimal price)
+    public ProductCombo(Guid id, string name, decimal price, Guid tenantId = default)
     {
         Id = id;
         TenantId = tenantId;
@@ -29,7 +29,7 @@ public class ProductCombo : AggregateRoot, IMultiTenant
     public void AddItem(Guid productId, int qty, Guid? variantId = null)
     {
         if (qty <= 0) throw new ArgumentOutOfRangeException(nameof(qty));
-        var item = new ProductComboItem(Guid.NewGuid(), TenantId, Id, productId, qty, variantId);
+        var item = new ProductComboItem(Guid.NewGuid(), Id, productId, qty, variantId, TenantId);
         Items.Add(item);
         AddDomainEvent(new Events.ComboItemAddedEvent(Id, item.Id, productId, qty));
     }
@@ -96,7 +96,7 @@ public class ProductComboItem : IMultiTenant
 {
     private ProductComboItem() { }
 
-    public ProductComboItem(Guid id, Guid tenantId, Guid comboId, Guid productId, int qty, Guid? variantId = null)
+    public ProductComboItem(Guid id, Guid comboId, Guid productId, int qty, Guid? variantId = null, Guid tenantId = default)
     {
         Id = id;
         TenantId = tenantId;

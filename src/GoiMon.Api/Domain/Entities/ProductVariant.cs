@@ -8,13 +8,13 @@ public class ProductVariant : IMultiTenant
 
     public ProductVariant(
         Guid id,
-        Guid tenantId,
         Guid productId,
         string code,
         string name,
         decimal price,
         int sortOrder = 0,
-        bool isActive = true)
+        bool isActive = true,
+        Guid tenantId = default)
     {
         if (string.IsNullOrWhiteSpace(code)) throw new ArgumentException("Variant code cannot be empty", nameof(code));
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Variant name cannot be empty", nameof(name));

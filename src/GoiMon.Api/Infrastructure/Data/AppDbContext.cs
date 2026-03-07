@@ -30,6 +30,7 @@ public class AppDbContext : DbContext
     public DbSet<OtpToken> OtpTokens { get; set; } = null!;
     public DbSet<TableSlot> TableSlots { get; set; } = null!;
     public DbSet<Infrastructure.Outbox.OutboxEvent> OutboxEvents { get; set; } = null!;
+    public Guid? CurrentTenantId => _accessor.TenantId;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -43,14 +44,18 @@ public class AppDbContext : DbContext
         {
             if (typeof(Domain.IMultiTenant).IsAssignableFrom(entityType.ClrType))
             {
-                var parameter = Expression.Parameter(entityType.ClrType, "e");
-                var body = Expression.Equal(
-                    Expression.Property(parameter, "TenantId"),
-                    Expression.Constant(_accessor.TenantId ?? Guid.Empty)
-                );
-                modelBuilder.Entity(entityType.ClrType).HasQueryFilter(Expression.Lambda(body, parameter));
+                var method = typeof(AppDbContext)
+                    .GetMethod(nameof(ApplyTenantFilter), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                    ?.MakeGenericMethod(entityType.ClrType);
+                
+                method?.Invoke(this, new object[] { modelBuilder });
             }
         }
+    }
+
+    private void ApplyTenantFilter<T>(ModelBuilder modelBuilder) where T : class, Domain.IMultiTenant
+    {
+        modelBuilder.Entity<T>().HasQueryFilter(e => e.TenantId == CurrentTenantId);
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

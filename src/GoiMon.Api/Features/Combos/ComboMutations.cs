@@ -11,11 +11,9 @@ public class ComboMutations
         CreateComboInput input,
         [GraphQLType(typeof(UploadType))] IFile? image,
         [Service(ServiceKind.Pooled)] AppDbContext db,
-        [Service] IImageUploadService imageUpload,
-        [Service] ITenantProvider tenantProvider)
+        [Service] IImageUploadService imageUpload)
     {
-        var tenantId = tenantProvider.GetTenantId();
-        var combo = new ProductCombo(Guid.NewGuid(), tenantId, input.Name, input.Price);
+        var combo = new ProductCombo(Guid.NewGuid(), input.Name, input.Price);
         if (input.Items is not null)
         {
             foreach (var item in input.Items)

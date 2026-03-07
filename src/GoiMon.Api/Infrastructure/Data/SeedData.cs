@@ -20,9 +20,9 @@ public static class SeedData
         // Categories
         if (!await db.Categories.AnyAsync())
         {
-            var cat1 = new Domain.Entities.Category(Guid.NewGuid(), tenantId, "Noodles");
-            var cat2 = new Domain.Entities.Category(Guid.NewGuid(), tenantId, "Sandwich");
-            var cat3 = new Domain.Entities.Category(Guid.NewGuid(), tenantId, "Rice");
+            var cat1 = new Domain.Entities.Category(Guid.NewGuid(), "Noodles", tenantId);
+            var cat2 = new Domain.Entities.Category(Guid.NewGuid(), "Sandwich", tenantId);
+            var cat3 = new Domain.Entities.Category(Guid.NewGuid(), "Rice", tenantId);
             db.Categories.AddRange(cat1, cat2, cat3);
             await db.SaveChangesAsync();
         }
@@ -34,9 +34,9 @@ public static class SeedData
             if (categories.Count >= 3)
             {
                 db.Products.AddRange(new[] {
-                    new Domain.Entities.Product(Guid.NewGuid(), tenantId, "Pho Bo", 40000m, categories[0].Id, "Beef noodle soup"),
-                    new Domain.Entities.Product(Guid.NewGuid(), tenantId, "Banh Mi Thit", 25000m, categories[1].Id, "Vietnamese pork sandwich"),
-                    new Domain.Entities.Product(Guid.NewGuid(), tenantId, "Com Ga", 45000m, categories[2].Id, "Chicken rice")
+                    new Domain.Entities.Product(Guid.NewGuid(), "Pho Bo", 40000m, categories[0].Id, "Beef noodle soup", tenantId),
+                    new Domain.Entities.Product(Guid.NewGuid(), "Banh Mi Thit", 25000m, categories[1].Id, "Vietnamese pork sandwich", tenantId),
+                    new Domain.Entities.Product(Guid.NewGuid(), "Com Ga", 45000m, categories[2].Id, "Chicken rice", tenantId)
                 });
                 await db.SaveChangesAsync();
             }
@@ -48,7 +48,7 @@ public static class SeedData
             var products = await db.Products.Take(2).ToListAsync();
             if (products.Count >= 2)
             {
-                var combo = new Domain.Entities.ProductCombo(Guid.NewGuid(), tenantId, "Lunch Combo", products.Sum(p => p.Price) - 5000m);
+                var combo = new Domain.Entities.ProductCombo(Guid.NewGuid(), "Lunch Combo", products.Sum(p => p.Price) - 5000m, tenantId: tenantId);
                 combo.AddItem(products[0].Id, 1);
                 combo.AddItem(products[1].Id, 1);
                 db.ProductCombos.Add(combo);
@@ -60,7 +60,7 @@ public static class SeedData
         var drinksCategory = await db.Categories.FirstOrDefaultAsync(c => c.Name == "Drinks");
         if (drinksCategory is null)
         {
-            drinksCategory = new Domain.Entities.Category(Guid.NewGuid(), tenantId, "Drinks");
+            drinksCategory = new Domain.Entities.Category(Guid.NewGuid(), "Drinks", tenantId);
             db.Categories.Add(drinksCategory);
             await db.SaveChangesAsync();
         }
@@ -70,11 +70,11 @@ public static class SeedData
         {
             milkTea = new Domain.Entities.Product(
                 Guid.NewGuid(),
-                tenantId,
                 "Milk Tea",
                 30000m,
                 drinksCategory.Id,
-                "Classic milk tea base");
+                "Classic milk tea base",
+                tenantId);
             milkTea.UpdateUnitName("ly");
             db.Products.Add(milkTea);
             await db.SaveChangesAsync();
@@ -84,9 +84,9 @@ public static class SeedData
         if (!hasVariants)
         {
             db.ProductVariants.AddRange(
-                new Domain.Entities.ProductVariant(Guid.NewGuid(), tenantId, milkTea.Id, "s", "Size S", 30000m, sortOrder: 1),
-                new Domain.Entities.ProductVariant(Guid.NewGuid(), tenantId, milkTea.Id, "m", "Size M", 35000m, sortOrder: 2),
-                new Domain.Entities.ProductVariant(Guid.NewGuid(), tenantId, milkTea.Id, "l", "Size L", 40000m, sortOrder: 3));
+                new Domain.Entities.ProductVariant(Guid.NewGuid(), milkTea.Id, "s", "Size S", 30000m, sortOrder: 1, tenantId: tenantId),
+                new Domain.Entities.ProductVariant(Guid.NewGuid(), milkTea.Id, "m", "Size M", 35000m, sortOrder: 2, tenantId: tenantId),
+                new Domain.Entities.ProductVariant(Guid.NewGuid(), milkTea.Id, "l", "Size L", 40000m, sortOrder: 3, tenantId: tenantId));
             await db.SaveChangesAsync();
         }
 
@@ -95,7 +95,6 @@ public static class SeedData
         {
             toppingGroup = new Domain.Entities.ModifierGroup(
                 Guid.NewGuid(),
-                tenantId,
                 milkTea.Id,
                 "Topping",
                 Domain.Entities.ModifierSelectionMode.Multiple,
@@ -103,7 +102,8 @@ public static class SeedData
                 maxSelect: 3,
                 sortOrder: 1,
                 isRequired: false,
-                isActive: true);
+                isActive: true,
+                tenantId: tenantId);
 
             db.ModifierGroups.Add(toppingGroup);
             await db.SaveChangesAsync();
@@ -113,9 +113,9 @@ public static class SeedData
         if (!hasToppingOptions)
         {
             db.ModifierOptions.AddRange(
-                new Domain.Entities.ModifierOption(Guid.NewGuid(), tenantId, toppingGroup.Id, "Pearl", 5000m, maxQty: 2, sortOrder: 1),
-                new Domain.Entities.ModifierOption(Guid.NewGuid(), tenantId, toppingGroup.Id, "Pudding", 6000m, maxQty: 2, sortOrder: 2),
-                new Domain.Entities.ModifierOption(Guid.NewGuid(), tenantId, toppingGroup.Id, "Grass Jelly", 5000m, maxQty: 2, sortOrder: 3));
+                new Domain.Entities.ModifierOption(Guid.NewGuid(), toppingGroup.Id, "Pearl", 5000m, maxQty: 2, sortOrder: 1, tenantId: tenantId),
+                new Domain.Entities.ModifierOption(Guid.NewGuid(), toppingGroup.Id, "Pudding", 6000m, maxQty: 2, sortOrder: 2, tenantId: tenantId),
+                new Domain.Entities.ModifierOption(Guid.NewGuid(), toppingGroup.Id, "Grass Jelly", 5000m, maxQty: 2, sortOrder: 3, tenantId: tenantId));
             await db.SaveChangesAsync();
         }
 

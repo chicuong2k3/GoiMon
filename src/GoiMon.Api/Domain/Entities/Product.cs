@@ -7,7 +7,7 @@ public class Product : AggregateRoot, IMultiTenant
     // EF Core requires a parameterless constructor; keep it private for DDD control
     private Product() { }
 
-    public Product(Guid id, Guid tenantId, string name, decimal price, Guid? categoryId = null, string? description = null)
+    public Product(Guid id, string name, decimal price, Guid? categoryId = null, string? description = null, Guid tenantId = default)
     {
         Id = id;
         TenantId = tenantId;

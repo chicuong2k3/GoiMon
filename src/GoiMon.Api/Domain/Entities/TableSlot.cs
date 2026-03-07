@@ -6,7 +6,7 @@ public sealed class TableSlot : AggregateRoot, IMultiTenant
 {
     private TableSlot() { }
 
-    public TableSlot(Guid id, Guid tenantId, string code, string name, int capacity)
+    public TableSlot(Guid id, string code, string name, int capacity, Guid tenantId = default)
     {
         Id = id;
         TenantId = tenantId;

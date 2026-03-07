@@ -28,8 +28,7 @@ public class AuthenticationMutations
         RegisterWithOAuthInput input,
         [Service] IOAuthExchangeService oauthService,
         [Service] IDbContextFactory<AppDbContext> contextFactory,
-        [Service] IOtpService otpService,
-        [Service] ITenantProvider tenantProvider)
+        [Service] IOtpService otpService)
     {
         try
         {
@@ -51,17 +50,17 @@ public class AuthenticationMutations
                         .Build());
             }
 
-            // Create new user
+            // Create new user (Assign to default pilot tenant for now)
             var userId = Guid.NewGuid();
-            var tenantId = tenantProvider.GetTenantId();
+            var pilotTenantId = Guid.Parse("00000000-0000-0000-0000-000000000001");
             var user = User.CreateFromOAuth(
                 id: userId,
-                tenantId: tenantId,
                 email: oauthUser.Email,
                 firstName: oauthUser.FirstName,
                 lastName: oauthUser.LastName,
                 photoUrl: oauthUser.PhotoUrl,
-                googleId: oauthUser.UserId);
+                googleId: oauthUser.UserId,
+                tenantId: pilotTenantId);
 
             context.Users.Add(user);
             await context.SaveChangesAsync();
@@ -103,8 +102,7 @@ public class AuthenticationMutations
         RegisterWithOAuthInput input,
         [Service] IOAuthExchangeService oauthService,
         [Service] IDbContextFactory<AppDbContext> contextFactory,
-        [Service] IOtpService otpService,
-        [Service] ITenantProvider tenantProvider)
+        [Service] IOtpService otpService)
     {
         try
         {
@@ -126,17 +124,17 @@ public class AuthenticationMutations
                         .Build());
             }
 
-            // Create new user
+            // Create new user (Assign to default pilot tenant for now)
             var userId = Guid.NewGuid();
-            var tenantId = tenantProvider.GetTenantId();
+            var pilotTenantId = Guid.Parse("00000000-0000-0000-0000-000000000001");
             var user = User.CreateFromOAuth(
                 id: userId,
-                tenantId: tenantId,
                 email: oauthUser.Email,
                 firstName: oauthUser.FirstName,
                 lastName: oauthUser.LastName,
                 photoUrl: oauthUser.PhotoUrl,
-                facebookId: oauthUser.UserId);
+                facebookId: oauthUser.UserId,
+                tenantId: pilotTenantId);
 
             context.Users.Add(user);
             await context.SaveChangesAsync();

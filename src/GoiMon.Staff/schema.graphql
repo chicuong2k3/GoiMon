@@ -61,6 +61,7 @@ type Mutation {
   loginWithGoogle(input: LoginWithOAuthInput!): AuthenticationPayload
   loginWithFacebook(input: LoginWithOAuthInput!): AuthenticationPayload
   verifyOtp(input: VerifyOtpInput!): OtpVerificationPayload
+  initializeMerchantStore(storeName: String!): Tenant!
 }
 
 type Subscription {
@@ -71,9 +72,16 @@ type Subscription {
 "The `Upload` scalar type represents a file upload."
 scalar Upload
 
+enum ApplyPolicy {
+  BEFORE_RESOLVER
+  AFTER_RESOLVER
+  VALIDATION
+}
+
 input ProductFilterInput {
   and: [ProductFilterInput!]
   or: [ProductFilterInput!]
+  tenantId: UuidOperationFilterInput
   name: StringOperationFilterInput
   price: DecimalOperationFilterInput
   categoryId: UuidOperationFilterInput
@@ -84,6 +92,7 @@ input ProductFilterInput {
 }
 
 input ProductSortInput {
+  tenantId: SortEnumType
   name: SortEnumType
   price: SortEnumType
   categoryId: SortEnumType
@@ -114,6 +123,7 @@ type ProductsByCategoryNameCollectionSegment {
 input OrderFilterInput {
   and: [OrderFilterInput!]
   or: [OrderFilterInput!]
+  tenantId: UuidOperationFilterInput
   createdAt: DateTimeOperationFilterInput
   status: OrderStatusOperationFilterInput
   total: DecimalOperationFilterInput
@@ -123,6 +133,7 @@ input OrderFilterInput {
 }
 
 input OrderSortInput {
+  tenantId: SortEnumType
   createdAt: SortEnumType
   status: SortEnumType
   total: SortEnumType
@@ -145,11 +156,13 @@ type OrdersConnection {
 input CategoryFilterInput {
   and: [CategoryFilterInput!]
   or: [CategoryFilterInput!]
+  tenantId: UuidOperationFilterInput
   name: StringOperationFilterInput
   id: UuidOperationFilterInput
 }
 
 input CategorySortInput {
+  tenantId: SortEnumType
   name: SortEnumType
   id: SortEnumType
 }
@@ -178,6 +191,7 @@ type CategoriesOffsetCollectionSegment {
 input ProductComboFilterInput {
   and: [ProductComboFilterInput!]
   or: [ProductComboFilterInput!]
+  tenantId: UuidOperationFilterInput
   name: StringOperationFilterInput
   price: DecimalOperationFilterInput
   imageUrl: StringOperationFilterInput
@@ -186,6 +200,7 @@ input ProductComboFilterInput {
 }
 
 input ProductComboSortInput {
+  tenantId: SortEnumType
   name: SortEnumType
   price: SortEnumType
   imageUrl: SortEnumType
@@ -205,6 +220,7 @@ input UserFilterInput {
   and: [UserFilterInput!]
   or: [UserFilterInput!]
   id: UuidOperationFilterInput
+  tenantId: UuidOperationFilterInput
   email: StringOperationFilterInput
   phone: StringOperationFilterInput
   firstName: StringOperationFilterInput
@@ -222,6 +238,7 @@ input UserFilterInput {
 
 input UserSortInput {
   id: SortEnumType
+  tenantId: SortEnumType
   email: SortEnumType
   phone: SortEnumType
   firstName: SortEnumType
@@ -248,6 +265,7 @@ type EmployeesCollectionSegment {
 input TableSlotFilterInput {
   and: [TableSlotFilterInput!]
   or: [TableSlotFilterInput!]
+  tenantId: UuidOperationFilterInput
   code: StringOperationFilterInput
   name: StringOperationFilterInput
   capacity: IntOperationFilterInput
@@ -259,6 +277,7 @@ input TableSlotFilterInput {
 }
 
 input TableSlotSortInput {
+  tenantId: SortEnumType
   code: SortEnumType
   name: SortEnumType
   capacity: SortEnumType
@@ -276,6 +295,21 @@ type TableSlotsCollectionSegment {
   "A flattened list of the items."
   items: [TableSlot!]
   totalCount: Int!
+}
+
+input UuidOperationFilterInput {
+  eq: UUID
+  neq: UUID
+  in: [UUID]
+  nin: [UUID]
+  gt: UUID
+  ngt: UUID
+  gte: UUID
+  ngte: UUID
+  lt: UUID
+  nlt: UUID
+  lte: UUID
+  nlte: UUID
 }
 
 input StringOperationFilterInput {
@@ -308,21 +342,6 @@ input DecimalOperationFilterInput {
   nlte: Decimal
 }
 
-input UuidOperationFilterInput {
-  eq: UUID
-  neq: UUID
-  in: [UUID]
-  nin: [UUID]
-  gt: UUID
-  ngt: UUID
-  gte: UUID
-  ngte: UUID
-  lt: UUID
-  nlt: UUID
-  lte: UUID
-  nlte: UUID
-}
-
 enum SortEnumType {
   ASC
   DESC
@@ -337,6 +356,7 @@ type CollectionSegmentInfo {
 }
 
 type Product {
+  tenantId: UUID!
   name: String!
   price: Decimal!
   categoryId: UUID
@@ -391,6 +411,7 @@ type PageInfo {
 }
 
 type Order {
+  tenantId: UUID!
   createdAt: DateTime!
   status: OrderStatus!
   total: Decimal!
@@ -408,6 +429,7 @@ type OrdersEdge {
 }
 
 type Category {
+  tenantId: UUID!
   name: String!
   id: UUID!
 }
@@ -428,6 +450,7 @@ input ListFilterInputTypeOfProductComboItemFilterInput {
 }
 
 type ProductCombo {
+  tenantId: UUID!
   name: String
   price: Decimal!
   imageUrl: String
@@ -456,6 +479,7 @@ input ListFilterInputTypeOfOtpTokenFilterInput {
 
 type User {
   id: UUID!
+  tenantId: UUID!
   email: String!
   phone: String
   firstName: String
@@ -494,6 +518,7 @@ input TableServiceStateOperationFilterInput {
 }
 
 type TableSlot {
+  tenantId: UUID!
   code: String!
   name: String!
   capacity: Int!
@@ -504,10 +529,10 @@ type TableSlot {
   id: UUID!
 }
 
+scalar UUID
+
 "The built-in `Decimal` scalar type."
 scalar Decimal
-
-scalar UUID
 
 "The `DateTime` scalar represents an ISO-8601 compliant date time type."
 scalar DateTime
@@ -515,6 +540,7 @@ scalar DateTime
 input OrderItemFilterInput {
   and: [OrderItemFilterInput!]
   or: [OrderItemFilterInput!]
+  tenantId: UuidOperationFilterInput
   id: UuidOperationFilterInput
   orderId: UuidOperationFilterInput
   productId: UuidOperationFilterInput
@@ -529,6 +555,7 @@ input OrderItemFilterInput {
 input ProductComboItemFilterInput {
   and: [ProductComboItemFilterInput!]
   or: [ProductComboItemFilterInput!]
+  tenantId: UuidOperationFilterInput
   id: UuidOperationFilterInput
   comboId: UuidOperationFilterInput
   productId: UuidOperationFilterInput
@@ -540,6 +567,7 @@ input OtpTokenFilterInput {
   and: [OtpTokenFilterInput!]
   or: [OtpTokenFilterInput!]
   id: UuidOperationFilterInput
+  tenantId: UuidOperationFilterInput
   userId: UuidOperationFilterInput
   user: UserFilterInput
   token: StringOperationFilterInput
@@ -549,6 +577,15 @@ input OtpTokenFilterInput {
   createdAt: DateTimeOperationFilterInput
   usedAt: DateTimeOperationFilterInput
   failedAttempts: IntOperationFilterInput
+}
+
+type Tenant {
+  id: UUID!
+  name: String!
+  slug: String!
+  isActive: Boolean!
+  createdAt: DateTime!
+  updatedAt: DateTime!
 }
 
 input OtpDeliveryMethodOperationFilterInput {
@@ -566,6 +603,7 @@ input CreateComboInput {
 }
 
 type OrderItem {
+  tenantId: UUID!
   id: UUID!
   orderId: UUID!
   productId: UUID
@@ -588,6 +626,7 @@ input CreateCategoryInput {
 }
 
 type ProductComboItem {
+  tenantId: UUID!
   id: UUID!
   comboId: UUID!
   productId: UUID!
@@ -598,6 +637,7 @@ type ProductComboItem {
 }
 
 type OrderItemModifier {
+  tenantId: UUID!
   id: UUID!
   orderItemId: UUID!
   modifierOptionId: UUID
@@ -608,7 +648,11 @@ type OrderItemModifier {
 }
 
 enum UserRole {
+  CASHIER
+  SUPERVISOR
+  MANAGER
   OWNER
+  ACCOUNTANT
   STAFF
 }
 
@@ -633,6 +677,7 @@ input ModifierOptionInput {
 }
 
 type ModifierOption {
+  tenantId: UUID!
   id: UUID!
   modifierGroupId: UUID!
   name: String!
@@ -654,6 +699,7 @@ input ModifierGroupInput {
 }
 
 type ModifierGroup {
+  tenantId: UUID!
   id: UUID!
   productId: UUID!
   name: String!
@@ -675,6 +721,7 @@ input ProductVariantInput {
 }
 
 type ProductVariant {
+  tenantId: UUID!
   id: UUID!
   productId: UUID!
   code: String!
@@ -831,6 +878,7 @@ type OtpToken {
   isValid: Boolean!
   isExpired: Boolean!
   id: UUID!
+  tenantId: UUID!
   userId: UUID!
   user: User
   token: String!

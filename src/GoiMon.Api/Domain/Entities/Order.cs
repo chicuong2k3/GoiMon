@@ -13,7 +13,7 @@ public class Order : AggregateRoot, IMultiTenant
     /// </summary>
     /// <param name="id">Identifier for the order.</param>
     /// <param name="tenantId">Identifier for the tenant.</param>
-    public Order(Guid id, Guid tenantId)
+    public Order(Guid id, Guid tenantId = default)
     {
         Id = id;
         TenantId = tenantId;
@@ -72,7 +72,7 @@ public class Order : AggregateRoot, IMultiTenant
         if (qty <= 0) throw new ArgumentOutOfRangeException(nameof(qty));
         if (unitPrice < 0) throw new ArgumentOutOfRangeException(nameof(unitPrice));
 
-        var item = new OrderItem(Guid.NewGuid(), TenantId, Id, productId, productName, qty, unitPrice, unitName, comboId, comboName);
+        var item = new OrderItem(Guid.NewGuid(), Id, productId, productName, qty, unitPrice, unitName, comboId, comboName, TenantId);
         Items.Add(item);
         RecalculateTotal();
         AddDomainEvent(new Events.OrderItemAddedEvent(Id, item.Id, productId, qty));
@@ -145,7 +145,6 @@ public class OrderItem : IMultiTenant
     /// </summary>
     public OrderItem(
         Guid id,
-        Guid tenantId,
         Guid orderId,
         Guid? productId,
         string productName,
@@ -153,7 +152,8 @@ public class OrderItem : IMultiTenant
         decimal unitPrice,
         string? unitName = null,
         Guid? comboId = null,
-        string? comboName = null)
+        string? comboName = null,
+        Guid tenantId = default)
     {
         Id = id;
         TenantId = tenantId;

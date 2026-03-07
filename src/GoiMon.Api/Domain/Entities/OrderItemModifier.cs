@@ -8,13 +8,13 @@ public class OrderItemModifier : IMultiTenant
 
     public OrderItemModifier(
         Guid id,
-        Guid tenantId,
         Guid orderItemId,
         Guid? modifierOptionId,
         string groupName,
         string optionName,
         int qty,
-        decimal unitDeltaPrice)
+        decimal unitDeltaPrice,
+        Guid tenantId = default)
     {
         if (string.IsNullOrWhiteSpace(groupName)) throw new ArgumentException("Modifier group name is required", nameof(groupName));
         if (string.IsNullOrWhiteSpace(optionName)) throw new ArgumentException("Modifier option name is required", nameof(optionName));

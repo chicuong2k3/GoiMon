@@ -1,0 +1,7 @@
+mutation InitializeMerchantStore($storeName: String!) {
+  initializeMerchantStore(storeName: $storeName) {
+    id
+    name
+    slug
+  }
+}

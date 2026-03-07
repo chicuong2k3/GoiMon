@@ -1,4 +1,7 @@
 @page "/"
+@inject IGoiMonClient GoiMonClient
+@inject ToastService ToastService
+@inject NavigationManager Navigation
 
 <header class="flex h-12 shrink-0 items-center gap-2 border-b px-4 py-1 md:px-5">
     <BbSidebarTrigger />
@@ -6,20 +9,89 @@
     <h1 class="text-[10px] font-semibold">Trang chủ</h1>
 </header>
 
-<div class="p-4 md:p-5 space-y-4">
-    <p class="text-muted-foreground">Chào mừng đến GoiMon. Chọn mục quản lý từ thanh bên.</p>
-    <div class="flex flex-wrap items-center gap-3">
-        <BbButton Href="/categories" Variant="ButtonVariant.Outline">
-            <LucideIcon Name="tag" Class="h-4 w-4 mr-2" />
-            Danh mục
+<div class="p-4 md:p-5 space-y-6">
+    <BbAlert Variant="AlertVariant.Info">
+        <LucideIcon Name="info" Class="h-4 w-4" />
+        <BbAlertTitle>Chế độ dùng thử (Pilot Tenant)</BbAlertTitle>
+        <BbAlertDescription>
+            Bạn đang đăng nhập vào hệ thống dùng thử. Để tạo cửa hàng riêng của mình, hãy nhấn nút bên dưới.
+        </BbAlertDescription>
+    </BbAlert>
+
+    <div class="max-w-md p-6 border rounded-xl bg-card shadow-sm space-y-4">
+        <h2 class="text-lg font-semibold">Khởi tạo cửa hàng của bạn</h2>
+        <p class="text-sm text-muted-foreground">Nhập tên cửa hàng để bắt đầu kinh doanh. Hệ thống sẽ tự động tạo dữ liệu mẫu cho bạn.</p>
+        
+        <BbInput @bind-Value="_storeName" Placeholder="Tên cửa hàng (ví dụ: Deli Coffee)" />
+        
+        <BbButton OnClick="OnInitializeStoreAsync" Loading="_isInitializing" Class="w-full" Variant="ButtonVariant.Default">
+            <LucideIcon Name="store" Class="h-4 w-4 mr-2" />
+            Bắt đầu ngay
         </BbButton>
-        <BbButton Href="/products" Variant="ButtonVariant.Outline">
-            <LucideIcon Name="package" Class="h-4 w-4 mr-2" />
-            Sản phẩm
-        </BbButton>
-        <BbButton Href="/combos" Variant="ButtonVariant.Outline">
-            <LucideIcon Name="layers" Class="h-4 w-4 mr-2" />
-            Combo
-        </BbButton>
+
+        @if (_initError != null)
+        {
+            <p class="text-sm text-destructive font-medium">@_initError</p>
+        }
+    </div>
+
+    <div class="pt-6 border-t">
+        <h3 class="text-sm font-medium mb-4">Lối tắt quản lý</h3>
+        <div class="flex flex-wrap items-center gap-3">
+            <BbButton Href="/categories" Variant="ButtonVariant.Outline">
+                <LucideIcon Name="tag" Class="h-4 w-4 mr-2" />
+                Danh mục
+            </BbButton>
+            <BbButton Href="/products" Variant="ButtonVariant.Outline">
+                <LucideIcon Name="package" Class="h-4 w-4 mr-2" />
+                Sản phẩm
+            </BbButton>
+            <BbButton Href="/combos" Variant="ButtonVariant.Outline">
+                <LucideIcon Name="layers" Class="h-4 w-4 mr-2" />
+                Combo
+            </BbButton>
+        </div>
     </div>
 </div>
+
+@code {
+    private string _storeName = "";
+    private bool _isInitializing;
+    private string? _initError;
+
+    private async Task OnInitializeStoreAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_storeName))
+        {
+            _initError = "Vui lòng nhập tên cửa hàng.";
+            return;
+        }
+
+        _isInitializing = true;
+        _initError = null;
+
+        try
+        {
+            var result = await GoiMonClient.InitializeMerchantStore.ExecuteAsync(_storeName);
+            if (result.Errors.Any())
+            {
+                _initError = result.Errors.First().Message;
+                return;
+            }
+
+            ToastService.Success("Cửa hàng của bạn đã được khởi tạo. Vui lòng đăng nhập lại để nhận quyền truy cập mới.");
+
+            // Sau khi tạo Tenant mới, Token cũ vẫn mang TenantId cũ. 
+            // Cần phải buộc người dùng login lại hoặc tự cập nhật Token.
+            // Để đơn giản cho việc test, chúng ta redirect về trang chủ và báo người dùng login lại.
+        }
+        catch (Exception ex)
+        {
+            _initError = "Đã có lỗi xảy ra: " + ex.Message;
+        }
+        finally
+        {
+            _isInitializing = false;
+        }
+    }
+}

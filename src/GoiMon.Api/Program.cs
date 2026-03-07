@@ -180,6 +180,7 @@ builder.Services
     .AddTypeExtension<TableMutations>()
     .AddTypeExtension<TableSubscriptions>()
     .AddTypeExtension<AuthenticationMutations>()
+    .AddTypeExtension<GoiMon.Api.Features.Tenants.TenantMutations>()
     .AddErrorFilter<GoiMon.Api.Infrastructure.Validation.FluentValidationErrorFilter>()
     // Validate input objects via FluentValidation middleware
     .UseField<GoiMon.Api.Infrastructure.Validation.FluentValidationMiddleware>()

@@ -8,14 +8,14 @@ public class ModifierOption : IMultiTenant
 
     public ModifierOption(
         Guid id,
-        Guid tenantId,
         Guid modifierGroupId,
         string name,
         decimal priceDelta,
         int maxQty = 1,
         int sortOrder = 0,
         bool isDefault = false,
-        bool isActive = true)
+        bool isActive = true,
+        Guid tenantId = default)
     {
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Modifier option name cannot be empty", nameof(name));
         if (priceDelta < 0) throw new ArgumentOutOfRangeException(nameof(priceDelta));

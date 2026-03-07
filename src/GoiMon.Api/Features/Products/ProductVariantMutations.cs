@@ -11,11 +11,10 @@ public class ProductVariantMutations
     public async Task<ProductVariant> CreateProductVariant(
         Guid productId,
         ProductVariantInput input,
-        [Service(ServiceKind.Pooled)] AppDbContext db,
-        [Service] ITenantProvider tenantProvider)
+        [Service(ServiceKind.Pooled)] AppDbContext db)
     {
         var variant = new ProductVariant(
-            Guid.NewGuid(), tenantProvider.GetTenantId(), productId,
+            Guid.NewGuid(), productId,
             input.Code, input.Name, input.Price,
             input.SortOrder, input.IsActive);
         db.ProductVariants.Add(variant);
@@ -58,11 +57,10 @@ public class ProductVariantMutations
     public async Task<ModifierGroup> CreateModifierGroup(
         Guid productId,
         ModifierGroupInput input,
-        [Service(ServiceKind.Pooled)] AppDbContext db,
-        [Service] ITenantProvider tenantProvider)
+        [Service(ServiceKind.Pooled)] AppDbContext db)
     {
         var group = new ModifierGroup(
-            Guid.NewGuid(), tenantProvider.GetTenantId(), productId,
+            Guid.NewGuid(), productId,
             input.Name, input.SelectionMode,
             input.MinSelect, input.MaxSelect,
             input.SortOrder, input.IsRequired, input.IsActive);
@@ -107,11 +105,10 @@ public class ProductVariantMutations
     public async Task<ModifierOption> CreateModifierOption(
         Guid groupId,
         ModifierOptionInput input,
-        [Service(ServiceKind.Pooled)] AppDbContext db,
-        [Service] ITenantProvider tenantProvider)
+        [Service(ServiceKind.Pooled)] AppDbContext db)
     {
         var option = new ModifierOption(
-            Guid.NewGuid(), tenantProvider.GetTenantId(), groupId,
+            Guid.NewGuid(), groupId,
             input.Name, input.PriceDelta,
             input.MaxQty, input.SortOrder,
             input.IsDefault, input.IsActive);

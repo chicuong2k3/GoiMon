@@ -6,7 +6,7 @@ public class Category : AggregateRoot, IMultiTenant
 {
     private Category() { }
 
-    public Category(Guid id, Guid tenantId, string name)
+    public Category(Guid id, string name, Guid tenantId = default)
     {
         Id = id;
         TenantId = tenantId;

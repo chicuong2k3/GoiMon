@@ -79,7 +79,7 @@ public sealed class User : IAggregateRoot, IMultiTenant
 
     public User() { }
 
-    public User(Guid id, Guid tenantId, string email, string? firstName = null, string? lastName = null)
+    public User(Guid id, string email, string? firstName = null, string? lastName = null, Guid tenantId = default)
     {
         Id = id;
         TenantId = tenantId;
@@ -93,7 +93,7 @@ public sealed class User : IAggregateRoot, IMultiTenant
     /// <summary>
     /// Creates a user from OAuth provider information.
     /// </summary>
-    public static User CreateFromOAuth(Guid id, Guid tenantId, string email, string? firstName = null, string? lastName = null, string? photoUrl = null, string? googleId = null, string? facebookId = null)
+    public static User CreateFromOAuth(Guid id, string email, string? firstName = null, string? lastName = null, string? photoUrl = null, string? googleId = null, string? facebookId = null, Guid tenantId = default)
     {
         return new User
         {
@@ -109,6 +109,12 @@ public sealed class User : IAggregateRoot, IMultiTenant
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
+    }
+
+    public void UpdateTenant(Guid tenantId)
+    {
+        TenantId = tenantId;
+        UpdatedAt = DateTime.UtcNow;
     }
 
     /// <summary>

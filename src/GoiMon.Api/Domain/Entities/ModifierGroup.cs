@@ -23,7 +23,6 @@ public class ModifierGroup : IMultiTenant
 
     public ModifierGroup(
         Guid id,
-        Guid tenantId,
         Guid productId,
         string name,
         ModifierSelectionMode selectionMode,
@@ -31,7 +30,8 @@ public class ModifierGroup : IMultiTenant
         int maxSelect,
         int sortOrder = 0,
         bool isRequired = false,
-        bool isActive = true)
+        bool isActive = true,
+        Guid tenantId = default)
     {
         if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Modifier group name cannot be empty", nameof(name));
         if (minSelect < 0) throw new ArgumentOutOfRangeException(nameof(minSelect));

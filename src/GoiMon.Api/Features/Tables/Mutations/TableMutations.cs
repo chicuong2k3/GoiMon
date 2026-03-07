@@ -9,10 +9,9 @@ namespace GoiMon.Api.Features.Tables.Mutations;
 public sealed class TableMutations
 {
     [UseDbContext(typeof(AppDbContext))]
-    public async Task<TableSlot> CreateTableSlot(CreateTableSlotInput input, [Service(ServiceKind.Pooled)] AppDbContext db, [Service] ITopicEventSender eventSender, [Service] ITenantProvider tenantProvider)
+    public async Task<TableSlot> CreateTableSlot(CreateTableSlotInput input, [Service(ServiceKind.Pooled)] AppDbContext db, [Service] ITopicEventSender eventSender)
     {
-        var tenantId = tenantProvider.GetTenantId();
-        var table = new TableSlot(Guid.NewGuid(), tenantId, input.Code, input.Name, input.Capacity);
+        var table = new TableSlot(Guid.NewGuid(), input.Code, input.Name, input.Capacity);
         db.TableSlots.Add(table);
         await db.SaveChangesAsync();
         await eventSender.SendAsync(TableSubscriptionTopics.TableSlotChanged, table);
@@ -133,7 +132,7 @@ public sealed class TableMutations
     }
 
     [UseDbContext(typeof(AppDbContext))]
-    public async Task<TableSlot?> SplitTableSlot(SplitTableSlotInput input, [Service(ServiceKind.Pooled)] AppDbContext db, [Service] ITopicEventSender eventSender, [Service] ITenantProvider tenantProvider)
+    public async Task<TableSlot?> SplitTableSlot(SplitTableSlotInput input, [Service(ServiceKind.Pooled)] AppDbContext db, [Service] ITopicEventSender eventSender)
     {
         var source = await db.TableSlots.FirstOrDefaultAsync(x => x.Id == input.SourceTableSlotId);
         if (source is null)
@@ -141,7 +140,7 @@ public sealed class TableMutations
             return null;
         }
 
-        var clone = new TableSlot(Guid.NewGuid(), tenantProvider.GetTenantId(), input.NewCode, input.NewName, input.Capacity);
+        var clone = new TableSlot(Guid.NewGuid(), input.NewCode, input.NewName, input.Capacity);
         db.TableSlots.Add(clone);
         await db.SaveChangesAsync();
         await eventSender.SendAsync(TableSubscriptionTopics.TableSlotChanged, clone);
@@ -149,7 +148,7 @@ public sealed class TableMutations
     }
 
     [UseDbContext(typeof(AppDbContext))]
-    public async Task<Order?> SplitBill(SplitBillInput input, [Service(ServiceKind.Pooled)] AppDbContext db, [Service] ITenantProvider tenantProvider)
+    public async Task<Order?> SplitBill(SplitBillInput input, [Service(ServiceKind.Pooled)] AppDbContext db)
     {
         var sourceOrder = await db.Orders
             .Include(o => o.Items)
@@ -172,8 +171,7 @@ public sealed class TableMutations
             throw new GraphQLException(ErrorBuilder.New().SetCode("ITEMS_NOT_FOUND").SetMessage("Selected items are not in source order.").Build());
         }
 
-        var tenantId = tenantProvider.GetTenantId();
-        var newOrder = new Order(Guid.NewGuid(), tenantId);
+        var newOrder = new Order(Guid.NewGuid());
         newOrder.AssignTableSlot(sourceOrder.TableSlotId);
 
         foreach (var item in selectedItems)

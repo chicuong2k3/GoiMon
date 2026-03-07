@@ -6,5 +6,6 @@ public enum UserRole
     Supervisor = 2,
     Manager = 3,
     Owner = 4,
-    Accountant = 5
+    Accountant = 5,
+    Staff = 6
 }
