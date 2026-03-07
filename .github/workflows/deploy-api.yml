@@ -1,118 +1,151 @@
 name: Deploy GoiMon API
 
 on:
-    push:
-        branches: ["main"]
+  push:
+    branches: ["main", "dev"]
+  workflow_dispatch: {}
 
 jobs:
-    deploy:
-        runs-on: ubuntu-latest
+  deploy-dev:
+    if: ${{ github.ref == 'refs/heads/dev' }}
+    runs-on: ubuntu-latest
+    env:
+      ASPNETCORE_ENVIRONMENT: Development
 
-        steps:
-            - uses: actions/checkout@v4
-              with:
-                  fetch-depth: 0
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-            - name: Filter changed paths
-              id: filter
-              uses: dorny/paths-filter@v2
-              with:
-                  filters: |
-                      goimon_api:
-                        - 'src/GoiMon.Api/**'
-                        - 'tests/GoiMon.Api.Tests/**'
-                        - 'src/Shared/**'
-                        - 'src/**/*.cs'
+      - name: Filter changed paths
+        id: filter
+        uses: dorny/paths-filter@v2
+        with:
+          filters: |
+            goimon_api:
+              - 'src/GoiMon.Api/**'
+              - 'tests/GoiMon.Api.Tests/**'
+              - 'src/Shared/**'
+              - 'src/**/*.cs'
 
-            - name: Setup .NET
-              uses: actions/setup-dotnet@v4
-              with:
-                  dotnet-version: "10.0.x"
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
 
-            - name: Restore
-              if: steps.filter.outputs.goimon_api == 'true'
-              run: dotnet restore GoiMon.sln
+      - name: Restore
+        if: ${{ steps.filter.outputs.goimon_api == 'true' }}
+        run: dotnet restore GoiMon.sln
 
-            - name: Build
-              if: steps.filter.outputs.goimon_api == 'true'
-              run: dotnet build GoiMon.sln -c Release --no-restore
+      - name: Build
+        if: ${{ steps.filter.outputs.goimon_api == 'true' }}
+        run: dotnet build GoiMon.sln -c Release --no-restore
 
-            - name: Test
-              if: steps.filter.outputs.goimon_api == 'true'
-              run: dotnet test tests/GoiMon.Api.Tests/GoiMon.Api.Tests.csproj -c Release --no-build --verbosity normal
+      - name: Test
+        if: ${{ steps.filter.outputs.goimon_api == 'true' }}
+        run: dotnet test tests/GoiMon.Api.Tests/GoiMon.Api.Tests.csproj -c Release --no-build --verbosity normal
 
-            - name: Publish
-              if: steps.filter.outputs.goimon_api == 'true'
-              run: dotnet publish src/GoiMon.Api/GoiMon.Api.csproj -c Release -o publish
+      - name: Publish
+        if: ${{ steps.filter.outputs.goimon_api == 'true' }}
+        run: dotnet publish src/GoiMon.Api/GoiMon.Api.csproj -c Release -o publish
 
-            - name: Prepare deploy directory
-              if: steps.filter.outputs.goimon_api == 'true'
-              uses: appleboy/ssh-action@v1.0.3
-              with:
-                  host: ${{ secrets.SSH_HOST }}
-                  username: ${{ secrets.SSH_USER }}
-                  key: ${{ secrets.SSH_PRIVATE_KEY }}
-                  script: |
-                      if ! dotnet --list-runtimes 2>/dev/null | grep -q 'Microsoft.AspNetCore.App 10\.'; then
-                        curl -sSL https://dot.net/v1/dotnet-install.sh | sudo bash -s -- \
-                          --runtime aspnetcore \
-                          --channel 10.0 \
-                          --install-dir /usr/share/dotnet
-                      fi
-                      sudo mkdir -p /var/www/goimon-api
-                      sudo chown $USER:$USER /var/www/goimon-api
+      - name: Prepare deploy directory (dev server)
+        if: ${{ steps.filter.outputs.goimon_api == 'true' }}
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST_DEV }}
+          username: ${{ secrets.SSH_USER_DEV }}
+          key: ${{ secrets.SSH_PRIVATE_KEY_DEV }}
+          script: |
+            sudo mkdir -p /var/www/goimon-api-dev
+            sudo chown $USER:$USER /var/www/goimon-api-dev
 
-            - name: Deploy via SCP
-              if: steps.filter.outputs.goimon_api == 'true'
-              uses: appleboy/scp-action@v0.1.7
-              with:
-                  host: ${{ secrets.SSH_HOST }}
-                  username: ${{ secrets.SSH_USER }}
-                  key: ${{ secrets.SSH_PRIVATE_KEY }}
-                  source: "publish/*"
-                  target: "/var/www/goimon-api"
-                  strip_components: 1
-            - name: Restart service
-              if: steps.filter.outputs.goimon_api == 'true'
-              uses: appleboy/ssh-action@v1.0.3
-              with:
-                  host: ${{ secrets.SSH_HOST }}
-                  username: ${{ secrets.SSH_USER }}
-                  key: ${{ secrets.SSH_PRIVATE_KEY }}
-                  script: |
-                      sudo systemctl restart goimon-api
+      - name: Deploy via SCP to dev
+        if: ${{ steps.filter.outputs.goimon_api == 'true' }}
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST_DEV }}
+          username: ${{ secrets.SSH_USER_DEV }}
+          key: ${{ secrets.SSH_PRIVATE_KEY_DEV }}
+          source: "publish/*"
+          target: "/var/www/goimon-api-dev"
+          strip_components: 1
 
-                      # Wait up to 60s for the API to bind to port 5000
-                      for i in $(seq 1 60); do
-                        if curl -fsS http://127.0.0.1:5000/health > /dev/null 2>&1; then
-                          break
-                        fi
-                        if ! sudo systemctl is-active --quiet goimon-api; then
-                          sudo systemctl status goimon-api --no-pager -l
-                          sudo journalctl -u goimon-api -n 120 --no-pager
-                          exit 1
-                        fi
-                        sleep 1
-                      done
+  deploy-prod:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    env:
+      ASPNETCORE_ENVIRONMENT: Production
 
-                      if ! curl -fsS http://127.0.0.1:5000/health > /dev/null; then
-                        echo "API did not become ready within 60 seconds."
-                        sudo systemctl status goimon-api --no-pager -l
-                        sudo journalctl -u goimon-api -n 120 --no-pager
-                        exit 1
-                      fi
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-                      curl -fsS -X POST -H "Content-Type: application/json" -d '{"query":"{ __typename }"}' http://127.0.0.1:5000/graphql > /dev/null
+      - name: Filter changed paths
+        id: filter
+        uses: dorny/paths-filter@v2
+        with:
+          filters: |
+            goimon_api:
+              - 'src/GoiMon.Api/**'
+              - 'tests/GoiMon.Api.Tests/**'
+              - 'src/Shared/**'
+              - 'src/**/*.cs'
 
-                      if ! curl -fsS -X POST -H "Content-Type: application/json" -d '{"query":"{ __typename }"}' http://127.0.0.1/graphql > /dev/null; then
-                        echo "Local API is healthy but reverse proxy for /graphql is failing (likely source of 502)."
-                        echo "--- goimon-api status ---"
-                        sudo systemctl status goimon-api --no-pager -l || true
-                        echo "--- goimon-api logs ---"
-                        sudo journalctl -u goimon-api -n 120 --no-pager || true
-                        echo "--- nginx status ---"
-                        sudo systemctl status nginx --no-pager -l || true
-                        echo "--- nginx site config ---"
-                        sudo nginx -T 2>/dev/null | sed -n '/server_name\|location \/graphql\|proxy_pass/p' || true
-                        exit 1
-                      fi
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        if: ${{ steps.filter.outputs.goimon_api == 'true' }}
+        run: dotnet restore GoiMon.sln
+
+      - name: Build
+        if: ${{ steps.filter.outputs.goimon_api == 'true' }}
+        run: dotnet build GoiMon.sln -c Release --no-restore
+
+      - name: Test
+        if: ${{ steps.filter.outputs.goimon_api == 'true' }}
+        run: dotnet test tests/GoiMon.Api.Tests/GoiMon.Api.Tests.csproj -c Release --no-build --verbosity normal
+
+      - name: Publish
+        if: ${{ steps.filter.outputs.goimon_api == 'true' }}
+        run: dotnet publish src/GoiMon.Api/GoiMon.Api.csproj -c Release -o publish
+
+      - name: Upload artifact (optional)
+        if: ${{ steps.filter.outputs.goimon_api == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: goimon-api-publish
+          path: publish
+
+      - name: Prepare deploy directory (prod)
+        if: ${{ steps.filter.outputs.goimon_api == 'true' }}
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            sudo mkdir -p /var/www/goimon-api
+            sudo chown $USER:$USER /var/www/goimon-api
+
+      - name: Deploy via SCP to prod
+        if: ${{ steps.filter.outputs.goimon_api == 'true' }}
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "publish/*"
+          target: "/var/www/goimon-api"
+          strip_components: 1
+
+      - name: Set production env vars (only secrets)
+        if: ${{ steps.filter.outputs.goimon_api == 'true' }}
+        run: |
+          echo "Production secrets should be set in the target host or via your platform's secret manager."

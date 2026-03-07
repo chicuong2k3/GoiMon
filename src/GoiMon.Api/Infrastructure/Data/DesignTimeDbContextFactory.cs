@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using GoiMon.Api.Infrastructure.Services;
 
 namespace GoiMon.Api.Infrastructure.Data;
 
@@ -17,6 +18,6 @@ public class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<AppDbConte
         var conn = configuration.GetConnectionString("DefaultConnection");
         builder.UseNpgsql(conn);
 
-        return new AppDbContext(builder.Options);
+        return new AppDbContext(builder.Options, new TenantAccessor());
     }
 }

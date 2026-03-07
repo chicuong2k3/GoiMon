@@ -19,6 +19,7 @@ using GoiMon.Api.Features.Tables.Queries;
 using GoiMon.Api.Features.Tables.Mutations;
 using GoiMon.Api.Features.Tables.Subscriptions;
 using CloudinaryDotNet;
+using Npgsql;
 using GoiMon.Api.Features.ImageUpload.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -89,6 +90,7 @@ GoiMon.Api.Infrastructure.Authorization.AuthorizationConfig.AddPolicyMatrix(buil
 // Authentication Services
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ITenantProvider, HttpContextTenantProvider>();
+builder.Services.AddSingleton<ITenantAccessor, TenantAccessor>();
 builder.Services.AddHttpClient<IOAuthExchangeService, OAuthExchangeService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
@@ -114,12 +116,29 @@ builder.Services.AddSingleton<ObjectPool<AppDbContext>>(sp =>
 // Register the outbox worker as an injectable service (invoked by the chosen background processor)
 builder.Services.AddTransient<OutboxService>();
 
-// Hangfire: dashboard + background server using PostgreSQL storage (use a dedicated schema)
-builder.Services.AddHangfire(cfg => cfg.UsePostgreSqlStorage(conn, new Hangfire.PostgreSql.PostgreSqlStorageOptions
+// Hangfire: only enable if the database is reachable. In dev we want the app to start
+// even when Postgres isn't running (useful for local iteration without DB).
+var _dbReachable = true;
+try
 {
-    SchemaName = "hangfire"
-}));
-builder.Services.AddHangfireServer();
+    using var _tmp = new NpgsqlConnection(conn);
+    _tmp.Open();
+    _tmp.Close();
+}
+catch (Exception ex)
+{
+    _dbReachable = false;
+    Log.Warning(ex, "Database not reachable at startup; skipping Hangfire registration (Development/CI-friendly)");
+}
+
+if (_dbReachable)
+{
+    builder.Services.AddHangfire(cfg => cfg.UsePostgreSqlStorage(conn, new Hangfire.PostgreSql.PostgreSqlStorageOptions
+    {
+        SchemaName = "hangfire"
+    }));
+    builder.Services.AddHangfireServer();
+}
 
 // Domain event dispatcher and handlers
 builder.Services.AddScoped<GoiMon.Api.Domain.Events.IDomainEventDispatcher, GoiMon.Api.Infrastructure.DomainEvents.DomainEventDispatcher>();
@@ -198,25 +217,34 @@ app.UseCorrelationId();
 app.UseCors("AllowNitro");
 
 app.UseAuthentication();
+// Populate TenantAccessor from HttpContext.User after authentication
+app.UseMiddleware<TenantContextMiddleware>();
 app.UseAuthorization();
 
 // Hangfire dashboard and recurring job for outbox processing
-// Expose the dashboard at /hangfire (no auth configured here — restrict in production)
-app.UseHangfireDashboard("/hangfire", new DashboardOptions
+if (_dbReachable)
 {
-    Authorization = Array.Empty<Hangfire.Dashboard.IDashboardAuthorizationFilter>()
-});
+    // Expose the dashboard at /hangfire (no auth configured here — restrict in production)
+    app.UseHangfireDashboard("/hangfire", new DashboardOptions
+    {
+        Authorization = Array.Empty<Hangfire.Dashboard.IDashboardAuthorizationFilter>()
+    });
 
-try
-{
-    RecurringJob.AddOrUpdate<OutboxService>(
-        "outbox-poll",
-        s => s.ProcessPendingAsync(CancellationToken.None),
-        Cron.Minutely);
+    try
+    {
+        RecurringJob.AddOrUpdate<OutboxService>(
+            "outbox-poll",
+            s => s.ProcessPendingAsync(CancellationToken.None),
+            Cron.Minutely);
+    }
+    catch (Exception ex)
+    {
+        Log.Warning(ex, "Failed to register recurring outbox job (lock timeout). Job may already exist.");
+    }
 }
-catch (Exception ex)
+else
 {
-    Log.Warning(ex, "Failed to register recurring outbox job (lock timeout). Job may already exist.");
+    Log.Warning("Hangfire and recurring outbox job skipped because the database was not reachable at startup.");
 }
 
 app.MapImageUploadEndpoints();

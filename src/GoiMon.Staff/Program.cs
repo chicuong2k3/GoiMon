@@ -46,6 +46,8 @@ builder.Services.AddBlazoredLocalStorage();
 builder.Services.AddScoped<ITokenStorageService, TokenStorageService>();
 builder.Services.AddScoped<IImageUploadService, ImageUploadService>();
 builder.Services.AddScoped<AuthenticationStateProvider, GoimonAuthenticationStateProvider>();
+// Also register the concrete type so components can inject the implementation directly
+builder.Services.AddScoped<GoimonAuthenticationStateProvider>();
 builder.Services.AddAuthorizationCore();
 
 builder.Services.AddStoreUtilities();

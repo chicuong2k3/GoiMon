@@ -51,7 +51,7 @@ public class AuthenticationPayload
     /// <summary>
     /// Message to display to user.
     /// </summary>
-    public string Message { get; set; } = String.Empty;
+    public string Message { get; set; } = string.Empty;
 }
 
 /// <summary>
@@ -77,5 +77,5 @@ public class OtpVerificationPayload
     /// <summary>
     /// Message describing the result.
     /// </summary>
-    public required string Message { get; set; }
+    public required string Message { get; set; } = string.Empty;
 }

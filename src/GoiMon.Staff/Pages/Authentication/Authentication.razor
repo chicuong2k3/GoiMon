@@ -1,0 +1,193 @@
+@page "/authentication"
+@using GoiMon.Staff.Features.Authentication.Helpers
+@using GoiMon.Staff.Features.Authentication.Components
+@using GoiMon.Staff.Features.Authentication.Services
+
+@inject NavigationManager Navigation
+@inject IConfiguration Configuration
+@inject ILogger<Authentication> Logger
+@inject ITokenStorageService TokenStorage
+@inject GoimonAuthenticationStateProvider AuthProvider
+
+<div class="flex min-h-[80vh] items-center justify-center p-4">
+    <BbCard Class="w-full max-w-md">
+        <BbCardHeader Class="text-center space-y-1">
+            <BbCardTitle>Welcome to GoiMon</BbCardTitle>
+            <BbCardDescription>@(IsRegisterMode ? "Create an account or sign in" : "Sign in with your social account")
+            </BbCardDescription>
+        </BbCardHeader>
+
+        <BbCardContent Class="space-y-4">
+            @if (!string.IsNullOrEmpty(ErrorMessage))
+            {
+                <BbAlert Variant="AlertVariant.Danger">
+                    <BbAlertTitle>Error</BbAlertTitle>
+                    <BbAlertDescription>@ErrorMessage</BbAlertDescription>
+                </BbAlert>
+            }
+
+            @if (IsShowingOtpVerification)
+            {
+                <GoiMon.Staff.Features.Authentication.Components.OtpVerification DeliveryMethod="@SelectedDeliveryMethod"
+                                                                                 UserId="@CurrentUserId" />
+            }
+            else
+            {
+                @* OTP delivery method is configured in app settings; UI selection removed. *@
+
+                <div class="grid gap-3">
+                    <BbButton Variant="ButtonVariant.Outline" OnClick="OnGoogleClicked" Disabled="@IsLoading"
+                              Class="w-full">
+                        @if (IsLoading)
+                        {
+                            <BbSpinner Class="mr-2 h-4 w-4" />
+                        }
+                        else
+                        {
+                            <img src="https://www.google.com/favicon.ico" alt="Google" class="mr-2 h-4 w-4" />
+                        }
+                        @(IsRegisterMode ? "Sign up with Google" : "Sign in with Google")
+                    </BbButton>
+
+                    <BbButton Variant="ButtonVariant.Default" OnClick="OnFacebookClicked" Disabled="@IsLoading"
+                              Class="w-full">
+                        @if (IsLoading)
+                        {
+                            <BbSpinner Class="mr-2 h-4 w-4" />
+                        }
+                        else
+                        {
+                            <LucideIcon Name="facebook" Class="mr-2 h-4 w-4" />
+                        }
+                        @(IsRegisterMode ? "Sign up with Facebook" : "Sign in with Facebook")
+                    </BbButton>
+                </div>
+            }
+        </BbCardContent>
+
+        <BbCardFooter Class="justify-end items-center">
+            <div class="text-right">
+                <BbTypographyMuted>
+                    @(IsRegisterMode ? "Already have an account?" : "Don't have an account?")
+                    <BbButton Variant="ButtonVariant.Link" OnClick="ToggleMode" Class="px-1">@(IsRegisterMode ? "Sign                        in" : "Register")</BbButton>
+                </BbTypographyMuted>
+            </div>
+        </BbCardFooter>
+    </BbCard>
+</div>
+
+@code {
+    private bool IsLoading;
+    private bool IsRegisterMode = false;
+    private bool IsShowingOtpVerification = false;
+    private string SelectedDeliveryMethod = "email";
+    private Guid CurrentUserId = Guid.Empty;
+    private string? ErrorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var currentUri = new Uri(Navigation.Uri);
+        var returnUrl = GetReturnUrl(currentUri);
+
+        var tokenFromCallback = OAuthHelper.ExtractTokenFromFragment(currentUri.Fragment);
+        if (!string.IsNullOrWhiteSpace(tokenFromCallback))
+        {
+            await AuthProvider.LoginWithTokenAsync(tokenFromCallback);
+            Navigation.NavigateTo(returnUrl ?? "/", replace: true);
+            return;
+        }
+
+        // Load OTP delivery method from settings. Defaults to email.
+        SelectedDeliveryMethod = Configuration["Auth:OtpDeliveryMethod"] ?? Configuration["otpDeliveryMethod"] ?? "email";
+
+        if (await TokenStorage.HasTokenAsync())
+        {
+            Navigation.NavigateTo(returnUrl ?? "/", replace: true);
+        }
+    }
+
+    private void ToggleMode()
+    {
+        IsRegisterMode = !IsRegisterMode;
+        ErrorMessage = null;
+    }
+
+    private static string? GetReturnUrl(Uri uri)
+    {
+        var query = uri.Query.TrimStart('?');
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return null;
+        }
+
+        foreach (var segment in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = segment.Split('=', 2);
+            if (parts.Length != 2) continue;
+            if (!string.Equals(parts[0], "returnUrl", StringComparison.OrdinalIgnoreCase)) continue;
+            var decoded = Uri.UnescapeDataString(parts[1]);
+            if (string.IsNullOrWhiteSpace(decoded)) return null;
+            return decoded.StartsWith('/') ? decoded : "/" + decoded;
+        }
+
+        return null;
+    }
+
+    private async Task OnGoogleClicked()
+    {
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = null;
+
+            var clientId = Configuration["OAuth:Google:ClientId"];
+            var redirectUri = Configuration["OAuth:Google:RedirectUri"];
+
+            if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(redirectUri))
+            {
+                ErrorMessage = "Google OAuth is not configured. Please contact support.";
+                Logger.LogError("Google OAuth ClientId or RedirectUri not configured");
+                return;
+            }
+
+            var authUrl = OAuthHelper.GetGoogleAuthUrl(clientId, redirectUri);
+            Navigation.NavigateTo(authUrl, forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error during Google OAuth");
+            ErrorMessage = "An error occurred. Please try again.";
+            IsLoading = false;
+        }
+    }
+
+    private async Task OnFacebookClicked()
+    {
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = null;
+
+            var appId = Configuration["OAuth:Facebook:AppId"];
+            var redirectUri = Configuration["OAuth:Facebook:RedirectUri"];
+
+            if (string.IsNullOrEmpty(appId) || string.IsNullOrEmpty(redirectUri))
+            {
+                ErrorMessage = "Facebook OAuth is not configured. Please contact support.";
+                Logger.LogError("Facebook OAuth AppId or RedirectUri not configured");
+                return;
+            }
+
+            var authUrl = OAuthHelper.GetFacebookAuthUrl(appId, redirectUri);
+            Navigation.NavigateTo(authUrl, forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error during Facebook OAuth");
+            ErrorMessage = "An error occurred. Please try again.";
+            IsLoading = false;
+        }
+    }
+
+    // Delivery selection is configured via settings; no runtime selector.
+}

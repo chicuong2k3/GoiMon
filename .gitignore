@@ -57,3 +57,6 @@ coverage/
 **/obj/
 
 .fake
+
+# Development appsettings for API (contains secrets) — do not commit
+/src/GoiMon.Api/appsettings.Development.json

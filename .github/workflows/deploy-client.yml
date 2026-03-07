@@ -2,14 +2,19 @@ name: Deploy GoiMon Client
 
 on:
     push:
-        branches: ["main"]
+        branches: ["main", "dev"]
+    workflow_dispatch: {}
 
 jobs:
-    deploy:
+    deploy-dev:
+        if: ${{ github.ref == 'refs/heads/dev' }}
         runs-on: ubuntu-latest
+        env:
+            ASPNETCORE_ENVIRONMENT: Development
 
         steps:
-            - uses: actions/checkout@v4
+            - name: Checkout
+              uses: actions/checkout@v4
               with:
                   fetch-depth: 0
 
@@ -29,15 +34,86 @@ jobs:
                   dotnet-version: "10.0.x"
 
             - name: Restore
-              if: steps.filter.outputs.publish_client == 'true'
+              if: ${{ steps.filter.outputs.publish_client == 'true' }}
               run: dotnet restore src/GoiMon.Staff/GoiMon.Staff.csproj
 
             - name: Publish
-              if: steps.filter.outputs.publish_client == 'true'
+              if: ${{ steps.filter.outputs.publish_client == 'true' }}
               run: dotnet publish src/GoiMon.Staff/GoiMon.Staff.csproj -c Release -o publish
 
-            - name: Prepare deploy directory
-              if: steps.filter.outputs.publish_client == 'true'
+            - name: Upload client artifact
+              if: ${{ steps.filter.outputs.publish_client == 'true' }}
+              uses: actions/upload-artifact@v4
+              with:
+                  name: goimon-client-publish
+                  path: publish/wwwroot
+
+            - name: Prepare deploy directory (dev)
+              if: ${{ steps.filter.outputs.publish_client == 'true' }}
+              uses: appleboy/ssh-action@v1.0.3
+              with:
+                  host: ${{ secrets.SSH_HOST_DEV }}
+                  username: ${{ secrets.SSH_USER_DEV }}
+                  key: ${{ secrets.SSH_PRIVATE_KEY_DEV }}
+                  script: |
+                      sudo mkdir -p /var/www/goimon-client-dev
+                      sudo chown $USER:$USER /var/www/goimon-client-dev
+
+            - name: Deploy via SCP to dev
+              if: ${{ steps.filter.outputs.publish_client == 'true' }}
+              uses: appleboy/scp-action@v0.1.7
+              with:
+                  host: ${{ secrets.SSH_HOST_DEV }}
+                  username: ${{ secrets.SSH_USER_DEV }}
+                  key: ${{ secrets.SSH_PRIVATE_KEY_DEV }}
+                  source: "publish/wwwroot/*"
+                  target: "/var/www/goimon-client-dev"
+                  strip_components: 2
+
+    deploy-prod:
+        if: ${{ github.ref == 'refs/heads/main' }}
+        runs-on: ubuntu-latest
+        env:
+            ASPNETCORE_ENVIRONMENT: Production
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Filter changed paths
+              id: filter
+              uses: dorny/paths-filter@v2
+              with:
+                  filters: |
+                      publish_client:
+                        - 'src/GoiMon.Staff/**'
+                      nginx_only:
+                        - 'nginx/**'
+
+            - name: Setup .NET
+              uses: actions/setup-dotnet@v4
+              with:
+                  dotnet-version: "10.0.x"
+
+            - name: Restore
+              if: ${{ steps.filter.outputs.publish_client == 'true' }}
+              run: dotnet restore src/GoiMon.Staff/GoiMon.Staff.csproj
+
+            - name: Publish
+              if: ${{ steps.filter.outputs.publish_client == 'true' }}
+              run: dotnet publish src/GoiMon.Staff/GoiMon.Staff.csproj -c Release -o publish
+
+            - name: Upload client artifact
+              if: ${{ steps.filter.outputs.publish_client == 'true' }}
+              uses: actions/upload-artifact@v4
+              with:
+                  name: goimon-client-publish
+                  path: publish/wwwroot
+
+            - name: Prepare deploy directory (prod)
+              if: ${{ steps.filter.outputs.publish_client == 'true' }}
               uses: appleboy/ssh-action@v1.0.3
               with:
                   host: ${{ secrets.SSH_HOST }}
@@ -47,8 +123,8 @@ jobs:
                       sudo mkdir -p /var/www/goimon-client
                       sudo chown $USER:$USER /var/www/goimon-client
 
-            - name: Deploy via SCP
-              if: steps.filter.outputs.publish_client == 'true'
+            - name: Deploy via SCP to prod
+              if: ${{ steps.filter.outputs.publish_client == 'true' }}
               uses: appleboy/scp-action@v0.1.7
               with:
                   host: ${{ secrets.SSH_HOST }}
@@ -58,8 +134,8 @@ jobs:
                   target: "/var/www/goimon-client"
                   strip_components: 2
 
-            - name: Deploy nginx config
-              if: steps.filter.outputs.nginx_only == 'true' || steps.filter.outputs.publish_client == 'true'
+            - name: Deploy nginx config (if needed)
+              if: ${{ steps.filter.outputs.nginx_only == 'true' || steps.filter.outputs.publish_client == 'true' }}
               uses: appleboy/scp-action@v0.1.7
               with:
                   host: ${{ secrets.SSH_HOST }}
@@ -69,8 +145,8 @@ jobs:
                   target: "/tmp/goimon-nginx"
                   strip_components: 1
 
-            - name: Reload web server
-              if: steps.filter.outputs.nginx_only == 'true' || steps.filter.outputs.publish_client == 'true'
+            - name: Reload web server (prod)
+              if: ${{ steps.filter.outputs.nginx_only == 'true' || steps.filter.outputs.publish_client == 'true' }}
               uses: appleboy/ssh-action@v1.0.3
               with:
                   host: ${{ secrets.SSH_HOST }}

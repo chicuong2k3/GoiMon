@@ -1,23 +1,18 @@
 using System.Linq.Expressions;
 using System.Text.Json;
-using GoiMon.Api.Domain.Entities;
-using Microsoft.EntityFrameworkCore;
 
 namespace GoiMon.Api.Infrastructure.Data;
 
 public class AppDbContext : DbContext
 {
-    private readonly Domain.Events.IDomainEventDispatcher? _dispatcher;
-    private readonly Infrastructure.Services.ITenantProvider? _tenantProvider;
+    private readonly GoiMon.Api.Infrastructure.Services.ITenantAccessor _accessor;
 
     public AppDbContext(
         DbContextOptions<AppDbContext> options,
-        Domain.Events.IDomainEventDispatcher? dispatcher = null,
-        Infrastructure.Services.ITenantProvider? tenantProvider = null)
+        GoiMon.Api.Infrastructure.Services.ITenantAccessor accessor)
         : base(options)
     {
-        _dispatcher = dispatcher;
-        _tenantProvider = tenantProvider;
+        _accessor = accessor;
     }
 
     public DbSet<Tenant> Tenants { get; set; } = null!;
@@ -51,7 +46,7 @@ public class AppDbContext : DbContext
                 var parameter = Expression.Parameter(entityType.ClrType, "e");
                 var body = Expression.Equal(
                     Expression.Property(parameter, "TenantId"),
-                    Expression.Constant(_tenantProvider?.TenantId ?? Guid.Empty)
+                    Expression.Constant(_accessor.TenantId ?? Guid.Empty)
                 );
                 modelBuilder.Entity(entityType.ClrType).HasQueryFilter(Expression.Lambda(body, parameter));
             }
@@ -60,7 +55,7 @@ public class AppDbContext : DbContext
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        var currentTenantId = _tenantProvider?.TenantId;
+        var currentTenantId = _accessor.TenantId;
 
         // Auto-assign TenantId to new Multi-tenant entities
         foreach (var entry in ChangeTracker.Entries<Domain.IMultiTenant>())
