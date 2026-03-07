@@ -531,12 +531,19 @@ We have formally defined the bounded contexts for the domain to ensure separatio
     -   No login required for basic view.
     -   *Why*: Optimised for speed (<3s load) and conversion.
 
-### Decision: Offline Data Strategy
--   **Technology**: **SQLite-Wasm** with **Entity Framework Core**.
--   **Why**:
-    -   Provides a real Relational Database in the browser (SQL capabilities).
-    -   Superior to **LocalStorage** (Key-Value) for complex queries (filtering orders, inventory).
-    -   allows sharing data models/logic with the server backend.
+### Decision: Offline Data Strategy (Phased implementation)
+- **Technology**: **SQLite-Wasm** with **Entity Framework Core** (via **Bit.Besql**).
+- **Scope Segmentation**:
+    - **Catalog / Management (Admin)**: 
+        - **Read**: **Offline-capable**. Catalog data (Products, Categories, Modifiers) is cached locally (SQLite) for the POS to function without network.
+        - **Write**: **Online-only**. Creating/Editing products requires an active connection (Admin portal).
+    - **POS / Order Entry (Staff)**: 
+        - **Phase 1 (Sprints 2-4)**: **Online-first** for order submission (Writes), but uses Local Cache for browsing (Reads).
+        - **Phase 2 (Sprint 8)**: Full **Offline Write** with Outbox/Sync Queue for orders.
+- **Why**:
+    - Speeds up development and testing of core business logic.
+    - Admin functionality is rarely used in completely offline environments (e.g. while on a plane or deep basement without WiFi).
+    - Reduces sync-conflict complexity for complex management objects (Combos/Pricing rules).
 
 ## Sprint 1: Architecture Decisions (S1-02)
 

@@ -2,20 +2,22 @@ namespace GoiMon.Api.Domain.Entities;
 
 using GoiMon.Api.Domain;
 
-public class Product : AggregateRoot
+public class Product : AggregateRoot, IMultiTenant
 {
     // EF Core requires a parameterless constructor; keep it private for DDD control
     private Product() { }
 
-    public Product(Guid id, string name, decimal price, Guid? categoryId = null, string? description = null)
+    public Product(Guid id, Guid tenantId, string name, decimal price, Guid? categoryId = null, string? description = null)
     {
         Id = id;
+        TenantId = tenantId;
         Name = name?.Trim() ?? throw new ArgumentNullException(nameof(name));
         Price = price;
         CategoryId = categoryId;
         Description = description?.Trim();
     }
 
+    public Guid TenantId { get; set; }
     public string Name { get; private set; } = string.Empty;
     public decimal Price { get; private set; }
     public Guid? CategoryId { get; private set; }

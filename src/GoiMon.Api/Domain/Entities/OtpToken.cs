@@ -1,14 +1,21 @@
+using GoiMon.Api.Domain;
+
 namespace GoiMon.Api.Domain.Entities;
 
 /// <summary>
 /// Represents a One-Time Password token for user verification.
 /// </summary>
-public sealed class OtpToken
+public sealed class OtpToken : IMultiTenant
 {
     /// <summary>
     /// Unique identifier for the OTP token.
     /// </summary>
     public Guid Id { get; set; }
+
+    /// <summary>
+    /// Foreign key: Tenant this OTP belongs to.
+    /// </summary>
+    public Guid TenantId { get; set; }
 
     /// <summary>
     /// Foreign key: User this OTP is for.

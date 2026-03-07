@@ -1,8 +1,10 @@
 namespace GoiMon.Api.Domain.Entities;
+using GoiMon.Api.Domain;
+
 /// <summary>
 /// Aggregate root representing a customer order and its line items.
 /// </summary>
-public class Order : AggregateRoot
+public class Order : AggregateRoot, IMultiTenant
 {
     private Order() { Items = new List<OrderItem>(); }
 
@@ -10,15 +12,19 @@ public class Order : AggregateRoot
     /// Create a new order with the specified identifier.
     /// </summary>
     /// <param name="id">Identifier for the order.</param>
-    public Order(Guid id)
+    /// <param name="tenantId">Identifier for the tenant.</param>
+    public Order(Guid id, Guid tenantId)
     {
         Id = id;
+        TenantId = tenantId;
         Status = OrderStatus.Open;
         Items = new List<OrderItem>();
         Total = 0m;
         CreatedAt = DateTimeOffset.UtcNow;
         AddDomainEvent(new Events.OrderCreatedEvent(id));
     }
+
+    public Guid TenantId { get; set; }
 
     /// <summary>UTC timestamp when the order was placed.</summary>
     public DateTimeOffset CreatedAt { get; private set; }
@@ -66,7 +72,7 @@ public class Order : AggregateRoot
         if (qty <= 0) throw new ArgumentOutOfRangeException(nameof(qty));
         if (unitPrice < 0) throw new ArgumentOutOfRangeException(nameof(unitPrice));
 
-        var item = new OrderItem(Guid.NewGuid(), Id, productId, productName, qty, unitPrice, unitName, comboId, comboName);
+        var item = new OrderItem(Guid.NewGuid(), TenantId, Id, productId, productName, qty, unitPrice, unitName, comboId, comboName);
         Items.Add(item);
         RecalculateTotal();
         AddDomainEvent(new Events.OrderItemAddedEvent(Id, item.Id, productId, qty));
@@ -130,7 +136,7 @@ public class Order : AggregateRoot
 /// Stores an immutable snapshot of product data at the time of ordering so that
 /// price/name changes or product deletion never corrupt historical records.
 /// </summary>
-public class OrderItem
+public class OrderItem : IMultiTenant
 {
     private OrderItem() { }
 
@@ -139,6 +145,7 @@ public class OrderItem
     /// </summary>
     public OrderItem(
         Guid id,
+        Guid tenantId,
         Guid orderId,
         Guid? productId,
         string productName,
@@ -149,6 +156,7 @@ public class OrderItem
         string? comboName = null)
     {
         Id = id;
+        TenantId = tenantId;
         OrderId = orderId;
         ProductId = productId;
         ProductName = productName;
@@ -158,6 +166,8 @@ public class OrderItem
         Qty = qty;
         UnitPrice = unitPrice;
     }
+
+    public Guid TenantId { get; set; }
 
     /// <summary>
     /// Identifier for the order item.

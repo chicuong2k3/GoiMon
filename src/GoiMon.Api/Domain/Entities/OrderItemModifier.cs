@@ -1,11 +1,14 @@
+using GoiMon.Api.Domain;
+
 namespace GoiMon.Api.Domain.Entities;
 
-public class OrderItemModifier
+public class OrderItemModifier : IMultiTenant
 {
     private OrderItemModifier() { }
 
     public OrderItemModifier(
         Guid id,
+        Guid tenantId,
         Guid orderItemId,
         Guid? modifierOptionId,
         string groupName,
@@ -19,6 +22,7 @@ public class OrderItemModifier
         if (unitDeltaPrice < 0) throw new ArgumentOutOfRangeException(nameof(unitDeltaPrice));
 
         Id = id;
+        TenantId = tenantId;
         OrderItemId = orderItemId;
         ModifierOptionId = modifierOptionId;
         GroupName = groupName.Trim();
@@ -26,6 +30,8 @@ public class OrderItemModifier
         Qty = qty;
         UnitDeltaPrice = unitDeltaPrice;
     }
+
+    public Guid TenantId { get; set; }
 
     /// <summary>
     /// Stable identifier of the selected modifier snapshot row.

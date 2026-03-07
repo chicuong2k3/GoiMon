@@ -1,12 +1,15 @@
+using GoiMon.Api.Domain;
+
 namespace GoiMon.Api.Domain.Entities;
 
-public sealed class TableSlot : AggregateRoot
+public sealed class TableSlot : AggregateRoot, IMultiTenant
 {
     private TableSlot() { }
 
-    public TableSlot(Guid id, string code, string name, int capacity)
+    public TableSlot(Guid id, Guid tenantId, string code, string name, int capacity)
     {
         Id = id;
+        TenantId = tenantId;
         Code = code.Trim().ToUpperInvariant();
         Name = name.Trim();
         Capacity = capacity;
@@ -15,6 +18,8 @@ public sealed class TableSlot : AggregateRoot
         CreatedAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
     }
+
+    public Guid TenantId { get; set; }
 
     public string Code { get; private set; } = string.Empty;
     public string Name { get; private set; } = string.Empty;

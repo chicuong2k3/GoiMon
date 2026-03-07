@@ -11,6 +11,7 @@ Purpose
 Scope
 - Client-originated operations (create/update/cancel orders, payments markers, menu updates) that are queued locally when offline.
 - Batch upload endpoint(s), response contract, error codes, and standard conflict resolution rules.
+- Queue State Model for tracking operation lifecycle (Pending → Sent → Acked/Failed).
 
 Principles
 - Idempotency: Every client operation must include an `operationId` (UUIDv4) to allow the server to deduplicate retries.
@@ -69,6 +70,18 @@ Conflict Resolution
   - accept_server: server state is authoritative; client should pull latest and update UI.
   - merge_client: server provides guidance for a merge or server applies a merge and returns merged state.
   - manual: requires human reconciliation; surface to owner.
+
+### Queue State Model (Lifecycle)
+
+To ensure exactly-once (or at-least-once with deduplication) semantics, each client-side operation must transition through the following states in the local IndexedDB queue:
+
+1.  **Pending** (Initial): Operation recorded locally, waiting for connectivity.
+2.  **Sending**: Operation included in a batch currently in transit.
+3.  **Acked** (Terminal): Server confirmed `applied`. Operation can be cleared/archived locally.
+4.  **Conflict** (Resolution Required): Server returned `conflict`. Requires UI prompt or merge-replay.
+5.  **Failed** (Retryable): Network error or transient 5xx. Return to `Pending` with backoff.
+6.  **Rejected** (Terminal Error): Server returned `rejected` (e.g., malformed). Log and alert.
+7.  **Dead-Letter**: Retries exhausted or unrecoverable local state. Requires support intervention.
 
 Sync Ordering & Guarantees
 - Batches preserve localSeq ordering per client. Server should process operations in ascending `localSeq` per client to maintain causal order where possible.

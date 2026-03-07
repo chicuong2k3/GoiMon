@@ -6,12 +6,23 @@ public static class SeedData
 {
     public static async Task SeedAsync(AppDbContext db)
     {
+        // Default Pilot Tenant
+        var pilotTenant = await db.Tenants.FirstOrDefaultAsync(t => t.Slug == "goimon-lab");
+        if (pilotTenant is null)
+        {
+            pilotTenant = new Domain.Entities.Tenant(Guid.Parse("00000000-0000-0000-0000-000000000001"), "GoiMon Lab", "goimon-lab");
+            db.Tenants.Add(pilotTenant);
+            await db.SaveChangesAsync();
+        }
+
+        var tenantId = pilotTenant.Id;
+
         // Categories
         if (!await db.Categories.AnyAsync())
         {
-            var cat1 = new Domain.Entities.Category(Guid.NewGuid(), "Noodles");
-            var cat2 = new Domain.Entities.Category(Guid.NewGuid(), "Sandwich");
-            var cat3 = new Domain.Entities.Category(Guid.NewGuid(), "Rice");
+            var cat1 = new Domain.Entities.Category(Guid.NewGuid(), tenantId, "Noodles");
+            var cat2 = new Domain.Entities.Category(Guid.NewGuid(), tenantId, "Sandwich");
+            var cat3 = new Domain.Entities.Category(Guid.NewGuid(), tenantId, "Rice");
             db.Categories.AddRange(cat1, cat2, cat3);
             await db.SaveChangesAsync();
         }
@@ -23,21 +34,21 @@ public static class SeedData
             if (categories.Count >= 3)
             {
                 db.Products.AddRange(new[] {
-                    new Domain.Entities.Product(Guid.NewGuid(), "Pho Bo", 40000m, categories[0].Id, "Beef noodle soup"),
-                    new Domain.Entities.Product(Guid.NewGuid(), "Banh Mi Thit", 25000m, categories[1].Id, "Vietnamese pork sandwich"),
-                    new Domain.Entities.Product(Guid.NewGuid(), "Com Ga", 45000m, categories[2].Id, "Chicken rice")
+                    new Domain.Entities.Product(Guid.NewGuid(), tenantId, "Pho Bo", 40000m, categories[0].Id, "Beef noodle soup"),
+                    new Domain.Entities.Product(Guid.NewGuid(), tenantId, "Banh Mi Thit", 25000m, categories[1].Id, "Vietnamese pork sandwich"),
+                    new Domain.Entities.Product(Guid.NewGuid(), tenantId, "Com Ga", 45000m, categories[2].Id, "Chicken rice")
                 });
                 await db.SaveChangesAsync();
             }
         }
 
-        // Product combos (seed a sample combo if none exist)
+        // Product combos
         if (!await db.ProductCombos.AnyAsync())
         {
             var products = await db.Products.Take(2).ToListAsync();
             if (products.Count >= 2)
             {
-                var combo = new Domain.Entities.ProductCombo(Guid.NewGuid(), "Lunch Combo", products.Sum(p => p.Price) - 5000m);
+                var combo = new Domain.Entities.ProductCombo(Guid.NewGuid(), tenantId, "Lunch Combo", products.Sum(p => p.Price) - 5000m);
                 combo.AddItem(products[0].Id, 1);
                 combo.AddItem(products[1].Id, 1);
                 db.ProductCombos.Add(combo);
@@ -45,21 +56,21 @@ public static class SeedData
             }
         }
 
-        // Configurable beverage sample (size + topping)
-        // Keep this seed idempotent so reruns don't create duplicates.
-        var drinksCategory = await db.Categories.FirstOrDefaultAsync(c => c.Name == "drinks");
+        // Drinks
+        var drinksCategory = await db.Categories.FirstOrDefaultAsync(c => c.Name == "Drinks");
         if (drinksCategory is null)
         {
-            drinksCategory = new Domain.Entities.Category(Guid.NewGuid(), "Drinks");
+            drinksCategory = new Domain.Entities.Category(Guid.NewGuid(), tenantId, "Drinks");
             db.Categories.Add(drinksCategory);
             await db.SaveChangesAsync();
         }
 
-        var milkTea = await db.Products.FirstOrDefaultAsync(p => p.Name == "milk tea");
+        var milkTea = await db.Products.FirstOrDefaultAsync(p => p.Name == "Milk Tea");
         if (milkTea is null)
         {
             milkTea = new Domain.Entities.Product(
                 Guid.NewGuid(),
+                tenantId,
                 "Milk Tea",
                 30000m,
                 drinksCategory.Id,
@@ -73,9 +84,9 @@ public static class SeedData
         if (!hasVariants)
         {
             db.ProductVariants.AddRange(
-                new Domain.Entities.ProductVariant(Guid.NewGuid(), milkTea.Id, "s", "Size S", 30000m, sortOrder: 1),
-                new Domain.Entities.ProductVariant(Guid.NewGuid(), milkTea.Id, "m", "Size M", 35000m, sortOrder: 2),
-                new Domain.Entities.ProductVariant(Guid.NewGuid(), milkTea.Id, "l", "Size L", 40000m, sortOrder: 3));
+                new Domain.Entities.ProductVariant(Guid.NewGuid(), tenantId, milkTea.Id, "s", "Size S", 30000m, sortOrder: 1),
+                new Domain.Entities.ProductVariant(Guid.NewGuid(), tenantId, milkTea.Id, "m", "Size M", 35000m, sortOrder: 2),
+                new Domain.Entities.ProductVariant(Guid.NewGuid(), tenantId, milkTea.Id, "l", "Size L", 40000m, sortOrder: 3));
             await db.SaveChangesAsync();
         }
 
@@ -84,6 +95,7 @@ public static class SeedData
         {
             toppingGroup = new Domain.Entities.ModifierGroup(
                 Guid.NewGuid(),
+                tenantId,
                 milkTea.Id,
                 "Topping",
                 Domain.Entities.ModifierSelectionMode.Multiple,
@@ -101,68 +113,39 @@ public static class SeedData
         if (!hasToppingOptions)
         {
             db.ModifierOptions.AddRange(
-                new Domain.Entities.ModifierOption(Guid.NewGuid(), toppingGroup.Id, "Pearl", 5000m, maxQty: 2, sortOrder: 1),
-                new Domain.Entities.ModifierOption(Guid.NewGuid(), toppingGroup.Id, "Pudding", 6000m, maxQty: 2, sortOrder: 2),
-                new Domain.Entities.ModifierOption(Guid.NewGuid(), toppingGroup.Id, "Grass Jelly", 5000m, maxQty: 2, sortOrder: 3));
+                new Domain.Entities.ModifierOption(Guid.NewGuid(), tenantId, toppingGroup.Id, "Pearl", 5000m, maxQty: 2, sortOrder: 1),
+                new Domain.Entities.ModifierOption(Guid.NewGuid(), tenantId, toppingGroup.Id, "Pudding", 6000m, maxQty: 2, sortOrder: 2),
+                new Domain.Entities.ModifierOption(Guid.NewGuid(), tenantId, toppingGroup.Id, "Grass Jelly", 5000m, maxQty: 2, sortOrder: 3));
             await db.SaveChangesAsync();
         }
 
-        // Orders - seed many records for dashboard/testing convenience
-        const int targetOrderCount = 300;
+        // Orders
+        const int targetOrderCount = 50;
         var existingOrders = await db.Orders.CountAsync();
-        if (existingOrders >= targetOrderCount)
-            return;
-
-        var allProducts = await db.Products.AsNoTracking().ToListAsync();
-        if (allProducts.Count == 0)
-            return;
-
-        var random = Random.Shared;
-        var toCreate = targetOrderCount - existingOrders;
-        var now = DateTimeOffset.UtcNow;
-
-        for (var i = 0; i < toCreate; i++)
+        if (existingOrders < targetOrderCount)
         {
-            var order = new Domain.Entities.Order(Guid.NewGuid());
+            var allProducts = await db.Products.AsNoTracking().ToListAsync();
+            var random = Random.Shared;
+            var now = DateTimeOffset.UtcNow;
 
-            var itemCount = random.Next(1, Math.Min(5, allProducts.Count) + 1);
-            var selectedProducts = allProducts
-                .OrderBy(_ => random.Next())
-                .Take(itemCount)
-                .ToList();
-
-            foreach (var product in selectedProducts)
+            for (var i = 0; i < (targetOrderCount - existingOrders); i++)
             {
-                var qty = random.Next(1, 4);
-                order.AddItem(
-                    product.Id,
-                    product.Name,
-                    qty,
-                    product.Price,
-                    product.UnitName);
-            }
+                var order = new Domain.Entities.Order(Guid.NewGuid(), tenantId);
+                var itemCount = random.Next(1, 4);
+                var selected = allProducts.OrderBy(_ => random.Next()).Take(itemCount).ToList();
 
-            // Status distribution: mostly Open, some Completed, some Cancelled
-            var roll = random.Next(100);
-            if (roll < 25)
-            {
-                order.MarkCompleted();
-            }
-            else if (roll < 35)
-            {
-                order.Cancel();
-            }
+                foreach (var p in selected)
+                {
+                    order.AddItem(p.Id, p.Name, random.Next(1, 3), p.Price, p.UnitName);
+                }
 
-            // Spread created time across recent 14 days for realistic testing
-            var createdAt = now
-                .AddDays(-random.Next(0, 14))
-                .AddHours(-random.Next(0, 24))
-                .AddMinutes(-random.Next(0, 60));
-            db.Entry(order).Property(o => o.CreatedAt).CurrentValue = createdAt;
-
-            db.Orders.Add(order);
+                if (random.Next(100) < 30) order.MarkCompleted();
+                
+                var createdAt = now.AddDays(-random.Next(0, 14)).AddHours(-random.Next(0, 24));
+                db.Entry(order).Property(o => o.CreatedAt).CurrentValue = createdAt;
+                db.Orders.Add(order);
+            }
+            await db.SaveChangesAsync();
         }
-
-        await db.SaveChangesAsync();
     }
 }

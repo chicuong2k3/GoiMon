@@ -1,17 +1,26 @@
+using System.Linq.Expressions;
+using System.Text.Json;
 using GoiMon.Api.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace GoiMon.Api.Infrastructure.Data;
 
 public class AppDbContext : DbContext
 {
     private readonly Domain.Events.IDomainEventDispatcher? _dispatcher;
+    private readonly Infrastructure.Services.ITenantProvider? _tenantProvider;
 
-    public AppDbContext(DbContextOptions<AppDbContext> options, Domain.Events.IDomainEventDispatcher? dispatcher = null)
+    public AppDbContext(
+        DbContextOptions<AppDbContext> options,
+        Domain.Events.IDomainEventDispatcher? dispatcher = null,
+        Infrastructure.Services.ITenantProvider? tenantProvider = null)
         : base(options)
     {
         _dispatcher = dispatcher;
+        _tenantProvider = tenantProvider;
     }
 
+    public DbSet<Tenant> Tenants { get; set; } = null!;
     public DbSet<Product> Products { get; set; } = null!;
     public DbSet<Category> Categories { get; set; } = null!;
     public DbSet<Order> Orders { get; set; } = null!;
@@ -33,10 +42,38 @@ public class AppDbContext : DbContext
 
         // Load all IEntityTypeConfiguration<> implementations from this assembly
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+
+        // Apply Global Query Filters for Multi-tenant entities
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (typeof(Domain.IMultiTenant).IsAssignableFrom(entityType.ClrType))
+            {
+                var parameter = Expression.Parameter(entityType.ClrType, "e");
+                var body = Expression.Equal(
+                    Expression.Property(parameter, "TenantId"),
+                    Expression.Constant(_tenantProvider?.TenantId ?? Guid.Empty)
+                );
+                modelBuilder.Entity(entityType.ClrType).HasQueryFilter(Expression.Lambda(body, parameter));
+            }
+        }
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
+        var currentTenantId = _tenantProvider?.TenantId;
+
+        // Auto-assign TenantId to new Multi-tenant entities
+        foreach (var entry in ChangeTracker.Entries<Domain.IMultiTenant>())
+        {
+            if (entry.State == EntityState.Added)
+            {
+                if (entry.Entity.TenantId == Guid.Empty && currentTenantId.HasValue)
+                {
+                    entry.Entity.TenantId = currentTenantId.Value;
+                }
+            }
+        }
+
         // Collect domain events from tracked aggregate roots
         var domainEntities = ChangeTracker.Entries()
             .Select(e => e.Entity)
@@ -55,6 +92,7 @@ public class AppDbContext : DbContext
                 var outbox = new Infrastructure.Outbox.OutboxEvent
                 {
                     Id = Guid.NewGuid(),
+                    TenantId = currentTenantId,
                     TypeName = @event.GetType().FullName ?? @event.GetType().Name,
                     Content = payload,
                     OccurredOn = DateTimeOffset.UtcNow,

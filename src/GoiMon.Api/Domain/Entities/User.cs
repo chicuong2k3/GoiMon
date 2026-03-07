@@ -1,11 +1,16 @@
 namespace GoiMon.Api.Domain.Entities;
 
-public sealed class User : IAggregateRoot
+public sealed class User : IAggregateRoot, IMultiTenant
 {
     /// <summary>
     /// Unique identifier for the user.
     /// </summary>
     public Guid Id { get; set; }
+
+    /// <summary>
+    /// Foreign key for the tenant (owner) of this user.
+    /// </summary>
+    public Guid TenantId { get; set; }
 
     /// <summary>
     /// User's email address (unique, indexed).
@@ -74,9 +79,10 @@ public sealed class User : IAggregateRoot
 
     public User() { }
 
-    public User(Guid id, string email, string? firstName = null, string? lastName = null)
+    public User(Guid id, Guid tenantId, string email, string? firstName = null, string? lastName = null)
     {
         Id = id;
+        TenantId = tenantId;
         Email = email;
         FirstName = firstName;
         LastName = lastName;
@@ -87,11 +93,12 @@ public sealed class User : IAggregateRoot
     /// <summary>
     /// Creates a user from OAuth provider information.
     /// </summary>
-    public static User CreateFromOAuth(Guid id, string email, string? firstName = null, string? lastName = null, string? photoUrl = null, string? googleId = null, string? facebookId = null)
+    public static User CreateFromOAuth(Guid id, Guid tenantId, string email, string? firstName = null, string? lastName = null, string? photoUrl = null, string? googleId = null, string? facebookId = null)
     {
         return new User
         {
             Id = id,
+            TenantId = tenantId,
             Email = email,
             FirstName = firstName,
             LastName = lastName,

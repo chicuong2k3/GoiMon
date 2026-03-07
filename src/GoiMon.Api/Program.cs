@@ -87,6 +87,8 @@ builder.Services.AddAuthentication(Microsoft.AspNetCore.Authentication.JwtBearer
 GoiMon.Api.Infrastructure.Authorization.AuthorizationConfig.AddPolicyMatrix(builder.Services);
 
 // Authentication Services
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ITenantProvider, HttpContextTenantProvider>();
 builder.Services.AddHttpClient<IOAuthExchangeService, OAuthExchangeService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();

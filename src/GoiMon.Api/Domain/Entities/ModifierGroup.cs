@@ -1,3 +1,5 @@
+using GoiMon.Api.Domain;
+
 namespace GoiMon.Api.Domain.Entities;
 
 public enum ModifierSelectionMode
@@ -15,12 +17,13 @@ public enum ModifierSelectionMode
     Multiple = 2
 }
 
-public class ModifierGroup
+public class ModifierGroup : IMultiTenant
 {
     private ModifierGroup() { Options = new List<ModifierOption>(); }
 
     public ModifierGroup(
         Guid id,
+        Guid tenantId,
         Guid productId,
         string name,
         ModifierSelectionMode selectionMode,
@@ -35,6 +38,7 @@ public class ModifierGroup
         if (maxSelect < minSelect) throw new ArgumentOutOfRangeException(nameof(maxSelect));
 
         Id = id;
+        TenantId = tenantId;
         ProductId = productId;
         Name = name.Trim();
         SelectionMode = selectionMode;
@@ -45,6 +49,8 @@ public class ModifierGroup
         IsActive = isActive;
         Options = new List<ModifierOption>();
     }
+
+    public Guid TenantId { get; set; }
 
     /// <summary>
     /// Stable identifier for this modifier group.

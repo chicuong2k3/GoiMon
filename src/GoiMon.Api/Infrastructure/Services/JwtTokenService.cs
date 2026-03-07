@@ -24,14 +24,15 @@ public class JwtTokenService : IJwtTokenService
     }
 
     /// <inheritdoc />
-    public string GenerateToken(Guid userId, string email, string role, bool isVerified = true)
+    public string GenerateToken(Guid userId, Guid tenantId, string email, string role, bool isVerified = true)
     {
         var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_signingKey));
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
-
+ 
         var claims = new[]
         {
             new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+            new Claim("tid", tenantId.ToString()),
             new Claim(ClaimTypes.Email, email),
             new Claim("verified", isVerified.ToString().ToLower()),
             new Claim("iat", DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString()),
@@ -55,13 +56,13 @@ public class JwtTokenService : IJwtTokenService
     }
 
     /// <inheritdoc />
-    public (bool IsValid, Guid? UserId, string? Email, bool IsVerified, string? Role) ValidateToken(string token)
+    public (bool IsValid, Guid? UserId, Guid? TenantId, string? Email, bool IsVerified, string? Role) ValidateToken(string token)
     {
         try
         {
             var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_signingKey));
             var tokenHandler = new JwtSecurityTokenHandler();
-
+ 
             var principal = tokenHandler.ValidateToken(token, new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
@@ -73,33 +74,35 @@ public class JwtTokenService : IJwtTokenService
                 ValidateLifetime = true,
                 ClockSkew = TimeSpan.Zero
             }, out var validatedToken);
-
+ 
             var userIdClaim = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var tenantIdClaim = principal.FindFirst("tid")?.Value;
             var emailClaim = principal.FindFirst(ClaimTypes.Email)?.Value;
             var verifiedClaim = principal.FindFirst("verified")?.Value;
-
+ 
             if (!Guid.TryParse(userIdClaim, out var userId))
             {
                 _logger.LogWarning("Token validation failed: Invalid userId claim");
-                return (false, null, null, false, null);
+                return (false, null, null, null, false, null);
             }
-
+ 
+            Guid? tenantId = Guid.TryParse(tenantIdClaim, out var tid) ? tid : null;
             var isVerified = bool.TryParse(verifiedClaim, out var verified) && verified;
             var roleClaim = principal.FindFirst(ClaimTypes.Role)?.Value;
-
-            _logger.LogInformation("JWT token validated for UserId={UserId}", userId);
-
-            return (true, userId, emailClaim, isVerified, roleClaim);
+ 
+            _logger.LogInformation("JWT token validated for UserId={UserId}, TenantId={TenantId}", userId, tenantId);
+ 
+            return (true, userId, tenantId, emailClaim, isVerified, roleClaim);
         }
         catch (SecurityTokenException ex)
         {
             _logger.LogWarning(ex, "Token validation failed: {Message}", ex.Message);
-            return (false, null, null, false, null);
+            return (false, null, null, null, false, null);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Token validation error: {Message}", ex.Message);
-            return (false, null, null, false, null);
+            return (false, null, null, null, false, null);
         }
     }
 }

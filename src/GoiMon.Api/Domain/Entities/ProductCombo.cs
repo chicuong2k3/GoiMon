@@ -6,17 +6,20 @@ using GoiMon.Api.Domain;
 /// <summary>
 /// Represents a product combo (bundle) composed of multiple products.
 /// </summary>
-public class ProductCombo : AggregateRoot
+public class ProductCombo : AggregateRoot, IMultiTenant
 {
     private ProductCombo() { Items = new List<ProductComboItem>(); }
 
-    public ProductCombo(Guid id, string name, decimal price)
+    public ProductCombo(Guid id, Guid tenantId, string name, decimal price)
     {
         Id = id;
+        TenantId = tenantId;
         Name = name?.Trim();
         Price = price;
         Items = new List<ProductComboItem>();
     }
+
+    public Guid TenantId { get; set; }
 
     public string? Name { get; private set; }
     public decimal Price { get; private set; }
@@ -26,7 +29,7 @@ public class ProductCombo : AggregateRoot
     public void AddItem(Guid productId, int qty, Guid? variantId = null)
     {
         if (qty <= 0) throw new ArgumentOutOfRangeException(nameof(qty));
-        var item = new ProductComboItem(Guid.NewGuid(), Id, productId, qty, variantId);
+        var item = new ProductComboItem(Guid.NewGuid(), TenantId, Id, productId, qty, variantId);
         Items.Add(item);
         AddDomainEvent(new Events.ComboItemAddedEvent(Id, item.Id, productId, qty));
     }
@@ -89,18 +92,21 @@ public class ProductCombo : AggregateRoot
     }
 }
 
-public class ProductComboItem
+public class ProductComboItem : IMultiTenant
 {
     private ProductComboItem() { }
 
-    public ProductComboItem(Guid id, Guid comboId, Guid productId, int qty, Guid? variantId = null)
+    public ProductComboItem(Guid id, Guid tenantId, Guid comboId, Guid productId, int qty, Guid? variantId = null)
     {
         Id = id;
+        TenantId = tenantId;
         ComboId = comboId;
         ProductId = productId;
         VariantId = variantId;
         Qty = qty;
     }
+
+    public Guid TenantId { get; set; }
 
     public Guid Id { get; private set; }
     public Guid ComboId { get; private set; }

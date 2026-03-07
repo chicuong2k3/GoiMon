@@ -110,10 +110,10 @@ Operationally the product targets micro‑merchant scenarios where device variab
 ### MVP - Minimum Viable Product
 
 - Staff Order UI (large-button, quick modifiers)
-- Menu management with CSV import and simple CRUD
-- Offline-first local store with queued operations and basic conflict handling
+- Menu management with CSV import and simple CRUD (Online-only for Admin)
+- Offline-first local store with queued operations (Phased: POS in Sprint 8+, Admin stay online)
 - Customer-facing QR menu and static HTML fallback for legacy devices
-- Basic reconciliation/export for daily cash reconciliation
+- Basic reconciliation/export for daily cash reconciliation (Online-first)
 
 ### Growth Features (Post-MVP)
 

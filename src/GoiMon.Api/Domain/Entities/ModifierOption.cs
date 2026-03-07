@@ -1,11 +1,14 @@
+using GoiMon.Api.Domain;
+
 namespace GoiMon.Api.Domain.Entities;
 
-public class ModifierOption
+public class ModifierOption : IMultiTenant
 {
     private ModifierOption() { }
 
     public ModifierOption(
         Guid id,
+        Guid tenantId,
         Guid modifierGroupId,
         string name,
         decimal priceDelta,
@@ -19,6 +22,7 @@ public class ModifierOption
         if (maxQty <= 0) throw new ArgumentOutOfRangeException(nameof(maxQty));
 
         Id = id;
+        TenantId = tenantId;
         ModifierGroupId = modifierGroupId;
         Name = name.Trim();
         PriceDelta = priceDelta;
@@ -27,6 +31,8 @@ public class ModifierOption
         IsDefault = isDefault;
         IsActive = isActive;
     }
+
+    public Guid TenantId { get; set; }
 
     /// <summary>
     /// Stable identifier for this option.

@@ -1,11 +1,14 @@
+using GoiMon.Api.Domain;
+
 namespace GoiMon.Api.Domain.Entities;
 
-public class ProductVariant
+public class ProductVariant : IMultiTenant
 {
     private ProductVariant() { }
 
     public ProductVariant(
         Guid id,
+        Guid tenantId,
         Guid productId,
         string code,
         string name,
@@ -18,6 +21,7 @@ public class ProductVariant
         if (price < 0) throw new ArgumentOutOfRangeException(nameof(price));
 
         Id = id;
+        TenantId = tenantId;
         ProductId = productId;
         Code = code.Trim().ToLowerInvariant();
         Name = name.Trim();
@@ -25,6 +29,8 @@ public class ProductVariant
         SortOrder = sortOrder;
         IsActive = isActive;
     }
+
+    public Guid TenantId { get; set; }
 
     /// <summary>
     /// Stable identifier for this variant record.
