@@ -46,6 +46,7 @@ jobs:
               - 'tests/GoiMon.Api.Tests/**'
               - 'src/Shared/**'
               - 'docker-compose.yml'
+              - 'docker-compose.dev.yml'
 
       - name: Deploy source to server
         if: ${{ steps.filter.outputs.goimon_api == 'true' }}
@@ -54,7 +55,7 @@ jobs:
           host: ${{ secrets.SSH_HOST_DEV }}
           username: ${{ secrets.SSH_USER_DEV }}
           key: ${{ secrets.SSH_PRIVATE_KEY_DEV }}
-          source: "src/GoiMon.Api/,docker-compose.yml,.dockerignore"
+          source: "src/GoiMon.Api/,docker-compose.yml,docker-compose.dev.yml,.dockerignore"
           target: "/var/www/goimon"
 
       - name: Docker Compose up (dev)
@@ -66,7 +67,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY_DEV }}
           script: |
             cd /var/www/goimon
-            docker compose up -d --build api
+            docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build api
 
   deploy-prod:
     if: ${{ github.ref == 'refs/heads/main' }}
@@ -88,6 +89,7 @@ jobs:
               - 'tests/GoiMon.Api.Tests/**'
               - 'src/Shared/**'
               - 'docker-compose.yml'
+              - 'docker-compose.prod.yml'
 
       - name: Deploy source to server
         if: ${{ steps.filter.outputs.goimon_api == 'true' }}
@@ -96,7 +98,7 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "src/GoiMon.Api/,docker-compose.yml,.dockerignore"
+          source: "src/GoiMon.Api/,docker-compose.yml,docker-compose.prod.yml,.dockerignore"
           target: "/var/www/goimon"
 
       - name: Docker Compose up (prod)
@@ -108,4 +110,4 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /var/www/goimon
-            docker compose up -d --build api
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build api

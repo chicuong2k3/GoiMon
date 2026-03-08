@@ -2,11 +2,7 @@ services:
   api:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-    volumes:
-      - ./src/GoiMon.Api:/src/GoiMon.Api:ro
 
   portal:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-    volumes:
-      - ./src/GoiMon.Portal:/src/GoiMon.Portal:ro
