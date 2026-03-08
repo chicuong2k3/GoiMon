@@ -1,0 +1,67 @@
+services:
+  seq:
+    image: datalust/seq
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+    ports:
+      - "5341:80"
+    volumes:
+      - seqdata:/data
+
+  api:
+    build:
+      context: .
+      dockerfile: src/GoiMon.Api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      seq:
+        condition: service_started
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=${DATABASE_URL}
+      - OAuth__Google__ClientId=${GOOGLE_CLIENT_ID}
+      - OAuth__Google__ClientSecret=${GOOGLE_CLIENT_SECRET}
+      - OAuth__Google__RedirectUri=${GOOGLE_REDIRECT_URI}
+      - OAuth__Facebook__AppId=${FACEBOOK_APP_ID}
+      - OAuth__Facebook__AppSecret=${FACEBOOK_APP_SECRET}
+      - OAuth__Facebook__RedirectUri=${FACEBOOK_REDIRECT_URI}
+      - Jwt__SigningKey=${JWT_SIGNING_KEY}
+      - Jwt__Issuer=${JWT_ISSUER}
+      - Jwt__Audience=${JWT_AUDIENCE}
+      - Jwt__ExpiryMinutes=${JWT_EXPIRY_MINUTES}
+      - Email__Host=${EMAIL_HOST}
+      - Email__Port=${EMAIL_PORT}
+      - Email__EnableSsl=${EMAIL_ENABLE_SSL}
+      - Email__Username=${EMAIL_USERNAME}
+      - Email__Password=${EMAIL_PASSWORD}
+      - Email__DisplayName=${EMAIL_DISPLAY_NAME}
+      - Otp__ExpiryMinutes=${OTP_EXPIRY_MINUTES}
+      - Otp__MaxAttempts=${OTP_MAX_ATTEMPTS}
+      - Cloudinary__CloudName=${CLOUDINARY_CLOUD_NAME}
+      - Cloudinary__ApiKey=${CLOUDINARY_API_KEY}
+      - Cloudinary__ApiSecret=${CLOUDINARY_API_SECRET}
+      - Serilog__WriteTo__0__Args__serverUrl=${SEQ_URL}
+    ports:
+      - "5000:5000"
+
+  portal:
+    build:
+      context: .
+      dockerfile: src/GoiMon.Portal/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - GraphQL__Endpoint=${PORTAL_GRAPHQL_ENDPOINT}
+      - Auth__OtpDeliveryMethod=${OTP_DELIVERY_METHOD}
+      - OAuth__Google__ClientId=${GOOGLE_CLIENT_ID}
+      - OAuth__Google__RedirectUri=${GOOGLE_REDIRECT_URI}
+      - OAuth__Facebook__AppId=${FACEBOOK_APP_ID}
+      - OAuth__Facebook__RedirectUri=${FACEBOOK_REDIRECT_URI}
+    ports:
+      - "5002:5002"
+
+volumes:
+  seqdata:

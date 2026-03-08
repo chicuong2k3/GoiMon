@@ -6,17 +6,35 @@ on:
   workflow_dispatch: {}
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore GoiMon.sln
+
+      - name: Build
+        run: dotnet build GoiMon.sln -c Release --no-restore
+
+      - name: Test
+        run: dotnet test tests/GoiMon.Api.Tests/GoiMon.Api.Tests.csproj -c Release --no-build --verbosity normal
+
   deploy-dev:
     if: ${{ github.ref == 'refs/heads/dev' }}
+    needs: test
     runs-on: ubuntu-latest
-    env:
-      ASPNETCORE_ENVIRONMENT: Development
+    environment: dev
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Filter changed paths
         id: filter
@@ -27,30 +45,19 @@ jobs:
               - 'src/GoiMon.Api/**'
               - 'tests/GoiMon.Api.Tests/**'
               - 'src/Shared/**'
-              - 'src/**/*.cs'
+              - 'docker-compose.yml'
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - name: Deploy source to server
+        if: ${{ steps.filter.outputs.goimon_api == 'true' }}
+        uses: appleboy/scp-action@v0.1.7
         with:
-          dotnet-version: "10.0.x"
+          host: ${{ secrets.SSH_HOST_DEV }}
+          username: ${{ secrets.SSH_USER_DEV }}
+          key: ${{ secrets.SSH_PRIVATE_KEY_DEV }}
+          source: "src/GoiMon.Api/,docker-compose.yml,.dockerignore"
+          target: "/var/www/goimon"
 
-      - name: Restore
-        if: ${{ steps.filter.outputs.goimon_api == 'true' }}
-        run: dotnet restore GoiMon.sln
-
-      - name: Build
-        if: ${{ steps.filter.outputs.goimon_api == 'true' }}
-        run: dotnet build GoiMon.sln -c Release --no-restore
-
-      - name: Test
-        if: ${{ steps.filter.outputs.goimon_api == 'true' }}
-        run: dotnet test tests/GoiMon.Api.Tests/GoiMon.Api.Tests.csproj -c Release --no-build --verbosity normal
-
-      - name: Publish
-        if: ${{ steps.filter.outputs.goimon_api == 'true' }}
-        run: dotnet publish src/GoiMon.Api/GoiMon.Api.csproj -c Release -o publish
-
-      - name: Prepare deploy directory (dev server)
+      - name: Docker Compose up (dev)
         if: ${{ steps.filter.outputs.goimon_api == 'true' }}
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -58,31 +65,18 @@ jobs:
           username: ${{ secrets.SSH_USER_DEV }}
           key: ${{ secrets.SSH_PRIVATE_KEY_DEV }}
           script: |
-            sudo mkdir -p /var/www/goimon-api-dev
-            sudo chown $USER:$USER /var/www/goimon-api-dev
-
-      - name: Deploy via SCP to dev
-        if: ${{ steps.filter.outputs.goimon_api == 'true' }}
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST_DEV }}
-          username: ${{ secrets.SSH_USER_DEV }}
-          key: ${{ secrets.SSH_PRIVATE_KEY_DEV }}
-          source: "publish/*"
-          target: "/var/www/goimon-api-dev"
-          strip_components: 1
+            cd /var/www/goimon
+            docker compose up -d --build api
 
   deploy-prod:
     if: ${{ github.ref == 'refs/heads/main' }}
+    needs: test
     runs-on: ubuntu-latest
-    env:
-      ASPNETCORE_ENVIRONMENT: Production
+    environment: production
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Filter changed paths
         id: filter
@@ -93,37 +87,19 @@ jobs:
               - 'src/GoiMon.Api/**'
               - 'tests/GoiMon.Api.Tests/**'
               - 'src/Shared/**'
-              - 'src/**/*.cs'
+              - 'docker-compose.yml'
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - name: Deploy source to server
+        if: ${{ steps.filter.outputs.goimon_api == 'true' }}
+        uses: appleboy/scp-action@v0.1.7
         with:
-          dotnet-version: "10.0.x"
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "src/GoiMon.Api/,docker-compose.yml,.dockerignore"
+          target: "/var/www/goimon"
 
-      - name: Restore
-        if: ${{ steps.filter.outputs.goimon_api == 'true' }}
-        run: dotnet restore GoiMon.sln
-
-      - name: Build
-        if: ${{ steps.filter.outputs.goimon_api == 'true' }}
-        run: dotnet build GoiMon.sln -c Release --no-restore
-
-      - name: Test
-        if: ${{ steps.filter.outputs.goimon_api == 'true' }}
-        run: dotnet test tests/GoiMon.Api.Tests/GoiMon.Api.Tests.csproj -c Release --no-build --verbosity normal
-
-      - name: Publish
-        if: ${{ steps.filter.outputs.goimon_api == 'true' }}
-        run: dotnet publish src/GoiMon.Api/GoiMon.Api.csproj -c Release -o publish
-
-      - name: Upload artifact (optional)
-        if: ${{ steps.filter.outputs.goimon_api == 'true' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: goimon-api-publish
-          path: publish
-
-      - name: Prepare deploy directory (prod)
+      - name: Docker Compose up (prod)
         if: ${{ steps.filter.outputs.goimon_api == 'true' }}
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -131,21 +107,5 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            sudo mkdir -p /var/www/goimon-api
-            sudo chown $USER:$USER /var/www/goimon-api
-
-      - name: Deploy via SCP to prod
-        if: ${{ steps.filter.outputs.goimon_api == 'true' }}
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "publish/*"
-          target: "/var/www/goimon-api"
-          strip_components: 1
-
-      - name: Set production env vars (only secrets)
-        if: ${{ steps.filter.outputs.goimon_api == 'true' }}
-        run: |
-          echo "Production secrets should be set in the target host or via your platform's secret manager."
+            cd /var/www/goimon
+            docker compose up -d --build api

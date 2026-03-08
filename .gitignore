@@ -60,3 +60,6 @@ coverage/
 
 # Development appsettings for API (contains secrets) — do not commit
 /src/GoiMon.Api/appsettings.Development.json
+
+# Docker environment (contains secrets)
+.env

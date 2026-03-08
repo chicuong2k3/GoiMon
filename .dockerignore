@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+**/.git
+**/node_modules
+.env
+publish/
+out/
+TestResults/
+coverage/
+.vs/
+.idea/
