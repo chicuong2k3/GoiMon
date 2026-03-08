@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using HotChocolate;
 using HotChocolate.Types;
+using GoiMon.Api.Domain;
 using GoiMon.Api.Features.Authentication.Dtos;
 using GoiMon.Api.Infrastructure.Services;
 
@@ -20,160 +21,10 @@ public class AuthenticationMutations
     }
 
     /// <summary>
-    /// Register a new user with Google OAuth.
-    /// Generates OTP and sends it to the user's email/SMS.
+    /// Authenticate with Google OAuth — login if user exists, register if not.
     /// </summary>
     [GraphQLType(typeof(AuthenticationPayload))]
-    public async Task<AuthenticationPayload> RegisterWithGoogleAsync(
-        RegisterWithOAuthInput input,
-        [Service] IOAuthExchangeService oauthService,
-        [Service] IDbContextFactory<AppDbContext> contextFactory,
-        [Service] IOtpService otpService)
-    {
-        try
-        {
-            // Exchange Google token for user info
-            var oauthUser = await oauthService.ExchangeGoogleTokenAsync(input.Token);
-
-            using var context = contextFactory.CreateDbContext();
-
-            // Check if user already exists by email or GoogleId
-            var existingUser = context.Users.FirstOrDefault(u =>
-                u.Email == oauthUser.Email || u.GoogleId == oauthUser.UserId);
-
-            if (existingUser != null)
-            {
-                throw new GraphQLException(
-                    ErrorBuilder.New()
-                        .SetMessage("User already registered with this email or Google account.")
-                        .SetExtension("code", "USER_ALREADY_EXISTS")
-                        .Build());
-            }
-
-            // Create new user (Assign to default pilot tenant for now)
-            var userId = Guid.NewGuid();
-            var pilotTenantId = Guid.Parse("00000000-0000-0000-0000-000000000001");
-            var user = User.CreateFromOAuth(
-                id: userId,
-                email: oauthUser.Email,
-                firstName: oauthUser.FirstName,
-                lastName: oauthUser.LastName,
-                photoUrl: oauthUser.PhotoUrl,
-                googleId: oauthUser.UserId,
-                tenantId: pilotTenantId);
-
-            context.Users.Add(user);
-            await context.SaveChangesAsync();
-
-            // Generate OTP
-            _ = await otpService.GenerateOtpAsync(userId, input.OtpDeliveryMethod, contextFactory);
-
-            _logger.LogInformation("New user registered with Google: {Email}", oauthUser.Email);
-
-            return new AuthenticationPayload
-            {
-                User = UserDto.FromEntity(user),
-                Token = null,
-                RequiresOtpVerification = true,
-                Message = $"Verification code sent to {input.OtpDeliveryMethod}. Please verify to complete registration."
-            };
-        }
-        catch (GraphQLException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Google registration failed");
-            throw new GraphQLException(
-                ErrorBuilder.New()
-                    .SetMessage("Google registration failed. Please try again.")
-                    .SetExtension("code", "GOOGLE_REGISTRATION_FAILED")
-                    .Build());
-        }
-    }
-
-    /// <summary>
-    /// Register a new user with Facebook OAuth.
-    /// Generates OTP and sends it to the user's email/SMS.
-    /// </summary>
-    [GraphQLType(typeof(AuthenticationPayload))]
-    public async Task<AuthenticationPayload> RegisterWithFacebookAsync(
-        RegisterWithOAuthInput input,
-        [Service] IOAuthExchangeService oauthService,
-        [Service] IDbContextFactory<AppDbContext> contextFactory,
-        [Service] IOtpService otpService)
-    {
-        try
-        {
-            // Exchange Facebook token for user info
-            var oauthUser = await oauthService.ExchangeFacebookTokenAsync(input.Token);
-
-            using var context = contextFactory.CreateDbContext();
-
-            // Check if user already exists by email or FacebookId
-            var existingUser = context.Users.FirstOrDefault(u =>
-                u.Email == oauthUser.Email || u.FacebookId == oauthUser.UserId);
-
-            if (existingUser != null)
-            {
-                throw new GraphQLException(
-                    ErrorBuilder.New()
-                        .SetMessage("User already registered with this email or Facebook account.")
-                        .SetExtension("code", "USER_ALREADY_EXISTS")
-                        .Build());
-            }
-
-            // Create new user (Assign to default pilot tenant for now)
-            var userId = Guid.NewGuid();
-            var pilotTenantId = Guid.Parse("00000000-0000-0000-0000-000000000001");
-            var user = User.CreateFromOAuth(
-                id: userId,
-                email: oauthUser.Email,
-                firstName: oauthUser.FirstName,
-                lastName: oauthUser.LastName,
-                photoUrl: oauthUser.PhotoUrl,
-                facebookId: oauthUser.UserId,
-                tenantId: pilotTenantId);
-
-            context.Users.Add(user);
-            await context.SaveChangesAsync();
-
-            // Generate OTP
-            _ = await otpService.GenerateOtpAsync(userId, input.OtpDeliveryMethod, contextFactory);
-
-            _logger.LogInformation("New user registered with Facebook: {Email}", oauthUser.Email);
-
-            return new AuthenticationPayload
-            {
-                User = UserDto.FromEntity(user),
-                Token = null,
-                RequiresOtpVerification = true,
-                Message = $"Verification code sent to {input.OtpDeliveryMethod}. Please verify to complete registration."
-            };
-        }
-        catch (GraphQLException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Facebook registration failed");
-            throw new GraphQLException(
-                ErrorBuilder.New()
-                    .SetMessage("Facebook registration failed. Please try again.")
-                    .SetExtension("code", "FACEBOOK_REGISTRATION_FAILED")
-                    .Build());
-        }
-    }
-
-    /// <summary>
-    /// Login with Google OAuth.
-    /// If user is not yet verified, returns OTP requirement.
-    /// If user is verified, returns JWT token immediately.
-    /// </summary>
-    [GraphQLType(typeof(AuthenticationPayload))]
-    public async Task<AuthenticationPayload> LoginWithGoogleAsync(
+    public async Task<AuthenticationPayload> AuthenticateWithGoogleAsync(
         LoginWithOAuthInput input,
         [Service] IOAuthExchangeService oauthService,
         [Service] IDbContextFactory<AppDbContext> contextFactory,
@@ -182,30 +33,52 @@ public class AuthenticationMutations
     {
         try
         {
-            // Exchange Google token for user info
             var oauthUser = await oauthService.ExchangeGoogleTokenAsync(input.Token);
 
             using var context = contextFactory.CreateDbContext();
 
-            // Look up user by email or GoogleId
-            var user = context.Users.FirstOrDefault(u =>
-                u.Email == oauthUser.Email || u.GoogleId == oauthUser.UserId);
+            // IgnoreQueryFilters: authentication happens before a tenant context exists,
+            // so the global TenantId filter must be bypassed here.
+            var user = context.Users
+                .IgnoreQueryFilters()
+                .FirstOrDefault(u => u.Email == oauthUser.Email || u.GoogleId == oauthUser.UserId);
 
             if (user == null)
             {
-                throw new GraphQLException(
-                    ErrorBuilder.New()
-                        .SetMessage("User not found. Please register first.")
-                        .SetExtension("code", "USER_NOT_FOUND")
-                        .Build());
+                var userId = Guid.NewGuid();
+                var pilotTenantId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+                user = User.CreateFromOAuth(
+                    id: userId,
+                    email: oauthUser.Email,
+                    firstName: oauthUser.FirstName,
+                    lastName: oauthUser.LastName,
+                    photoUrl: oauthUser.PhotoUrl,
+                    googleId: oauthUser.UserId,
+                    tenantId: pilotTenantId);
+                context.Users.Add(user);
+                try
+                {
+                    await context.SaveChangesAsync();
+                    _logger.LogInformation("New user registered via Google OAuth: {Email}", oauthUser.Email);
+                }
+                catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+                    when (ex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
+                {
+                    // Race condition: another request inserted the same user between our check and insert.
+                    context.ChangeTracker.Clear();
+                    user = context.Users
+                        .IgnoreQueryFilters()
+                        .FirstOrDefault(u => u.Email == oauthUser.Email || u.GoogleId == oauthUser.UserId);
+
+                    if (user == null)
+                        throw;
+                }
             }
 
-            // If user is verified, issue JWT token immediately
             if (user.IsVerified)
             {
                 var token = jwtService.GenerateToken(user.Id, user.TenantId, user.Email, user.Role.ToString(), true);
-                _logger.LogInformation("User logged in with Google: {Email}", user.Email);
-
+                _logger.LogInformation("User authenticated with Google: {Email}", oauthUser.Email);
                 return new AuthenticationPayload
                 {
                     User = UserDto.FromEntity(user),
@@ -215,17 +88,13 @@ public class AuthenticationMutations
                 };
             }
 
-            // If not verified, generate new OTP
             _ = await otpService.GenerateOtpAsync(user.Id, input.OtpDeliveryMethod, contextFactory);
-
-            _logger.LogInformation("Unverified user attempting login with Google: {Email}", user.Email);
-
             return new AuthenticationPayload
             {
                 User = UserDto.FromEntity(user),
                 Token = null,
                 RequiresOtpVerification = true,
-                Message = $"Account requires verification. Code sent to {input.OtpDeliveryMethod}."
+                Message = $"Verification code sent to {input.OtpDeliveryMethod}. Please verify to complete."
             };
         }
         catch (GraphQLException)
@@ -234,87 +103,37 @@ public class AuthenticationMutations
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Google login failed");
+            _logger.LogError(ex, "Google authentication failed");
             throw new GraphQLException(
                 ErrorBuilder.New()
-                    .SetMessage("Google login failed. Please try again.")
-                    .SetExtension("code", "GOOGLE_LOGIN_FAILED")
+                    .SetMessage("Google authentication failed. Please try again.")
+                    .SetExtension("code", "GOOGLE_AUTH_FAILED")
                     .Build());
         }
     }
 
     /// <summary>
-    /// Login with Facebook OAuth.
-    /// If user is not yet verified, returns OTP requirement.
-    /// If user is verified, returns JWT token immediately.
+    /// Resend OTP to the user — invalidates any existing OTP and generates a new one.
     /// </summary>
-    [GraphQLType(typeof(AuthenticationPayload))]
-    public async Task<AuthenticationPayload> LoginWithFacebookAsync(
-        LoginWithOAuthInput input,
-        [Service] IOAuthExchangeService oauthService,
-        [Service] IDbContextFactory<AppDbContext> contextFactory,
+    public async Task<bool> ResendOtpAsync(
+        Guid userId,
+        OtpDeliveryMethod deliveryMethod,
         [Service] IOtpService otpService,
-        [Service] IJwtTokenService jwtService)
+        [Service] IDbContextFactory<AppDbContext> contextFactory)
     {
         try
         {
-            // Exchange Facebook token for user info
-            var oauthUser = await oauthService.ExchangeFacebookTokenAsync(input.Token);
-
-            using var context = contextFactory.CreateDbContext();
-
-            // Look up user by email or FacebookId
-            var user = context.Users.FirstOrDefault(u =>
-                u.Email == oauthUser.Email || u.FacebookId == oauthUser.UserId);
-
-            if (user == null)
-            {
-                throw new GraphQLException(
-                    ErrorBuilder.New()
-                        .SetMessage("User not found. Please register first.")
-                        .SetExtension("code", "USER_NOT_FOUND")
-                        .Build());
-            }
-
-            // If user is verified, issue JWT token immediately
-            if (user.IsVerified)
-            {
-                var token = jwtService.GenerateToken(user.Id, user.TenantId, user.Email, user.Role.ToString(), true);
-                _logger.LogInformation("User logged in with Facebook: {Email}", user.Email);
-
-                return new AuthenticationPayload
-                {
-                    User = UserDto.FromEntity(user),
-                    Token = token,
-                    RequiresOtpVerification = false,
-                    Message = "Login successful."
-                };
-            }
-
-            // If not verified, generate new OTP
-            _ = await otpService.GenerateOtpAsync(user.Id, input.OtpDeliveryMethod, contextFactory);
-
-            _logger.LogInformation("Unverified user attempting login with Facebook: {Email}", user.Email);
-
-            return new AuthenticationPayload
-            {
-                User = UserDto.FromEntity(user),
-                Token = null,
-                RequiresOtpVerification = true,
-                Message = $"Account requires verification. Code sent to {input.OtpDeliveryMethod}."
-            };
-        }
-        catch (GraphQLException)
-        {
-            throw;
+            await otpService.GenerateOtpAsync(userId, deliveryMethod, contextFactory);
+            _logger.LogInformation("OTP resent for UserId={UserId}", userId);
+            return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Facebook login failed");
+            _logger.LogError(ex, "Failed to resend OTP for UserId={UserId}", userId);
             throw new GraphQLException(
                 ErrorBuilder.New()
-                    .SetMessage("Facebook login failed. Please try again.")
-                    .SetExtension("code", "FACEBOOK_LOGIN_FAILED")
+                    .SetMessage("Failed to resend verification code.")
+                    .SetExtension("code", "RESEND_OTP_FAILED")
                     .Build());
         }
     }
@@ -331,7 +150,6 @@ public class AuthenticationMutations
     {
         try
         {
-            // Validate OTP
             var (isValid, message) = await otpService.ValidateOtpAsync(input.UserId, input.OtpToken, contextFactory);
 
             if (!isValid)
@@ -347,8 +165,7 @@ public class AuthenticationMutations
 
             using var context = contextFactory.CreateDbContext();
 
-            // Load user and mark as verified
-            var user = context.Users.Find(input.UserId);
+            var user = context.Users.IgnoreQueryFilters().FirstOrDefault(u => u.Id == input.UserId);
             if (user == null)
             {
                 return new OtpVerificationPayload
@@ -364,9 +181,7 @@ public class AuthenticationMutations
             context.Users.Update(user);
             await context.SaveChangesAsync();
 
-            // Generate JWT token
             var token = jwtService.GenerateToken(user.Id, user.TenantId, user.Email, user.Role.ToString(), true);
-
             _logger.LogInformation("OTP verified for user: {Email}", user.Email);
 
             return new OtpVerificationPayload

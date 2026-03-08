@@ -1,41 +1,50 @@
 using System.Security.Cryptography;
 using GoiMon.Api.Domain;
+using GoiMon.Api.Infrastructure.Email;
 
 namespace GoiMon.Api.Infrastructure.Services;
 
 public class OtpService : IOtpService
 {
     private readonly ILogger<OtpService> _logger;
+    private readonly IEmailService _emailService;
     private const int OtpLength = 6;
     private const int DefaultExpiryMinutes = 10;
 
-    public OtpService(ILogger<OtpService> logger)
+    public OtpService(ILogger<OtpService> logger, IEmailService emailService)
     {
         _logger = logger;
+        _emailService = emailService;
     }
 
     /// <inheritdoc />
     public async Task<string> GenerateOtpAsync(Guid userId, OtpDeliveryMethod deliveryMethod, IDbContextFactory<AppDbContext> contextFactory)
     {
-        // Generate random 6-digit OTP
         var token = GenerateRandomOtp();
 
         using var context = contextFactory.CreateDbContext();
 
+        // OTP operations happen before the user is authenticated — bypass the global TenantId filter.
+        var user = context.Users.IgnoreQueryFilters().FirstOrDefault(u => u.Id == userId);
+        if (user is null)
+        {
+            _logger.LogWarning("Cannot generate OTP: user {UserId} not found", userId);
+            return token;
+        }
+
         // Invalidate any existing non-expired OTPs for this user
         var existingOtps = context.OtpTokens
+            .IgnoreQueryFilters()
             .Where(o => o.UserId == userId && !o.IsUsed)
             .ToList();
 
         foreach (var oldOtp in existingOtps)
-        {
             oldOtp.IsUsed = true;
-        }
 
-        // Create new OTP token
         var otpToken = new OtpToken
         {
             Id = Guid.NewGuid(),
+            TenantId = user.TenantId,
             UserId = userId,
             Token = token,
             DeliveryMethod = deliveryMethod,
@@ -48,13 +57,11 @@ public class OtpService : IOtpService
         context.OtpTokens.Add(otpToken);
         await context.SaveChangesAsync().ConfigureAwait(false);
 
-        // Log OTP generation (without actual token in production)
         _logger.LogInformation(
             "OTP generated for UserId={UserId}, DeliveryMethod={Method}, ExpiresAt={ExpiresAt}",
             userId, deliveryMethod, otpToken.ExpiresAt);
 
-        // Simulate sending OTP (placeholder)
-        await SendOtpAsync(deliveryMethod, token, userId).ConfigureAwait(false);
+        await SendOtpAsync(user, deliveryMethod, token).ConfigureAwait(false);
 
         return token;
     }
@@ -64,7 +71,9 @@ public class OtpService : IOtpService
     {
         using var context = contextFactory.CreateDbContext();
 
+        // OTP validation happens before the user is authenticated — bypass the global TenantId filter.
         var otpToken = context.OtpTokens
+            .IgnoreQueryFilters()
             .FirstOrDefault(o => o.UserId == userId && o.Token == token && !o.IsUsed);
 
         if (otpToken == null)
@@ -73,21 +82,18 @@ public class OtpService : IOtpService
             return (false, "Invalid OTP token.");
         }
 
-        // Check if expired
         if (otpToken.IsExpired())
         {
             _logger.LogWarning("OTP validation failed for UserId={UserId}: Token expired", userId);
             return (false, "OTP token has expired.");
         }
 
-        // Check if max attempts exceeded
         if (otpToken.FailedAttempts >= OtpToken.MaxFailedAttempts)
         {
             _logger.LogWarning("OTP validation failed for UserId={UserId}: Max attempts exceeded", userId);
             return (false, "OTP token locked due to too many failed attempts.");
         }
 
-        // Mark as used
         otpToken.MarkAsUsed();
         context.OtpTokens.Update(otpToken);
         await context.SaveChangesAsync().ConfigureAwait(false);
@@ -101,19 +107,17 @@ public class OtpService : IOtpService
     {
         using var context = contextFactory.CreateDbContext();
 
+        // Background job — no tenant context, must bypass the global TenantId filter.
         var expiredTokens = context.OtpTokens
+            .IgnoreQueryFilters()
             .Where(o => !o.IsUsed && o.ExpiresAt <= DateTime.UtcNow)
             .ToList();
 
         if (expiredTokens.Count == 0)
-        {
             return 0;
-        }
 
-        foreach (var token in expiredTokens)
-        {
-            token.IsUsed = true;
-        }
+        foreach (var t in expiredTokens)
+            t.IsUsed = true;
 
         context.OtpTokens.UpdateRange(expiredTokens);
         var deleted = await context.SaveChangesAsync().ConfigureAwait(false);
@@ -122,9 +126,27 @@ public class OtpService : IOtpService
         return deleted;
     }
 
-    /// <summary>
-    /// Generates a random 6-digit numeric OTP.
-    /// </summary>
+    private async Task SendOtpAsync(User user, OtpDeliveryMethod deliveryMethod, string token)
+    {
+        if (deliveryMethod == OtpDeliveryMethod.Email)
+        {
+            try
+            {
+                await _emailService.SendOtpAsync(user.Email, token, DefaultExpiryMinutes);
+            }
+            catch (Exception ex)
+            {
+                // Log but don't fail the OTP generation — token is already saved
+                _logger.LogError(ex, "OTP email delivery failed for user {UserId}. Token was generated and saved.", user.Id);
+            }
+        }
+        else if (deliveryMethod == OtpDeliveryMethod.Sms)
+        {
+            // TODO: integrate SMS provider (Twilio, etc.)
+            _logger.LogWarning("[SMS NOT IMPLEMENTED] OTP for user {UserId}: {Token}", user.Id, token);
+        }
+    }
+
     private static string GenerateRandomOtp()
     {
         var buffer = new byte[4];
@@ -134,23 +156,5 @@ public class OtpService : IOtpService
         }
         var random = new Random(BitConverter.ToInt32(buffer, 0));
         return random.Next(100000, 999999).ToString();
-    }
-
-    /// <summary>
-    /// Simulates sending OTP via email or SMS.
-    /// In production, integrate with SendGrid, Twilio, or similar.
-    /// </summary>
-    private Task SendOtpAsync(OtpDeliveryMethod deliveryMethod, string token, Guid userId)
-    {
-        if (deliveryMethod == OtpDeliveryMethod.Email)
-        {
-            _logger.LogInformation("📧 [PLACEHOLDER] Sending OTP via email for user {UserId}: {Token}", userId, token);
-        }
-        else if (deliveryMethod == OtpDeliveryMethod.Sms)
-        {
-            _logger.LogInformation("📱 [PLACEHOLDER] Sending OTP via SMS for user {UserId}: {Token}", userId, token);
-        }
-
-        return Task.CompletedTask;
     }
 }

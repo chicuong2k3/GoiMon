@@ -1,0 +1,35 @@
+mutation AuthenticateWithGoogle($token: String!, $otpDeliveryMethod: OtpDeliveryMethod!) {
+  authenticateWithGoogle(input: { token: $token, provider: "Google", otpDeliveryMethod: $otpDeliveryMethod }) {
+    user {
+      id
+      email
+      firstName
+      lastName
+      photoUrl
+      isVerified
+    }
+    token
+    requiresOtpVerification
+    message
+  }
+}
+
+
+mutation ResendOtp($userId: UUID!, $deliveryMethod: OtpDeliveryMethod!) {
+  resendOtp(userId: $userId, deliveryMethod: $deliveryMethod)
+}
+
+mutation VerifyOtp($userId: UUID!, $otpToken: String!) {
+  verifyOtp(input: { userId: $userId, otpToken: $otpToken }) {
+    success
+    token
+    user {
+      id
+      email
+      firstName
+      lastName
+      isVerified
+    }
+    message
+  }
+}

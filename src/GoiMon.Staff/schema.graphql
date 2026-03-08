@@ -56,11 +56,9 @@ type Mutation {
   mergeTableSlots(input: MergeTableSlotsInput!): Order
   splitTableSlot(input: SplitTableSlotInput!): TableSlot
   splitBill(input: SplitBillInput!): Order
-  registerWithGoogle(input: RegisterWithOAuthInput!): AuthenticationPayload
-  registerWithFacebook(input: RegisterWithOAuthInput!): AuthenticationPayload
-  loginWithGoogle(input: LoginWithOAuthInput!): AuthenticationPayload
-  loginWithFacebook(input: LoginWithOAuthInput!): AuthenticationPayload
+  authenticateWithGoogle(input: LoginWithOAuthInput!): AuthenticationPayload
   verifyOtp(input: VerifyOtpInput!): OtpVerificationPayload
+  resendOtp(userId: UUID!, deliveryMethod: OtpDeliveryMethod!): Boolean!
   initializeMerchantStore(storeName: String!): Tenant!
 }
 

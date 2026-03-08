@@ -51,6 +51,7 @@ builder.Services.AddScoped<GoimonAuthenticationStateProvider>();
 builder.Services.AddAuthorizationCore();
 
 builder.Services.AddStoreUtilities();
+builder.Services.AddScopedStoreWithUtilities(AuthUiState.Initial, (store, _) => store);
 builder.Services.AddScopedStoreWithUtilities(CategoriesUiState.Initial, (store, _) => store);
 builder.Services.AddScopedStoreWithUtilities(ProductsUiState.Initial, (store, _) => store);
 builder.Services.AddScopedStoreWithUtilities(CombosUiState.Initial, (store, _) => store);

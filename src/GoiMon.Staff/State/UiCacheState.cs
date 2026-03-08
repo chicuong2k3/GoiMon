@@ -1,5 +1,10 @@
 namespace GoiMon.Staff.State;
 
+public record AuthUiState(Guid? OtpPendingUserId, string DeliveryMethod)
+{
+    public static AuthUiState Initial => new(null, "email");
+}
+
 public record CategoriesUiState(CategoryPageCache? Cache)
 {
     public static CategoriesUiState Initial => new((CategoryPageCache?)null);

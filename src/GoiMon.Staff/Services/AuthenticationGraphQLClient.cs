@@ -1,4 +1,5 @@
 using GoiMon.Staff.Features.Authentication.Models;
+using StrawberryShake;
 
 namespace GoiMon.Staff.Services;
 
@@ -17,104 +18,7 @@ public class AuthenticationGraphQLClient
     }
 
     /// <summary>
-    /// Registers a new user with Google OAuth.
-    /// </summary>
-    /// <param name="idToken">Google ID token from OAuth flow.</param>
-    /// <param name="otpDeliveryMethod">Delivery method: Email or Sms (enum: 0=Email, 1=Sms).</param>
-    /// <returns>Authentication payload with user and OTP requirement status.</returns>
-    public async Task<(bool Success, AuthenticationPayload? Payload, string? Error)> RegisterWithGoogleAsync(
-        string idToken,
-        int otpDeliveryMethod)
-    {
-        try
-        {
-            _logger.LogInformation("Calling RegisterWithGoogle mutation");
-
-            // GraphQL mutation call would go here
-            // var result = await _client.RegisterWithGoogle(new RegisterWithOAuthInput 
-            // {
-            //     Token = idToken,
-            //     Provider = "Google",
-            //     OtpDeliveryMethod = otpDeliveryMethod
-            // });
-
-            return (true, null, null);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "RegisterWithGoogle mutation failed");
-            return (false, null, ex.Message);
-        }
-    }
-
-    /// <summary>
-    /// Registers a new user with Facebook OAuth.
-    /// </summary>
-    public async Task<(bool Success, AuthenticationPayload? Payload, string? Error)> RegisterWithFacebookAsync(
-        string accessToken,
-        int otpDeliveryMethod)
-    {
-        try
-        {
-            _logger.LogInformation("Calling RegisterWithFacebook mutation");
-
-            // GraphQL mutation call would go here
-
-            return (true, null, null);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "RegisterWithFacebook mutation failed");
-            return (false, null, ex.Message);
-        }
-    }
-
-    /// <summary>
-    /// Logs in user with Google OAuth.
-    /// </summary>
-    public async Task<(bool Success, AuthenticationPayload? Payload, string? Error)> LoginWithGoogleAsync(
-        string idToken,
-        int otpDeliveryMethod)
-    {
-        try
-        {
-            _logger.LogInformation("Calling LoginWithGoogle mutation");
-
-            // GraphQL mutation call would go here
-
-            return (true, null, null);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "LoginWithGoogle mutation failed");
-            return (false, null, ex.Message);
-        }
-    }
-
-    /// <summary>
-    /// Logs in user with Facebook OAuth.
-    /// </summary>
-    public async Task<(bool Success, AuthenticationPayload? Payload, string? Error)> LoginWithFacebookAsync(
-        string accessToken,
-        int otpDeliveryMethod)
-    {
-        try
-        {
-            _logger.LogInformation("Calling LoginWithFacebook mutation");
-
-            // GraphQL mutation call would go here
-
-            return (true, null, null);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "LoginWithFacebook mutation failed");
-            return (false, null, ex.Message);
-        }
-    }
-
-    /// <summary>
-    /// Verifies OTP code and returns JWT token on success.
+    /// Verifies OTP code and returns the app JWT token on success.
     /// </summary>
     public async Task<(bool Success, string? Token, AuthenticationUser? User, string? Error)> VerifyOtpAsync(
         Guid userId,
@@ -123,15 +27,31 @@ public class AuthenticationGraphQLClient
         try
         {
             _logger.LogInformation("Calling VerifyOtp mutation for user {UserId}", userId);
+            var result = await _client.VerifyOtp.ExecuteAsync(userId, otpCode);
 
-            // GraphQL mutation call would go here
-            // var result = await _client.VerifyOtp(new VerifyOtpInput
-            // {
-            //     UserId = userId,
-            //     OtpToken = otpCode
-            // });
+            if (result.IsErrorResult() || result.Data?.VerifyOtp is null)
+            {
+                var error = result.Errors.FirstOrDefault()?.Message ?? "OTP verification failed";
+                _logger.LogWarning("VerifyOtp failed: {Error}", error);
+                return (false, null, null, error);
+            }
 
-            return (true, null, null, null);
+            var data = result.Data.VerifyOtp;
+            if (!data.Success)
+                return (false, null, null, data.Message);
+
+            AuthenticationUser? user = null;
+            if (data.User is not null)
+            {
+                user = new AuthenticationUser
+                {
+                    Email = data.User.Email,
+                    DisplayName = $"{data.User.FirstName} {data.User.LastName}".Trim(),
+                    IsVerified = data.User.IsVerified
+                };
+            }
+
+            return (true, data.Token, user, null);
         }
         catch (Exception ex)
         {
@@ -147,6 +67,7 @@ public class AuthenticationGraphQLClient
 public class AuthenticationPayload
 {
     public required AuthenticationUser User { get; set; }
+    public Guid UserId { get; set; }
     public string? Token { get; set; }
     public bool RequiresOtpVerification { get; set; }
     public string? Message { get; set; }

@@ -1,20 +1,26 @@
 @page "/authentication"
+@page "/authentication/google-callback"
+@page "/authentication/facebook-callback"
+@inherits StoreComponentWithUtilities<AuthUiState>
 @using GoiMon.Staff.Features.Authentication.Helpers
 @using GoiMon.Staff.Features.Authentication.Components
 @using GoiMon.Staff.Features.Authentication.Services
+@using GoiMon.Staff.State
+@using EasyAppDev.Blazor.Store.Core
 
 @inject NavigationManager Navigation
 @inject IConfiguration Configuration
 @inject ILogger<Authentication> Logger
 @inject ITokenStorageService TokenStorage
 @inject GoimonAuthenticationStateProvider AuthProvider
+@inject IGoiMonClient Client
+@inject IStateWriter<AuthUiState> UiStateWriter
 
 <div class="flex min-h-[80vh] items-center justify-center p-4">
     <BbCard Class="w-full max-w-md">
         <BbCardHeader Class="text-center space-y-1">
             <BbCardTitle>Welcome to GoiMon</BbCardTitle>
-            <BbCardDescription>@(IsRegisterMode ? "Create an account or sign in" : "Sign in with your social account")
-            </BbCardDescription>
+            <BbCardDescription>Sign in with your social account</BbCardDescription>
         </BbCardHeader>
 
         <BbCardContent Class="space-y-4">
@@ -29,7 +35,9 @@
             @if (IsShowingOtpVerification)
             {
                 <GoiMon.Staff.Features.Authentication.Components.OtpVerification DeliveryMethod="@SelectedDeliveryMethod"
-                                                                                 UserId="@CurrentUserId" />
+                                                                                 UserId="@CurrentUserId"
+                                                                                 OnVerificationSuccess="OnOtpVerified"
+                                                                                 OnError="OnOtpError" />
             }
             else
             {
@@ -46,7 +54,7 @@
                         {
                             <img src="https://www.google.com/favicon.ico" alt="Google" class="mr-2 h-4 w-4" />
                         }
-                        @(IsRegisterMode ? "Sign up with Google" : "Sign in with Google")
+                        Sign in with Google
                     </BbButton>
 
                     <BbButton Variant="ButtonVariant.Default" OnClick="OnFacebookClicked" Disabled="@IsLoading"
@@ -59,66 +67,146 @@
                         {
                             <LucideIcon Name="facebook" Class="mr-2 h-4 w-4" />
                         }
-                        @(IsRegisterMode ? "Sign up with Facebook" : "Sign in with Facebook")
+                        Sign in with Facebook
                     </BbButton>
                 </div>
             }
         </BbCardContent>
 
-        <BbCardFooter Class="justify-end items-center">
-            <div class="text-right">
-                <BbTypographyMuted>
-                    @(IsRegisterMode ? "Already have an account?" : "Don't have an account?")
-                    <BbButton Variant="ButtonVariant.Link" OnClick="ToggleMode" Class="px-1">@(IsRegisterMode ? "Sign                        in" : "Register")</BbButton>
-                </BbTypographyMuted>
-            </div>
-        </BbCardFooter>
     </BbCard>
 </div>
 
 @code {
     private bool IsLoading;
-    private bool IsRegisterMode = false;
-    private bool IsShowingOtpVerification = false;
-    private string SelectedDeliveryMethod = "email";
-    private Guid CurrentUserId = Guid.Empty;
     private string? ErrorMessage;
+    private string? _returnUrl;
+
+    private bool IsShowingOtpVerification => State.OtpPendingUserId.HasValue;
+    private Guid CurrentUserId => State.OtpPendingUserId ?? Guid.Empty;
+    private string SelectedDeliveryMethod => State.DeliveryMethod;
 
     protected override async Task OnInitializedAsync()
     {
         var currentUri = new Uri(Navigation.Uri);
-        var returnUrl = GetReturnUrl(currentUri);
+        _returnUrl = GetReturnUrl(currentUri);
 
-        var tokenFromCallback = OAuthHelper.ExtractTokenFromFragment(currentUri.Fragment);
-        if (!string.IsNullOrWhiteSpace(tokenFromCallback))
+        var deliveryMethod = Configuration["Auth:OtpDeliveryMethod"] ?? Configuration["otpDeliveryMethod"] ?? "email";
+        if (!string.Equals(State.DeliveryMethod, deliveryMethod, StringComparison.OrdinalIgnoreCase))
+            await UiStateWriter.UpdateAsync(s => s with { DeliveryMethod = deliveryMethod }, "auth.delivery");
+
+        var idToken = OAuthHelper.ExtractTokenFromFragment(currentUri.Fragment);
+        if (!string.IsNullOrWhiteSpace(idToken))
         {
-            await AuthProvider.LoginWithTokenAsync(tokenFromCallback);
-            Navigation.NavigateTo(returnUrl ?? "/", replace: true);
+            IsLoading = true;
+            try
+            {
+                await HandleOAuthCallbackAsync(idToken);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "OAuth callback failed");
+                ErrorMessage = "Unable to connect to the server. Please try again.";
+            }
+            finally
+            {
+                IsLoading = false;
+            }
             return;
         }
 
-        // Load OTP delivery method from settings. Defaults to email.
-        SelectedDeliveryMethod = Configuration["Auth:OtpDeliveryMethod"] ?? Configuration["otpDeliveryMethod"] ?? "email";
-
         if (await TokenStorage.HasTokenAsync())
         {
-            Navigation.NavigateTo(returnUrl ?? "/", replace: true);
+            Navigation.NavigateTo(_returnUrl ?? "/", replace: true);
         }
     }
 
-    private void ToggleMode()
+    private async Task HandleOAuthCallbackAsync(string idToken)
     {
-        IsRegisterMode = !IsRegisterMode;
+        var delivery = SelectedDeliveryMethod.Equals("sms", StringComparison.OrdinalIgnoreCase)
+            ? OtpDeliveryMethod.Sms
+            : OtpDeliveryMethod.Email;
+
+        string? token = null;
+        bool requiresOtp = false;
+        Guid userId = Guid.Empty;
+        string email = string.Empty;
+        string? firstName = null;
+        string? lastName = null;
+        bool isVerified = false;
+
+        var authResult = await Client.AuthenticateWithGoogle.ExecuteAsync(idToken, delivery);
+        if (authResult.IsErrorResult() || authResult.Data?.AuthenticateWithGoogle is null)
+        {
+            ErrorMessage = authResult.Errors.FirstOrDefault()?.Message ?? "Authentication failed. Please try again.";
+            Logger.LogWarning("AuthenticateWithGoogle failed: {Error}", ErrorMessage);
+            return;
+        }
+        var ad = authResult.Data.AuthenticateWithGoogle;
+        token = ad.Token; requiresOtp = ad.RequiresOtpVerification;
+        userId = ad.User.Id; email = ad.User.Email;
+        firstName = ad.User.FirstName; lastName = ad.User.LastName; isVerified = ad.User.IsVerified;
+
+        if (!requiresOtp && !string.IsNullOrEmpty(token))
+        {
+            await UiStateWriter.UpdateAsync(s => s with { OtpPendingUserId = null }, "auth.otp");
+            var user = new Features.Authentication.Models.AuthenticationUser
+            {
+                Email = email,
+                DisplayName = $"{firstName} {lastName}".Trim(),
+                IsVerified = isVerified
+            };
+            await AuthProvider.LoginAsync(token, user);
+            Navigation.NavigateTo(_returnUrl ?? "/", replace: true);
+        }
+        else
+        {
+            await UiStateWriter.UpdateAsync(s => s with { OtpPendingUserId = userId }, "auth.otp");
+        }
+    }
+
+    private async Task OnOtpVerified(string otpCode)
+    {
+        IsLoading = true;
         ErrorMessage = null;
+        try
+        {
+            var result = await Client.VerifyOtp.ExecuteAsync(CurrentUserId, otpCode);
+            if (result.IsErrorResult() || result.Data?.VerifyOtp is null || !result.Data.VerifyOtp.Success)
+            {
+                ErrorMessage = result.Errors.FirstOrDefault()?.Message
+                    ?? result.Data?.VerifyOtp?.Message
+                    ?? "OTP verification failed.";
+                return;
+            }
+
+            var data = result.Data.VerifyOtp;
+            await UiStateWriter.UpdateAsync(s => s with { OtpPendingUserId = null }, "auth.otp");
+            var user = new Features.Authentication.Models.AuthenticationUser
+            {
+                Email = data.User?.Email ?? string.Empty,
+                DisplayName = $"{data.User?.FirstName} {data.User?.LastName}".Trim(),
+                IsVerified = data.User?.IsVerified ?? true
+            };
+            await AuthProvider.LoginAsync(data.Token!, user);
+            Navigation.NavigateTo(_returnUrl ?? "/", replace: true);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private Task OnOtpError(string error)
+    {
+        ErrorMessage = error;
+        return Task.CompletedTask;
     }
 
     private static string? GetReturnUrl(Uri uri)
     {
         var query = uri.Query.TrimStart('?');
         if (string.IsNullOrWhiteSpace(query))
-        {
             return null;
-        }
 
         foreach (var segment in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
         {

@@ -1,4 +1,5 @@
 @implements IAsyncDisposable
+@inject IGoiMonClient Client
 
 <div class="space-y-4">
     <div class="space-y-1">
@@ -24,27 +25,18 @@
         </BbAlert>
     }
 
-    @if (!string.IsNullOrEmpty(SuccessMessage))
-    {
-        <BbAlert>
-            <BbAlertTitle>Success</BbAlertTitle>
-            <BbAlertDescription>@SuccessMessage</BbAlertDescription>
-        </BbAlert>
-    }
-
-    <!-- OTP Input -->
+    <!-- OTP Input — auto-verifies when 6 digits are entered -->
     <div class="flex justify-center">
-        <BbInputOTP MaxLength="6" @bind-Value="OtpCode" Disabled="@(IsLoading || TimeRemaining <= 0)" />
-    </div>
-
-    <!-- Verify Button -->
-    <BbButton OnClick="VerifyOtp" Disabled="@(IsLoading || OtpCode?.Length != 6)" Class="w-full">
         @if (IsLoading)
         {
-            <BbSpinner Class="mr-2 h-4 w-4" />
+            <BbSpinner Class="h-6 w-6" />
         }
-        Verify Code
-    </BbButton>
+        else
+        {
+            <BbInputOTP Length="6" @bind-Value="OtpCode" @bind-Value:after="OnOtpInputChanged"
+                        Disabled="@(TimeRemaining <= 0)" />
+        }
+    </div>
 
     <!-- Resend -->
     <div class="text-center">
@@ -69,7 +61,6 @@
 
     private string? OtpCode;
     private string? ErrorMessage;
-    private string? SuccessMessage;
     private bool IsLoading;
     private int TimeRemaining = 600;
     private int ResendCooldown;
@@ -110,6 +101,12 @@
             }
         });
 
+    private async Task OnOtpInputChanged()
+    {
+        if (OtpCode?.Length == 6 && TimeRemaining > 0 && !IsLoading)
+            await VerifyOtp();
+    }
+
     private async Task VerifyOtp()
     {
         if (string.IsNullOrEmpty(OtpCode) || OtpCode.Length != 6 || TimeRemaining <= 0) return;
@@ -118,14 +115,13 @@
         {
             IsLoading = true;
             ErrorMessage = null;
-            SuccessMessage = null;
+            StateHasChanged();
             await OnVerificationSuccess.InvokeAsync(OtpCode);
-            SuccessMessage = "Code verified successfully.";
         }
         catch (Exception ex)
         {
             ErrorMessage = "Verification failed. Please try again.";
-            SuccessMessage = null;
+            OtpCode = null;
             await OnError.InvokeAsync(ex.Message);
         }
         finally
@@ -136,12 +132,39 @@
 
     private async Task ResendOtp()
     {
-        OtpCode = null;
-        ResendCooldown = 60;
-        TimeRemaining = 600;
+        IsLoading = true;
         ErrorMessage = null;
-        SuccessMessage = "A new verification code has been sent.";
-        await InvokeAsync(StateHasChanged);
+        OtpCode = null;
+        StateHasChanged();
+
+        try
+        {
+            var delivery = DeliveryMethod.Equals("sms", StringComparison.OrdinalIgnoreCase)
+                ? OtpDeliveryMethod.Sms
+                : OtpDeliveryMethod.Email;
+
+            var result = await Client.ResendOtp.ExecuteAsync(UserId, delivery);
+            if (result.IsErrorResult())
+            {
+                ErrorMessage = result.Errors.FirstOrDefault()?.Message ?? "Failed to resend code.";
+                return;
+            }
+
+            ResendCooldown = 60;
+            TimeRemaining = 600;
+            TimerExpiry?.Dispose();
+            TimerExpiry = new System.Threading.Timer(
+                _ => UpdateExpiryCountdown(), null,
+                TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        }
+        catch (Exception)
+        {
+            ErrorMessage = "Unable to resend code. Please try again.";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
     }
 
     async ValueTask IAsyncDisposable.DisposeAsync()

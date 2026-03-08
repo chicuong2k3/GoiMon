@@ -21,9 +21,17 @@ public static class OAuthHelper
         // Parse query string parameters
         var parameters = ParseQueryString(query);
 
-        // Try access_token (Google, Facebook), id_token, or auth_token
-        return parameters.FirstOrDefault(p =>
-            p.Key is "access_token" or "id_token" or "auth_token").Value;
+        // Prefer id_token (JWT signed by provider) over access_token (opaque bearer token)
+        if (parameters.TryGetValue("id_token", out var idToken) && !string.IsNullOrEmpty(idToken))
+            return idToken;
+
+        if (parameters.TryGetValue("access_token", out var accessToken) && !string.IsNullOrEmpty(accessToken))
+            return accessToken;
+
+        if (parameters.TryGetValue("auth_token", out var authToken) && !string.IsNullOrEmpty(authToken))
+            return authToken;
+
+        return null;
     }
 
     /// <summary>
@@ -49,13 +57,11 @@ public static class OAuthHelper
         var pairs = queryString.Split('&');
         foreach (var pair in pairs)
         {
-            var parts = pair.Split('=');
-            if (parts.Length == 2)
-            {
-                var key = Uri.UnescapeDataString(parts[0]);
-                var value = Uri.UnescapeDataString(parts[1]);
-                result[key] = value;
-            }
+            var eqIdx = pair.IndexOf('=');
+            if (eqIdx <= 0) continue;
+            var key = Uri.UnescapeDataString(pair[..eqIdx]);
+            var value = Uri.UnescapeDataString(pair[(eqIdx + 1)..]);
+            result[key] = value;
         }
 
         return result;

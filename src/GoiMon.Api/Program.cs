@@ -2,6 +2,7 @@ using Hangfire;
 using Hangfire.PostgreSql;
 using GoiMon.Api.Infrastructure.Outbox;
 using GoiMon.Api.Infrastructure.Services;
+using GoiMon.Api.Infrastructure.Email;
 using GoiMon.Api.Infrastructure.Telemetry;
 using GoiMon.Api.Infrastructure.Middleware;
 using GoiMon.Api.Features.Authentication.Mutations;
@@ -92,6 +93,8 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ITenantProvider, HttpContextTenantProvider>();
 builder.Services.AddSingleton<ITenantAccessor, TenantAccessor>();
 builder.Services.AddHttpClient<IOAuthExchangeService, OAuthExchangeService>();
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("Email"));
+builder.Services.AddTransient<IEmailService, SmtpEmailService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 

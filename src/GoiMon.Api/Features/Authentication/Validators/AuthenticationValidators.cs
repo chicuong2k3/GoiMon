@@ -18,7 +18,7 @@ public class RegisterWithOAuthInputValidator : AbstractValidator<RegisterWithOAu
             .WithMessage("Provider must be 'Google' or 'Facebook'.");
 
         RuleFor(x => x.OtpDeliveryMethod)
-            .NotEmpty().WithMessage("OTP delivery method is required.");
+            .IsInEnum().WithMessage("OTP delivery method must be Email or Sms.");
         // Enum validation is automatic - GraphQL/HotChocolate handles invalid values
     }
 }
@@ -37,7 +37,7 @@ public class LoginWithOAuthInputValidator : AbstractValidator<LoginWithOAuthInpu
             .WithMessage("Provider must be 'Google' or 'Facebook'.");
 
         RuleFor(x => x.OtpDeliveryMethod)
-            .NotEmpty().WithMessage("OTP delivery method is required.");
+            .IsInEnum().WithMessage("OTP delivery method must be Email or Sms.");
         // Enum validation is automatic - GraphQL/HotChocolate handles invalid values
     }
 }
