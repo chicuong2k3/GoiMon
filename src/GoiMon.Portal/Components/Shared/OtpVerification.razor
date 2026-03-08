@@ -1,0 +1,156 @@
+@implements IAsyncDisposable
+@using GoiMon.Portal.Features.Authentication
+@inject GraphQLAuthClient AuthClient
+
+<div class="space-y-4">
+    <div class="space-y-1">
+        <h4 class="text-lg font-semibold">Nhập mã xác thực</h4>
+        <p class="text-sm text-muted-foreground">
+            Chúng tôi đã gửi mã 6 chữ số qua @DeliveryMethod.
+            @if (_timeRemaining > 0)
+            {
+                <span class="text-amber-500 font-medium"> Hết hạn sau @_timeRemaining s</span>
+            }
+            else
+            {
+                <span class="text-destructive font-medium"> Mã đã hết hạn</span>
+            }
+        </p>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <BbAlert Variant="AlertVariant.Danger">
+            <BbAlertDescription>@_error</BbAlertDescription>
+        </BbAlert>
+    }
+
+    <div class="flex justify-center">
+        @if (_loading)
+        {
+            <BbSpinner Class="h-6 w-6" />
+        }
+        else
+        {
+            <BbInputOTP Length="6" @bind-Value="_otpCode" @bind-Value:after="OnOtpChanged"
+                        Disabled="@(_timeRemaining <= 0)" />
+        }
+    </div>
+
+    <div class="text-center">
+        @if (_canResend)
+        {
+            <BbButton Variant="ButtonVariant.Link" OnClick="ResendOtp" Disabled="_loading">
+                Không nhận được mã? Gửi lại
+            </BbButton>
+        }
+        else
+        {
+            <p class="text-sm text-muted-foreground">Gửi lại sau <strong>@_resendCooldown</strong>s</p>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Guid UserId { get; set; }
+    [Parameter] public string DeliveryMethod { get; set; } = "email";
+    [Parameter] public EventCallback<string> OnVerified { get; set; }
+    [Parameter] public EventCallback<string> OnError { get; set; }
+
+    private string? _otpCode;
+    private string? _error;
+    private bool _loading;
+    private int _timeRemaining = 600;
+    private int _resendCooldown;
+    private bool _canResend => _resendCooldown <= 0;
+    private Timer? _expiryTimer;
+    private Timer? _resendTimer;
+
+    protected override void OnInitialized()
+    {
+        _expiryTimer = new Timer(_ => InvokeAsync(() =>
+        {
+            if (--_timeRemaining <= 0)
+            {
+                _expiryTimer?.Dispose();
+                _error = "Mã OTP đã hết hạn. Vui lòng gửi lại.";
+            }
+            StateHasChanged();
+        }), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+
+        _resendTimer = new Timer(_ => InvokeAsync(() =>
+        {
+            if (_resendCooldown > 0) { _resendCooldown--; StateHasChanged(); }
+        }), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+    }
+
+    private async Task OnOtpChanged()
+    {
+        if (_otpCode?.Length == 6 && _timeRemaining > 0 && !_loading)
+            await VerifyOtp();
+    }
+
+    private async Task VerifyOtp()
+    {
+        _loading = true;
+        _error = null;
+        StateHasChanged();
+
+        try
+        {
+            var result = await AuthClient.VerifyOtpAsync(UserId, _otpCode!);
+            if (!result.Success || string.IsNullOrEmpty(result.Token))
+            {
+                _error = result.Message ?? "Xác thực thất bại.";
+                _otpCode = null;
+                return;
+            }
+            await OnVerified.InvokeAsync(result.Token);
+        }
+        catch (Exception ex)
+        {
+            _error = "Xác thực thất bại. Vui lòng thử lại.";
+            _otpCode = null;
+            await OnError.InvokeAsync(ex.Message);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task ResendOtp()
+    {
+        _loading = true;
+        _error = null;
+        _otpCode = null;
+        StateHasChanged();
+
+        try
+        {
+            await AuthClient.ResendOtpAsync(UserId, DeliveryMethod);
+            _resendCooldown = 60;
+            _timeRemaining = 600;
+            _expiryTimer?.Dispose();
+            _expiryTimer = new Timer(_ => InvokeAsync(() =>
+            {
+                if (--_timeRemaining <= 0) { _expiryTimer?.Dispose(); _error = "Mã OTP đã hết hạn."; }
+                StateHasChanged();
+            }), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        }
+        catch
+        {
+            _error = "Không thể gửi lại mã. Vui lòng thử lại.";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _expiryTimer?.Dispose();
+        _resendTimer?.Dispose();
+    }
+}

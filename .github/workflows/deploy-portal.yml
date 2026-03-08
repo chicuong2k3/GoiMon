@@ -1,0 +1,152 @@
+name: Deploy GoiMon Portal
+
+on:
+    push:
+        branches: ["main", "dev"]
+    workflow_dispatch: {}
+
+jobs:
+    deploy-dev:
+        if: ${{ github.ref == 'refs/heads/dev' }}
+        runs-on: ubuntu-latest
+        env:
+            ASPNETCORE_ENVIRONMENT: Development
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Filter changed paths
+              id: filter
+              uses: dorny/paths-filter@v2
+              with:
+                  filters: |
+                      goimon_portal:
+                        - 'src/GoiMon.Portal/**'
+
+            - name: Setup .NET
+              uses: actions/setup-dotnet@v4
+              with:
+                  dotnet-version: "10.0.x"
+
+            - name: Restore
+              if: ${{ steps.filter.outputs.goimon_portal == 'true' }}
+              run: dotnet restore src/GoiMon.Portal/GoiMon.Portal.csproj
+
+            - name: Build
+              if: ${{ steps.filter.outputs.goimon_portal == 'true' }}
+              run: dotnet build src/GoiMon.Portal/GoiMon.Portal.csproj -c Release --no-restore
+
+            - name: Publish
+              if: ${{ steps.filter.outputs.goimon_portal == 'true' }}
+              run: dotnet publish src/GoiMon.Portal/GoiMon.Portal.csproj -c Release -o publish
+
+            - name: Prepare deploy directory (dev)
+              if: ${{ steps.filter.outputs.goimon_portal == 'true' }}
+              uses: appleboy/ssh-action@v1.0.3
+              with:
+                  host: ${{ secrets.SSH_HOST_DEV }}
+                  username: ${{ secrets.SSH_USER_DEV }}
+                  key: ${{ secrets.SSH_PRIVATE_KEY_DEV }}
+                  script: |
+                      sudo mkdir -p /var/www/goimon-portal-dev
+                      sudo chown $USER:$USER /var/www/goimon-portal-dev
+
+            - name: Deploy via SCP to dev
+              if: ${{ steps.filter.outputs.goimon_portal == 'true' }}
+              uses: appleboy/scp-action@v0.1.7
+              with:
+                  host: ${{ secrets.SSH_HOST_DEV }}
+                  username: ${{ secrets.SSH_USER_DEV }}
+                  key: ${{ secrets.SSH_PRIVATE_KEY_DEV }}
+                  source: "publish/*"
+                  target: "/var/www/goimon-portal-dev"
+                  strip_components: 1
+
+            - name: Restart Portal service (dev)
+              if: ${{ steps.filter.outputs.goimon_portal == 'true' }}
+              uses: appleboy/ssh-action@v1.0.3
+              with:
+                  host: ${{ secrets.SSH_HOST_DEV }}
+                  username: ${{ secrets.SSH_USER_DEV }}
+                  key: ${{ secrets.SSH_PRIVATE_KEY_DEV }}
+                  script: |
+                      sudo systemctl restart goimon-portal-dev || echo "Service not yet configured"
+
+    deploy-prod:
+        if: ${{ github.ref == 'refs/heads/main' }}
+        runs-on: ubuntu-latest
+        env:
+            ASPNETCORE_ENVIRONMENT: Production
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Filter changed paths
+              id: filter
+              uses: dorny/paths-filter@v2
+              with:
+                  filters: |
+                      goimon_portal:
+                        - 'src/GoiMon.Portal/**'
+
+            - name: Setup .NET
+              uses: actions/setup-dotnet@v4
+              with:
+                  dotnet-version: "10.0.x"
+
+            - name: Restore
+              if: ${{ steps.filter.outputs.goimon_portal == 'true' }}
+              run: dotnet restore src/GoiMon.Portal/GoiMon.Portal.csproj
+
+            - name: Build
+              if: ${{ steps.filter.outputs.goimon_portal == 'true' }}
+              run: dotnet build src/GoiMon.Portal/GoiMon.Portal.csproj -c Release --no-restore
+
+            - name: Publish
+              if: ${{ steps.filter.outputs.goimon_portal == 'true' }}
+              run: dotnet publish src/GoiMon.Portal/GoiMon.Portal.csproj -c Release -o publish
+
+            - name: Upload artifact
+              if: ${{ steps.filter.outputs.goimon_portal == 'true' }}
+              uses: actions/upload-artifact@v4
+              with:
+                  name: goimon-portal-publish
+                  path: publish
+
+            - name: Prepare deploy directory (prod)
+              if: ${{ steps.filter.outputs.goimon_portal == 'true' }}
+              uses: appleboy/ssh-action@v1.0.3
+              with:
+                  host: ${{ secrets.SSH_HOST }}
+                  username: ${{ secrets.SSH_USER }}
+                  key: ${{ secrets.SSH_PRIVATE_KEY }}
+                  script: |
+                      sudo mkdir -p /var/www/goimon-portal
+                      sudo chown $USER:$USER /var/www/goimon-portal
+
+            - name: Deploy via SCP to prod
+              if: ${{ steps.filter.outputs.goimon_portal == 'true' }}
+              uses: appleboy/scp-action@v0.1.7
+              with:
+                  host: ${{ secrets.SSH_HOST }}
+                  username: ${{ secrets.SSH_USER }}
+                  key: ${{ secrets.SSH_PRIVATE_KEY }}
+                  source: "publish/*"
+                  target: "/var/www/goimon-portal"
+                  strip_components: 1
+
+            - name: Restart Portal service (prod)
+              if: ${{ steps.filter.outputs.goimon_portal == 'true' }}
+              uses: appleboy/ssh-action@v1.0.3
+              with:
+                  host: ${{ secrets.SSH_HOST }}
+                  username: ${{ secrets.SSH_USER }}
+                  key: ${{ secrets.SSH_PRIVATE_KEY }}
+                  script: |
+                      sudo systemctl restart goimon-portal

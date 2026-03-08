@@ -1,5 +1,13 @@
-@page "/login"
+@page "/auth"
+@page "/auth/google-callback"
+@page "/auth/facebook-callback"
 @rendermode InteractiveServer
+@using GoiMon.Portal.Features.Authentication
+@inject NavigationManager Nav
+@inject IConfiguration Configuration
+@inject GraphQLAuthClient AuthClient
+@inject IJSRuntime JS
+@inject ILogger<Login> Logger
 
 <PageTitle>Đăng nhập - GoiMon</PageTitle>
 
@@ -12,43 +20,59 @@
         </div>
         <div class="w-full max-w-sm space-y-6">
             <div class="space-y-2 text-center">
-                <h1 class="text-2xl font-bold tracking-tight">Đăng nhập</h1>
+                <h1 class="text-2xl font-bold tracking-tight">Đăng nhập / Đăng ký</h1>
                 <p class="text-sm text-muted-foreground">
-                    Nhập email để đăng nhập vào tài khoản của bạn
+                    Sử dụng tài khoản Google hoặc Facebook để tiếp tục
                 </p>
             </div>
-            <div class="space-y-4">
-                <div class="space-y-2">
-                    <BbLabel For="email">Email</BbLabel>
-                    <BbInput Id="email" Type="InputType.Email" Placeholder="email@example.com" @bind-Value="_email" />
+
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <BbAlert Variant="AlertVariant.Danger">
+                    <BbAlertTitle>Lỗi</BbAlertTitle>
+                    <BbAlertDescription>@_error</BbAlertDescription>
+                </BbAlert>
+            }
+
+            @if (_showOtp)
+            {
+                <OtpVerification UserId="_otpUserId"
+                                 DeliveryMethod="@_deliveryMethod"
+                                 OnVerified="OnOtpVerified"
+                                 OnError="msg => { _error = msg; StateHasChanged(); }" />
+            }
+            else
+            {
+                <div class="grid gap-3">
+                    <BbButton Variant="ButtonVariant.Outline" Class="w-full" OnClick="OnGoogleClicked" Disabled="_loading">
+                        @if (_loading)
+                        {
+                            <BbSpinner Class="mr-2 h-4 w-4" />
+                        }
+                        else
+                        {
+                            <img src="https://www.google.com/favicon.ico" alt="Google" class="mr-2 h-4 w-4" />
+                        }
+                        Tiếp tục với Google
+                    </BbButton>
+
+                    <BbButton Class="w-full" OnClick="OnFacebookClicked" Disabled="_loading">
+                        @if (_loading)
+                        {
+                            <BbSpinner Class="mr-2 h-4 w-4" />
+                        }
+                        else
+                        {
+                            <LucideIcon Name="facebook" Class="mr-2 h-4 w-4" />
+                        }
+                        Tiếp tục với Facebook
+                    </BbButton>
                 </div>
-                <div class="space-y-2">
-                    <div class="flex items-center justify-between">
-                        <BbLabel For="password">Mật khẩu</BbLabel>
-                        <a href="#" class="text-sm text-muted-foreground underline-offset-4 hover:underline">
-                            Quên mật khẩu?
-                        </a>
-                    </div>
-                    <BbInput Id="password" Type="InputType.Password" @bind-Value="_password" />
-                </div>
-                <BbButton Class="w-full" OnClick="HandleLogin">Đăng nhập</BbButton>
-                <div class="relative">
-                    <div class="absolute inset-0 flex items-center">
-                        <BbSeparator />
-                    </div>
-                    <div class="relative flex justify-center text-xs uppercase">
-                        <span class="bg-background px-2 text-muted-foreground">Hoặc</span>
-                    </div>
-                </div>
-                <BbButton Variant="ButtonVariant.Outline" Class="w-full">
-                    <LucideIcon Name="mail" class="h-4 w-4 mr-2" />
-                    Đăng nhập với Google
-                </BbButton>
-            </div>
-            <div class="text-center text-sm text-muted-foreground">
-                Chưa có tài khoản?
-                <a href="/signup" class="text-primary underline-offset-4 hover:underline">Đăng ký</a>
-            </div>
+
+                <p class="text-center text-xs text-muted-foreground">
+                    Nếu chưa có tài khoản, hệ thống sẽ tự động tạo cho bạn.
+                </p>
+            }
         </div>
     </div>
 
@@ -64,11 +88,100 @@
 </div>
 
 @code {
-    private string _email = "";
-    private string _password = "";
+    private bool _loading;
+    private string? _error;
+    private bool _showOtp;
+    private Guid _otpUserId;
+    private string _deliveryMethod = "email";
 
-    private void HandleLogin()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        // TODO: Implement authentication via API
+        if (!firstRender) return;
+
+        _deliveryMethod = Configuration["Auth:OtpDeliveryMethod"] ?? "email";
+
+        // Blazor Server: read URL fragment via JS interop
+        var fragment = await JS.InvokeAsync<string>("eval", "window.location.hash");
+        var token = OAuthHelper.ExtractTokenFromFragment(fragment);
+
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            _loading = true;
+            StateHasChanged();
+            try
+            {
+                await HandleOAuthCallback(token);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "OAuth callback failed");
+                _error = "Không thể kết nối server. Vui lòng thử lại.";
+            }
+            finally
+            {
+                _loading = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task HandleOAuthCallback(string idToken)
+    {
+        var result = await AuthClient.AuthenticateWithGoogleAsync(idToken, _deliveryMethod);
+
+        if (!result.RequiresOtpVerification && !string.IsNullOrEmpty(result.Token))
+        {
+            // TODO: Store token and redirect to dashboard
+            Nav.NavigateTo("/dashboard", forceLoad: true);
+        }
+        else
+        {
+            _otpUserId = result.User.Id;
+            _showOtp = true;
+        }
+    }
+
+    private async Task OnOtpVerified(string token)
+    {
+        // TODO: Store token
+        Nav.NavigateTo("/dashboard", forceLoad: true);
+    }
+
+    private void OnGoogleClicked()
+    {
+        _loading = true;
+        _error = null;
+
+        var clientId = Configuration["OAuth:Google:ClientId"];
+        var redirectUri = Configuration["OAuth:Google:RedirectUri"];
+
+        if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(redirectUri))
+        {
+            _error = "Google OAuth chưa được cấu hình.";
+            _loading = false;
+            return;
+        }
+
+        var authUrl = OAuthHelper.GetGoogleAuthUrl(clientId, redirectUri);
+        Nav.NavigateTo(authUrl, forceLoad: true);
+    }
+
+    private void OnFacebookClicked()
+    {
+        _loading = true;
+        _error = null;
+
+        var appId = Configuration["OAuth:Facebook:AppId"];
+        var redirectUri = Configuration["OAuth:Facebook:RedirectUri"];
+
+        if (string.IsNullOrEmpty(appId) || string.IsNullOrEmpty(redirectUri))
+        {
+            _error = "Facebook OAuth chưa được cấu hình.";
+            _loading = false;
+            return;
+        }
+
+        var authUrl = OAuthHelper.GetFacebookAuthUrl(appId, redirectUri);
+        Nav.NavigateTo(authUrl, forceLoad: true);
     }
 }
