@@ -1,0 +1,19 @@
+[Unit]
+Description=GoiMon Portal (Blazor Server)
+After=network.target
+
+[Service]
+Type=notify
+WorkingDirectory=/var/www/goimon-portal
+ExecStart=/usr/bin/dotnet /var/www/goimon-portal/GoiMon.Portal.dll
+Restart=always
+RestartSec=10
+KillSignal=SIGINT
+SyslogIdentifier=goimon-portal
+User=www-data
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=ASPNETCORE_URLS=http://localhost:5002
+Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
+
+[Install]
+WantedBy=multi-user.target
