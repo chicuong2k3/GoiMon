@@ -1,0 +1,102 @@
+@page "/pricing"
+
+<PageTitle>Bảng giá - GoiMon</PageTitle>
+
+<section class="py-20">
+    <div class="container mx-auto px-4">
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-bold tracking-tight mb-4">Bảng giá đơn giản, minh bạch</h1>
+            <p class="text-lg text-muted-foreground">Chọn gói phù hợp với quy mô nhà hàng của bạn.</p>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            <!-- Starter -->
+            <BbCard>
+                <BbCardHeader>
+                    <BbCardTitle>Starter</BbCardTitle>
+                    <BbCardDescription>Cho quán nhỏ, mới bắt đầu</BbCardDescription>
+                </BbCardHeader>
+                <BbCardContent>
+                    <div class="text-3xl font-bold mb-4">199K<span class="text-sm font-normal text-muted-foreground">/tháng</span></div>
+                    <ul class="space-y-2 text-sm">
+                        <li class="flex items-center gap-2">
+                            <LucideIcon Name="check" class="h-4 w-4 text-primary" />
+                            1 cửa hàng
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <LucideIcon Name="check" class="h-4 w-4 text-primary" />
+                            50 món trong menu
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <LucideIcon Name="check" class="h-4 w-4 text-primary" />
+                            QR gọi món
+                        </li>
+                    </ul>
+                </BbCardContent>
+                <BbCardFooter>
+                    <BbButton Variant="ButtonVariant.Outline" Class="w-full" Href="/signup">Chọn gói</BbButton>
+                </BbCardFooter>
+            </BbCard>
+
+            <!-- Pro -->
+            <BbCard Class="border-primary">
+                <BbCardHeader>
+                    <BbCardTitle>Pro</BbCardTitle>
+                    <BbCardDescription>Phổ biến nhất cho nhà hàng vừa</BbCardDescription>
+                </BbCardHeader>
+                <BbCardContent>
+                    <div class="text-3xl font-bold mb-4">499K<span class="text-sm font-normal text-muted-foreground">/tháng</span></div>
+                    <ul class="space-y-2 text-sm">
+                        <li class="flex items-center gap-2">
+                            <LucideIcon Name="check" class="h-4 w-4 text-primary" />
+                            3 cửa hàng
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <LucideIcon Name="check" class="h-4 w-4 text-primary" />
+                            Không giới hạn menu
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <LucideIcon Name="check" class="h-4 w-4 text-primary" />
+                            Báo cáo nâng cao
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <LucideIcon Name="check" class="h-4 w-4 text-primary" />
+                            Quản lý nhân viên
+                        </li>
+                    </ul>
+                </BbCardContent>
+                <BbCardFooter>
+                    <BbButton Class="w-full" Href="/signup">Chọn gói</BbButton>
+                </BbCardFooter>
+            </BbCard>
+
+            <!-- Enterprise -->
+            <BbCard>
+                <BbCardHeader>
+                    <BbCardTitle>Enterprise</BbCardTitle>
+                    <BbCardDescription>Cho chuỗi nhà hàng lớn</BbCardDescription>
+                </BbCardHeader>
+                <BbCardContent>
+                    <div class="text-3xl font-bold mb-4">Liên hệ</div>
+                    <ul class="space-y-2 text-sm">
+                        <li class="flex items-center gap-2">
+                            <LucideIcon Name="check" class="h-4 w-4 text-primary" />
+                            Không giới hạn cửa hàng
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <LucideIcon Name="check" class="h-4 w-4 text-primary" />
+                            API tích hợp
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <LucideIcon Name="check" class="h-4 w-4 text-primary" />
+                            Hỗ trợ ưu tiên 24/7
+                        </li>
+                    </ul>
+                </BbCardContent>
+                <BbCardFooter>
+                    <BbButton Variant="ButtonVariant.Outline" Class="w-full">Liên hệ</BbButton>
+                </BbCardFooter>
+            </BbCard>
+        </div>
+    </div>
+</section>

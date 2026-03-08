@@ -1,0 +1,75 @@
+@page "/"
+
+<PageTitle>GoiMon - Phần mềm quản lý nhà hàng</PageTitle>
+
+<!-- Hero -->
+<section class="py-20 md:py-32">
+    <div class="container mx-auto px-4 text-center">
+        <h1 class="text-4xl md:text-6xl font-bold tracking-tight mb-6">
+            Quản lý nhà hàng<br />
+            <span class="text-primary">đơn giản &amp; hiệu quả</span>
+        </h1>
+        <p class="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
+            GoiMon giúp bạn quản lý order, menu, bàn và nhân viên chỉ trong một ứng dụng.
+            Tiết kiệm thời gian, tăng doanh thu.
+        </p>
+        <div class="flex items-center justify-center gap-4">
+            <BbButton Size="ButtonSize.Large" Href="/signup">
+                <LucideIcon Name="rocket" class="h-4 w-4 mr-2" />
+                Dùng thử miễn phí
+            </BbButton>
+            <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Large" Href="/pricing">
+                Xem bảng giá
+            </BbButton>
+        </div>
+    </div>
+</section>
+
+<!-- Features -->
+<section id="features" class="py-20 bg-muted/40">
+    <div class="container mx-auto px-4">
+        <h2 class="text-3xl font-bold text-center mb-12">Tính năng nổi bật</h2>
+        <div class="grid md:grid-cols-3 gap-6">
+            <BbCard>
+                <BbCardHeader>
+                    <LucideIcon Name="smartphone" class="h-8 w-8 text-primary mb-2" />
+                    <BbCardTitle>Gọi món trên điện thoại</BbCardTitle>
+                </BbCardHeader>
+                <BbCardContent>
+                    <p class="text-muted-foreground">Khách hàng quét QR và gọi món trực tiếp, không cần đợi nhân viên.</p>
+                </BbCardContent>
+            </BbCard>
+
+            <BbCard>
+                <BbCardHeader>
+                    <LucideIcon Name="chef-hat" class="h-8 w-8 text-primary mb-2" />
+                    <BbCardTitle>Quản lý bếp realtime</BbCardTitle>
+                </BbCardHeader>
+                <BbCardContent>
+                    <p class="text-muted-foreground">Bếp nhận order ngay lập tức, theo dõi trạng thái món ăn dễ dàng.</p>
+                </BbCardContent>
+            </BbCard>
+
+            <BbCard>
+                <BbCardHeader>
+                    <LucideIcon Name="bar-chart-3" class="h-8 w-8 text-primary mb-2" />
+                    <BbCardTitle>Báo cáo doanh thu</BbCardTitle>
+                </BbCardHeader>
+                <BbCardContent>
+                    <p class="text-muted-foreground">Xem báo cáo doanh thu, món bán chạy theo ngày, tuần, tháng.</p>
+                </BbCardContent>
+            </BbCard>
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="py-20">
+    <div class="container mx-auto px-4 text-center">
+        <h2 class="text-3xl font-bold mb-4">Sẵn sàng bắt đầu?</h2>
+        <p class="text-muted-foreground mb-8">Đăng ký ngay và trải nghiệm 14 ngày miễn phí.</p>
+        <BbButton Size="ButtonSize.Large" Href="/signup">
+            Tạo tài khoản miễn phí
+        </BbButton>
+    </div>
+</section>

@@ -1,0 +1,58 @@
+@page "/dashboard"
+@rendermode InteractiveServer
+@layout DashboardLayout
+
+<PageTitle>Dashboard - GoiMon</PageTitle>
+
+<div class="space-y-6">
+    <h1 class="text-3xl font-bold">Xin chào!</h1>
+    <p class="text-muted-foreground">Quản lý cửa hàng và subscription của bạn tại đây.</p>
+
+    <div class="grid md:grid-cols-3 gap-6">
+        <BbCard>
+            <BbCardHeader>
+                <BbCardTitle>Cửa hàng</BbCardTitle>
+                <BbCardDescription>Số cửa hàng đang hoạt động</BbCardDescription>
+            </BbCardHeader>
+            <BbCardContent>
+                <div class="text-3xl font-bold">0</div>
+            </BbCardContent>
+            <BbCardFooter>
+                <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small">
+                    <LucideIcon Name="plus" class="h-4 w-4 mr-2" />
+                    Thêm cửa hàng
+                </BbButton>
+            </BbCardFooter>
+        </BbCard>
+
+        <BbCard>
+            <BbCardHeader>
+                <BbCardTitle>Gói hiện tại</BbCardTitle>
+                <BbCardDescription>Subscription plan</BbCardDescription>
+            </BbCardHeader>
+            <BbCardContent>
+                <div class="text-3xl font-bold">Trial</div>
+                <p class="text-sm text-muted-foreground">Còn 14 ngày</p>
+            </BbCardContent>
+            <BbCardFooter>
+                <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small">Nâng cấp</BbButton>
+            </BbCardFooter>
+        </BbCard>
+
+        <BbCard>
+            <BbCardHeader>
+                <BbCardTitle>Hỗ trợ</BbCardTitle>
+                <BbCardDescription>Cần giúp đỡ?</BbCardDescription>
+            </BbCardHeader>
+            <BbCardContent>
+                <p class="text-sm text-muted-foreground">Liên hệ đội ngũ hỗ trợ nếu bạn gặp vấn đề.</p>
+            </BbCardContent>
+            <BbCardFooter>
+                <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Small">
+                    <LucideIcon Name="message-circle" class="h-4 w-4 mr-2" />
+                    Liên hệ
+                </BbButton>
+            </BbCardFooter>
+        </BbCard>
+    </div>
+</div>

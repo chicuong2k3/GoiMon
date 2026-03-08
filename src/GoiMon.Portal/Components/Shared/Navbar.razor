@@ -1,0 +1,20 @@
+@inject NavigationManager Nav
+
+<header class="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div class="container mx-auto flex h-16 items-center justify-between px-4">
+        <a href="/" class="flex items-center gap-2 text-lg font-bold">
+            <LucideIcon Name="utensils" class="h-6 w-6 text-primary" />
+            GoiMon
+        </a>
+
+        <nav class="hidden md:flex items-center gap-6 text-sm font-medium">
+            <a href="/#features" class="text-muted-foreground hover:text-foreground transition-colors">Tính năng</a>
+            <a href="/pricing" class="text-muted-foreground hover:text-foreground transition-colors">Bảng giá</a>
+        </nav>
+
+        <div class="flex items-center gap-2">
+            <BbButton Variant="ButtonVariant.Ghost" Href="/login">Đăng nhập</BbButton>
+            <BbButton Href="/signup">Dùng thử miễn phí</BbButton>
+        </div>
+    </div>
+</header>

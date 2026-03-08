@@ -1,0 +1,11 @@
+<Router AppAssembly="typeof(Program).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="routeData" DefaultLayout="typeof(PublicLayout)" />
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <LayoutView Layout="typeof(PublicLayout)">
+            <p class="text-center text-muted-foreground py-20">Trang không tồn tại.</p>
+        </LayoutView>
+    </NotFound>
+</Router>

@@ -1,0 +1,58 @@
+:root {
+  --background: oklch(0.9195 0.0169 88.0030);
+  --foreground: oklch(0.2350 0 0);
+  --card: oklch(0.9530 0.0156 86.4257);
+  --card-foreground: oklch(0.2350 0 0);
+  --popover: oklch(0.9530 0.0156 86.4257);
+  --popover-foreground: oklch(0.2350 0 0);
+  --primary: oklch(0.3012 0 0);
+  --primary-foreground: oklch(0.9169 0.0175 99.6160);
+  --secondary: oklch(0.8647 0.0201 87.5232);
+  --secondary-foreground: oklch(0.3012 0 0);
+  --muted: oklch(0.8340 0.0232 87.1630);
+  --muted-foreground: oklch(0.4688 0.0136 84.5932);
+  --accent: oklch(0.9169 0.0175 99.6160);
+  --accent-foreground: oklch(0.3012 0 0);
+  --destructive: oklch(0.5771 0.2152 27.3250);
+  --destructive-foreground: oklch(1.0000 0 0);
+  --border: oklch(0.8434 0.0231 87.1621);
+  --input: oklch(0.8434 0.0231 87.1621);
+  --ring: oklch(0.3012 0 0);
+  --sidebar: oklch(0.8985 0.0199 87.5195);
+  --sidebar-foreground: oklch(0.2350 0 0);
+  --sidebar-primary: oklch(0.3012 0 0);
+  --sidebar-primary-foreground: oklch(0.9169 0.0175 99.6160);
+  --sidebar-accent: oklch(0.9169 0.0175 99.6160);
+  --sidebar-accent-foreground: oklch(0.3012 0 0);
+  --sidebar-border: oklch(0.8434 0.0231 87.1621);
+  --sidebar-ring: oklch(0.3012 0 0);
+  --font-sans: "Be Vietnam Pro", "Inter", "Segoe UI", "Roboto", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  --radius: 0.5rem;
+}
+
+html, body {
+  font-family: var(--font-sans);
+  color: var(--foreground);
+  background-color: var(--background);
+  margin: 0;
+}
+
+#blazor-error-ui {
+  background: lightyellow;
+  bottom: 0;
+  box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+  display: none;
+  left: 0;
+  padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+  position: fixed;
+  width: 100%;
+  z-index: 1000;
+}
+
+#blazor-error-ui .dismiss {
+  cursor: pointer;
+  position: absolute;
+  right: 0.75rem;
+  top: 0.5rem;
+}
